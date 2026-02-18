@@ -1,0 +1,3241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Taxonomy Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Noto+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.4/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <!-- ========== Project Selection Screen ========== -->
+        <div id="projectSelection">
+            <header>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <h1>Research Taxonomy Library</h1>
+                        <p class="header-subtitle">Select a research project or create a new one.</p>
+                    </div>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)">&#9789;</button>
+                </div>
+            </header>
+            <div id="projectGrid" class="project-grid"></div>
+        </div>
+
+        <!-- ========== New Project Form ========== -->
+        <div id="newProjectForm" class="hidden">
+            <header>
+                <div class="header-with-back">
+                    <button class="back-btn" onclick="showProjectSelection()">&larr;</button>
+                    <h1>New Research Project</h1>
+                </div>
+            </header>
+            <form onsubmit="createProject(event)">
+                <div class="new-project-form">
+                    <div class="form-group full-width">
+                        <label for="npName">Project Name *</label>
+                        <input type="text" id="npName" required placeholder="e.g. Aesthetic Design Connections">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="npPurpose">Purpose *</label>
+                        <textarea id="npPurpose" rows="3" required placeholder="What is this research for? What question are you trying to answer?"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="npOutcome">Expected Outcome</label>
+                        <textarea id="npOutcome" rows="2" placeholder="What deliverable will this produce? e.g. FigJam board, market map, report"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="npCategories">Starting Categories *</label>
+                        <textarea id="npCategories" rows="3" required placeholder="Enter category names, one per line. These seed the initial taxonomy structure."></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="npLinks">Example Links</label>
+                        <textarea id="npLinks" rows="4" placeholder="Paste example URLs that represent the type of companies/products you're researching (one per line)"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="npKeywords">Market Keywords</label>
+                        <input type="text" id="npKeywords" placeholder="Comma-separated keywords for triage relevance. e.g. design, aesthetic, visual, art, creative">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="npDescription">Description</label>
+                        <textarea id="npDescription" rows="3" placeholder="Any additional context or notes about this research project"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="primary-btn">Create Project</button>
+                        <button type="button" class="btn" onclick="showProjectSelection()">Cancel</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- ========== Main App (shown after project selection) ========== -->
+        <div id="mainApp" class="hidden">
+            <header>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div class="header-with-back">
+                        <button class="back-btn" onclick="switchProject()">&larr;</button>
+                        <div>
+                            <h1 id="projectTitle">Project</h1>
+                            <div class="stats-bar">
+                                <span id="statCompanies">0 companies</span>
+                                <span id="statCategories">0 categories</span>
+                                <span id="statUpdated">Never updated</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div class="notification-bell" onclick="toggleNotificationPanel()" title="Notifications">
+                            <span class="bell-icon">&#128276;</span>
+                            <span class="bell-badge hidden" id="bellBadge">0</span>
+                        </div>
+                        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)">&#9789;</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Notification Panel -->
+            <div id="notificationPanel" class="notification-panel hidden">
+                <div class="notif-panel-header">
+                    <strong>Recent Activity</strong>
+                    <button class="close-btn" onclick="toggleNotificationPanel()">&times;</button>
+                </div>
+                <div id="notifPanelContent" class="notif-panel-content">
+                    <p class="hint-text">No recent activity.</p>
+                </div>
+            </div>
+
+            <nav class="tabs">
+                <button class="tab active" onclick="showTab('companies')">Companies</button>
+                <button class="tab" onclick="showTab('taxonomy')">Taxonomy</button>
+                <button class="tab" onclick="showTab('map')">Map</button>
+                <button class="tab" onclick="showTab('process')">Process</button>
+                <button class="tab" onclick="showTab('export')">Export</button>
+            </nav>
+
+            <!-- Companies Tab -->
+            <section id="tab-companies" class="tab-content active">
+                <div class="controls">
+                    <input type="text" id="searchInput" placeholder="Search companies... (/ to focus)" oninput="debounceSearch()">
+                    <select id="categoryFilter" onchange="addFilterFromSelect('category')">
+                        <option value="">+ Category</option>
+                    </select>
+                    <select id="tagFilter" onchange="addFilterFromSelect('tag')">
+                        <option value="">+ Tag</option>
+                    </select>
+                    <select id="geoFilter" onchange="addFilterFromSelect('geography')">
+                        <option value="">+ Geography</option>
+                    </select>
+                    <select id="stageFilter" onchange="addFilterFromSelect('funding_stage')">
+                        <option value="">+ Stage</option>
+                    </select>
+                    <select id="relationshipFilter" class="filter-select" onchange="loadCompanies()">
+                        <option value="">Relationship</option>
+                        <option value="any">Any flagged</option>
+                        <option value="watching">Watching</option>
+                        <option value="to_reach_out">To Reach Out</option>
+                        <option value="in_conversation">In Conversation</option>
+                        <option value="met">Met</option>
+                        <option value="partner">Partner</option>
+                        <option value="not_relevant">Not Relevant</option>
+                    </select>
+                    <label class="filter-checkbox"><input type="checkbox" id="starredFilter" onchange="loadCompanies()"> Starred</label>
+                    <label class="filter-checkbox"><input type="checkbox" id="enrichmentFilter" onchange="loadCompanies()"> Needs enrichment</label>
+                    <button class="filter-action-btn" onclick="openTagManager()" title="Manage tags">Tags</button>
+                </div>
+
+                <!-- Active filters as chips -->
+                <div id="activeFilters" class="filter-chips-bar hidden"></div>
+
+                <!-- Saved views bar -->
+                <div class="saved-views-bar">
+                    <select id="savedViewSelect" onchange="loadSavedView()">
+                        <option value="">Saved views...</option>
+                    </select>
+                    <button class="filter-action-btn" onclick="saveCurrentView()" title="Save current filters">Save view</button>
+                </div>
+
+                <table id="companyTable">
+                    <thead>
+                        <tr>
+                            <th class="sort-header" data-sort="starred" style="width:3%"></th>
+                            <th class="sort-header" data-sort="name">Name</th>
+                            <th class="sort-header" data-sort="category">Category</th>
+                            <th>What</th>
+                            <th>Target</th>
+                            <th class="sort-header" data-sort="geography">Geo</th>
+                            <th>Sources</th>
+                            <th>Tags</th>
+                            <th class="sort-header" data-sort="confidence">Conf.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="companyBody"></tbody>
+                </table>
+
+                <!-- Detail Panel -->
+                <div id="detailPanel" class="detail-panel hidden">
+                    <div class="detail-header">
+                        <h2 id="detailName"></h2>
+                        <button class="close-btn" onclick="closeDetail()">&times;</button>
+                    </div>
+                    <div id="detailContent"></div>
+                </div>
+            </section>
+
+            <!-- Taxonomy Tab -->
+            <section id="tab-taxonomy" class="tab-content">
+                <div id="taxonomyTree"></div>
+
+                <div class="market-report-section">
+                    <h3>Market Reports</h3>
+                    <p class="hint-text">Generate AI-powered market analysis for a category.</p>
+                    <div class="report-controls">
+                        <select id="reportCategorySelect">
+                            <option value="">Select a category...</option>
+                        </select>
+                        <select id="reportModelSelect" class="model-select-inline">
+                            <option value="claude-sonnet-4-5-20250929" selected>Sonnet</option>
+                            <option value="claude-opus-4-6">Opus</option>
+                            <option value="claude-haiku-4-5-20251001">Haiku</option>
+                        </select>
+                        <button class="primary-btn" id="reportBtn" onclick="generateMarketReport()">Generate Report</button>
+                    </div>
+                    <div id="reportStatus" class="hidden">
+                        <div class="progress-bar"><div id="reportProgress" class="progress-fill" style="width:50%;animation:pulse 2s infinite"></div></div>
+                        <p>Generating report... Claude is researching the web and analyzing your data. This typically takes 2-4 minutes.</p>
+                    </div>
+                    <div id="reportContent" class="hidden report-viewer"></div>
+                </div>
+
+                <div class="review-section">
+                    <h3>Taxonomy Review</h3>
+                    <p class="hint-text">Run a comprehensive AI review of all categories and company placements. Add your own observations to guide the review.</p>
+                    <textarea id="reviewObservations" rows="3" placeholder="Add your observations to guide the review, e.g. 'Extend taxonomy with EAP section', 'Too many companies in Diagnostics', 'Consider splitting Wellness into Physical and Mental'..." style="width:100%;margin-bottom:10px;padding:10px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:13px;resize:vertical"></textarea>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <select id="reviewModelSelect" class="model-select-inline">
+                            <option value="claude-haiku-4-5-20251001" selected>Haiku</option>
+                            <option value="claude-sonnet-4-5-20250929">Sonnet</option>
+                            <option value="claude-opus-4-6">Opus</option>
+                        </select>
+                        <button class="btn" id="reviewBtn" onclick="startTaxonomyReview()">Review Taxonomy with Claude</button>
+                    </div>
+                    <div id="reviewStatus" class="hidden"></div>
+                    <div id="reviewResults" class="hidden"></div>
+                </div>
+
+                <h3>Quality Dashboard</h3>
+                <div id="qualityDashboard" class="quality-dashboard">
+                    <button class="btn" onclick="loadTaxonomyQuality()">Refresh Quality Metrics</button>
+                    <div id="qualityContent" class="hidden"></div>
+                </div>
+
+                <h3>Change History</h3>
+                <div id="taxonomyHistory"></div>
+            </section>
+
+            <!-- Map Tab -->
+            <section id="tab-map" class="tab-content">
+                <div class="map-controls">
+                    <button class="primary-btn" onclick="loadMarketMap()">Refresh Map</button>
+                    <button class="btn" onclick="exportMapPng()">Export as PNG</button>
+                    <span class="hint-text" style="margin-left:12px">Drag companies between categories to reclassify.</span>
+                </div>
+                <div id="marketMap" class="market-map"></div>
+
+                <!-- Comparison Panel -->
+                <div id="compareSection" class="hidden">
+                    <div class="compare-header">
+                        <h3>Compare Companies</h3>
+                        <button class="close-btn" onclick="clearComparison()">&times;</button>
+                    </div>
+                    <div id="compareContent"></div>
+                </div>
+
+                <div class="compare-bar hidden" id="compareBar">
+                    <span id="compareCount">0 selected</span>
+                    <button class="primary-btn" onclick="runComparison()">Compare</button>
+                    <button class="btn" onclick="clearCompareSelection()">Clear</button>
+                </div>
+            </section>
+
+            <!-- Process Tab -->
+            <section id="tab-process" class="tab-content">
+                <!-- AI Discovery -->
+                <div class="ai-discovery-section">
+                    <h3>AI Company Discovery</h3>
+                    <p class="hint-text">Describe a market segment and Claude will search for relevant companies.</p>
+                    <div class="discovery-input">
+                        <input type="text" id="discoveryQuery" placeholder="e.g. gut microbiome testing companies, digital therapeutics for mental health...">
+                        <select id="discoveryModelSelect" class="model-select-inline">
+                            <option value="claude-haiku-4-5-20251001" selected>Haiku</option>
+                            <option value="claude-sonnet-4-5-20250929">Sonnet</option>
+                            <option value="claude-opus-4-6">Opus</option>
+                        </select>
+                        <button class="primary-btn" id="discoveryBtn" onclick="startDiscovery()">Discover</button>
+                    </div>
+                    <div id="discoveryResults" class="hidden">
+                        <div id="discoveryStatus" class="hidden">
+                            <div class="progress-bar"><div id="discoveryProgress" class="progress-fill" style="width:50%;animation:pulse 2s infinite"></div></div>
+                            <p>Searching for companies...</p>
+                        </div>
+                        <div id="discoveryList"></div>
+                    </div>
+                </div>
+
+                <div class="process-input">
+                    <h3>Submit URLs for Processing</h3>
+                    <textarea id="urlInput" rows="8" placeholder="Paste URLs here (one per line, or mixed with other text)..."></textarea>
+                    <div class="process-options">
+                        <label>Model:
+                            <select id="modelSelect">
+                                <option value="claude-haiku-4-5-20251001" selected>Haiku 4.5 (fast)</option>
+                                <option value="claude-sonnet-4-5-20250929">Sonnet 4.5 (deep research)</option>
+                                <option value="claude-opus-4-6">Opus 4.6 (highest quality)</option>
+                            </select>
+                        </label>
+                        <label title="Number of URLs to research simultaneously. Higher = faster but uses more API calls in parallel.">Parallel:
+                            <select id="workerCount">
+                                <option value="3">3 (conservative)</option>
+                                <option value="5" selected>5 (balanced)</option>
+                                <option value="8">8 (fast)</option>
+                                <option value="10">10 (max speed)</option>
+                            </select>
+                        </label>
+                        <button class="primary-btn" onclick="submitUrls()">Start Processing</button>
+                    </div>
+                </div>
+
+                <!-- Triage Results -->
+                <div id="triageSection" class="hidden">
+                    <h3>Pre-Validation Triage <span id="triageStatus" class="triage-status-badge"></span></h3>
+                    <p class="triage-info">Links are being checked for accessibility and relevance. Review flagged items below before processing.</p>
+
+                    <div class="progress-bar">
+                        <div id="triageProgress" class="progress-fill"></div>
+                    </div>
+                    <p id="triageProgressText"></p>
+
+                    <div id="triageResults"></div>
+
+                    <div id="triageActions" class="hidden">
+                        <div class="triage-action-bar">
+                            <span id="triageSummaryText"></span>
+                            <button class="primary-btn" onclick="confirmAndProcess()">Confirm &amp; Process</button>
+                            <button class="btn" onclick="resetTriage()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Status -->
+                <div id="processingStatus" class="hidden">
+                    <h3>Processing Batch: <span id="batchId"></span></h3>
+                    <div class="progress-bar">
+                        <div id="processProgress" class="progress-fill"></div>
+                    </div>
+                    <p id="processStatus"></p>
+                </div>
+
+                <h3>Recent Batches</h3>
+                <p class="hint-text">Click a batch to see full details.</p>
+                <div id="batchList"></div>
+                <div id="batchDetailView" class="hidden"></div>
+            </section>
+
+            <!-- Export Tab -->
+            <section id="tab-export" class="tab-content">
+                <div class="export-options">
+                    <div class="export-card">
+                        <h3>JSON</h3>
+                        <p>Full structured data for programmatic use</p>
+                        <a id="exportJson" href="/api/export/json" class="btn">Download JSON</a>
+                    </div>
+                    <div class="export-card">
+                        <h3>Markdown</h3>
+                        <p>LLM-optimized taxonomy for Claude / FigJam</p>
+                        <a id="exportMd" href="/api/export/md" class="btn">Download Markdown</a>
+                    </div>
+                    <div class="export-card">
+                        <h3>CSV</h3>
+                        <p>Spreadsheet-compatible format</p>
+                        <a id="exportCsv" href="/api/export/csv" class="btn">Download CSV</a>
+                    </div>
+                </div>
+
+                <h3 style="margin-top:30px">Share Project</h3>
+                <div class="share-section">
+                    <p class="hint-text">Generate a read-only share link for external stakeholders.</p>
+                    <div class="share-controls">
+                        <input type="text" id="shareLinkLabel" placeholder="Link label (e.g. 'For investors')">
+                        <button class="primary-btn" onclick="createShareLink()">Generate Link</button>
+                    </div>
+                    <div id="shareTokensList"></div>
+                </div>
+
+                <h3 style="margin-top:30px">Notification Settings</h3>
+                <div class="notification-settings">
+                    <p class="hint-text">Configure alerts for project events.</p>
+                    <div class="notif-field">
+                        <label for="slackWebhook">Slack Webhook URL</label>
+                        <div style="display:flex;gap:6px">
+                            <input type="url" id="slackWebhook" placeholder="https://hooks.slack.com/services/...">
+                            <button class="btn" onclick="testSlack()">Test</button>
+                        </div>
+                    </div>
+                    <div class="notif-checkboxes">
+                        <label><input type="checkbox" id="notifBatchComplete" checked> Notify on batch complete</label>
+                        <label><input type="checkbox" id="notifTaxonomyChange" checked> Notify on taxonomy changes</label>
+                        <label><input type="checkbox" id="notifNewCompany"> Notify on new companies</label>
+                    </div>
+                    <button class="primary-btn" onclick="saveNotifPrefs()" style="margin-top:8px">Save Preferences</button>
+                    <div id="notifSaveResult" class="hidden"></div>
+                </div>
+
+                <h3 style="margin-top:30px">Import CSV</h3>
+                <div class="import-section">
+                    <p class="hint-text">Upload a CSV file with columns: name, url, what, target, products, funding, geography, tam, tags, etc.</p>
+                    <form id="csvImportForm" onsubmit="importCsv(event)">
+                        <input type="file" id="csvFile" accept=".csv" required>
+                        <button type="submit" class="primary-btn" style="margin-top:8px">Import</button>
+                    </form>
+                    <div id="importResult" class="hidden"></div>
+                </div>
+
+                <h3 style="margin-top:30px">Trash</h3>
+                <p class="hint-text">Deleted companies can be restored or permanently removed.</p>
+                <button class="btn" onclick="loadTrash()">View Trash</button>
+                <div id="trashList" class="hidden"></div>
+
+                <h3 style="margin-top:30px">Duplicates</h3>
+                <p class="hint-text">Find potential duplicate companies by URL.</p>
+                <button class="btn" onclick="findDuplicates()">Scan for Duplicates</button>
+                <div id="duplicatesList" class="hidden"></div>
+
+                <h3 style="margin-top:30px">Activity Log</h3>
+                <p class="hint-text">Recent project activity and changes.</p>
+                <button class="btn" onclick="loadActivity()">Load Activity</button>
+                <div id="activityFeed" class="hidden"></div>
+            </section>
+        </div>
+    </div>
+
+    <!-- AI Chat Widget -->
+    <div id="chatWidget" class="chat-widget hidden">
+        <div class="chat-header" onclick="toggleChat()">
+            <span>Ask about your data</span>
+            <button class="chat-close" onclick="event.stopPropagation();closeChat()">&times;</button>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <div class="chat-welcome">Ask questions about your taxonomy data. e.g. "Which companies focus on employer wellness?"</div>
+        </div>
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Ask a question..." onkeydown="if(event.key==='Enter')sendChatMessage()">
+            <button class="primary-btn" onclick="sendChatMessage()">Send</button>
+        </div>
+    </div>
+    <button id="chatToggle" class="chat-fab hidden" onclick="toggleChat()" title="AI Chat">&#128172;</button>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit Company</h2>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editForm" onsubmit="saveEdit(event)">
+                <input type="hidden" id="editId">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="editName">Name</label>
+                        <input type="text" id="editName" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="editUrl">URL</label>
+                        <input type="url" id="editUrl" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="editWhat">What they do</label>
+                        <textarea id="editWhat" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTarget">Target</label>
+                        <input type="text" id="editTarget">
+                    </div>
+                    <div class="form-group">
+                        <label for="editGeography">Geography</label>
+                        <input type="text" id="editGeography">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="editProducts">Products</label>
+                        <textarea id="editProducts" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editFunding">Funding</label>
+                        <input type="text" id="editFunding">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTam">TAM</label>
+                        <input type="text" id="editTam">
+                    </div>
+                    <div class="form-group">
+                        <label for="editEmployeeRange">Employee Range</label>
+                        <select id="editEmployeeRange">
+                            <option value="">-- Select --</option>
+                            <option value="1-10">1-10</option>
+                            <option value="11-50">11-50</option>
+                            <option value="51-200">51-200</option>
+                            <option value="201-500">201-500</option>
+                            <option value="501-1000">501-1000</option>
+                            <option value="1000+">1000+</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editFoundedYear">Founded Year</label>
+                        <input type="number" id="editFoundedYear" min="1900" max="2030">
+                    </div>
+                    <div class="form-group">
+                        <label for="editFundingStage">Funding Stage</label>
+                        <select id="editFundingStage">
+                            <option value="">-- Select --</option>
+                            <option value="Pre-Seed">Pre-Seed</option>
+                            <option value="Seed">Seed</option>
+                            <option value="Series A">Series A</option>
+                            <option value="Series B">Series B</option>
+                            <option value="Series C+">Series C+</option>
+                            <option value="Public">Public</option>
+                            <option value="Bootstrapped">Bootstrapped</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTotalFunding">Total Funding (USD)</label>
+                        <input type="number" id="editTotalFunding" min="0" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="editHqCity">HQ City</label>
+                        <input type="text" id="editHqCity">
+                    </div>
+                    <div class="form-group">
+                        <label for="editHqCountry">HQ Country</label>
+                        <input type="text" id="editHqCountry">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="editLinkedin">LinkedIn URL</label>
+                        <input type="url" id="editLinkedin" placeholder="https://linkedin.com/company/...">
+                    </div>
+                    <div class="form-group">
+                        <label for="editCategory">Category</label>
+                        <select id="editCategory" onchange="loadSubcategories()">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editSubcategory">Subcategory</label>
+                        <select id="editSubcategory">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editBusinessModel">Business Model</label>
+                        <select id="editBusinessModel">
+                            <option value="">-- Select --</option>
+                            <option value="B2B">B2B</option>
+                            <option value="B2C">B2C</option>
+                            <option value="B2B2C">B2B2C</option>
+                            <option value="D2C">D2C</option>
+                            <option value="Marketplace">Marketplace</option>
+                            <option value="Platform">Platform</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCompanyStage">Company Stage</label>
+                        <select id="editCompanyStage">
+                            <option value="">-- Select --</option>
+                            <option value="Pre-launch">Pre-launch</option>
+                            <option value="Early">Early</option>
+                            <option value="Growth">Growth</option>
+                            <option value="Mature">Mature</option>
+                            <option value="Public">Public</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="editPrimaryFocus">Primary Focus</label>
+                        <input type="text" id="editPrimaryFocus" placeholder="e.g. mental health, diagnostics, telehealth">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="editTags">Tags (comma-separated)</label>
+                        <input type="text" id="editTags" placeholder="e.g. competitor, B2B, wearable">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="primary-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tag Management Modal -->
+    <div id="tagModal" class="modal-overlay hidden">
+        <div class="modal" style="width:500px">
+            <div class="modal-header">
+                <h2>Manage Tags</h2>
+                <button class="close-btn" onclick="closeTagManager()">&times;</button>
+            </div>
+            <div id="tagManagerContent">
+                <div class="tag-manager-actions">
+                    <button class="btn" onclick="showTagRenameForm()">Rename Tag</button>
+                    <button class="btn" onclick="showTagMergeForm()">Merge Tags</button>
+                </div>
+                <div id="tagRenameForm" class="tag-action-form hidden">
+                    <input type="text" id="tagRenameOld" placeholder="Current tag name">
+                    <input type="text" id="tagRenameNew" placeholder="New tag name">
+                    <button class="primary-btn" onclick="executeTagRename()">Rename</button>
+                    <button class="btn" onclick="hideTagForms()">Cancel</button>
+                </div>
+                <div id="tagMergeForm" class="tag-action-form hidden">
+                    <input type="text" id="tagMergeSource" placeholder="Tag to merge (will be removed)">
+                    <input type="text" id="tagMergeTarget" placeholder="Merge into this tag">
+                    <button class="primary-btn" onclick="executeTagMerge()">Merge</button>
+                    <button class="btn" onclick="hideTagForms()">Cancel</button>
+                </div>
+                <div id="tagList" class="tag-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let searchTimeout = null;
+        let currentTriageBatchId = null;
+        let triageData = [];
+        let allCategories = [];
+        let currentProjectId = null;
+
+        // Active filter state
+        let activeFilters = {
+            category_id: null,
+            category_name: null,
+            tags: [],
+            geography: null,
+            funding_stage: null,
+        };
+        let savedViews = [];
+
+        // Retry state
+        let retryingBatch = null;
+        let retryPollInterval = null;
+
+        // Mermaid init
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.mermaid) {
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default',
+                    securityLevel: 'loose',
+                });
+            }
+        });
+
+        // Reusable model select HTML
+        function modelSelectHtml(id, defaultModel = 'claude-haiku-4-5-20251001') {
+            return `<select id="${id}" class="model-select-inline">
+                <option value="claude-haiku-4-5-20251001" ${defaultModel.includes('haiku') ? 'selected' : ''}>Haiku</option>
+                <option value="claude-sonnet-4-5-20250929" ${defaultModel.includes('sonnet') ? 'selected' : ''}>Sonnet</option>
+                <option value="claude-opus-4-6" ${defaultModel.includes('opus') ? 'selected' : ''}>Opus</option>
+            </select>`;
+        }
+
+        // --- Project Selection ---
+        async function loadProjects() {
+            const res = await fetch('/api/projects');
+            const projects = await res.json();
+
+            let html = projects.map(p => `
+                <div class="project-card" onclick="selectProject(${p.id}, '${esc(p.name)}')">
+                    <h3>${esc(p.name)}</h3>
+                    <p class="project-purpose">${esc(p.purpose || '')}</p>
+                    <div class="project-meta">
+                        <span>${p.company_count} companies</span>
+                        <span>${new Date(p.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            html += `
+                <div class="project-card project-card-new" onclick="showNewProjectForm()">
+                    <div class="project-card-plus">+</div>
+                    <h3>New Project</h3>
+                    <p class="project-purpose">Create a new research taxonomy</p>
+                </div>
+            `;
+
+            document.getElementById('projectGrid').innerHTML = html;
+        }
+
+        function selectProject(id, name) {
+            currentProjectId = id;
+            document.getElementById('projectTitle').textContent = name;
+
+            // Update export links
+            document.getElementById('exportJson').href = `/api/export/json?project_id=${id}`;
+            document.getElementById('exportMd').href = `/api/export/md?project_id=${id}`;
+            document.getElementById('exportCsv').href = `/api/export/csv?project_id=${id}`;
+
+            document.getElementById('projectSelection').classList.add('hidden');
+            document.getElementById('newProjectForm').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+
+            // Reset filters
+            activeFilters = { category_id: null, category_name: null, tags: [], geography: null, funding_stage: null };
+            renderFilterChips();
+
+            loadStats();
+            loadCompanies();
+            loadTaxonomy();
+            loadFilterOptions();
+            loadSavedViews();
+            document.getElementById('chatToggle').classList.remove('hidden');
+            connectSSE();
+            requestNotificationPermission();
+        }
+
+        function switchProject() {
+            currentProjectId = null;
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('projectSelection').classList.remove('hidden');
+            document.getElementById('chatToggle').classList.add('hidden');
+            closeChat();
+            if (eventSource) { eventSource.close(); eventSource = null; }
+            loadProjects();
+        }
+
+        function showProjectSelection() {
+            document.getElementById('newProjectForm').classList.add('hidden');
+            document.getElementById('projectSelection').classList.remove('hidden');
+        }
+
+        function showNewProjectForm() {
+            document.getElementById('projectSelection').classList.add('hidden');
+            document.getElementById('newProjectForm').classList.remove('hidden');
+            // Clear form
+            document.getElementById('npName').value = '';
+            document.getElementById('npPurpose').value = '';
+            document.getElementById('npOutcome').value = '';
+            document.getElementById('npCategories').value = '';
+            document.getElementById('npLinks').value = '';
+            document.getElementById('npKeywords').value = '';
+            document.getElementById('npDescription').value = '';
+        }
+
+        async function createProject(event) {
+            event.preventDefault();
+            const data = {
+                name: document.getElementById('npName').value,
+                purpose: document.getElementById('npPurpose').value,
+                outcome: document.getElementById('npOutcome').value,
+                seed_categories: document.getElementById('npCategories').value,
+                example_links: document.getElementById('npLinks').value,
+                market_keywords: document.getElementById('npKeywords').value,
+                description: document.getElementById('npDescription').value,
+            };
+
+            const res = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            const result = await res.json();
+
+            if (result.error) {
+                alert(result.error);
+                return;
+            }
+
+            selectProject(result.id, data.name);
+        }
+
+        // --- Tab Navigation ---
+        function showTab(name) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
+            else {
+                // Find the tab button by index
+                const tabNames = ['companies', 'taxonomy', 'map', 'process', 'export'];
+                const idx = tabNames.indexOf(name);
+                if (idx >= 0) document.querySelectorAll('.tab')[idx]?.classList.add('active');
+            }
+
+            if (name === 'companies') loadCompanies();
+            if (name === 'taxonomy') { loadTaxonomy(); resumeActiveReport(); }
+            if (name === 'map') loadMarketMap();
+            if (name === 'process') loadBatches();
+            if (name === 'export') { loadShareTokens(); loadNotifPrefs(); }
+        }
+
+        // --- Stats ---
+        async function loadStats() {
+            const res = await fetch(`/api/stats?project_id=${currentProjectId}`);
+            const stats = await res.json();
+            document.getElementById('statCompanies').textContent = `${stats.total_companies} companies`;
+            document.getElementById('statCategories').textContent = `${stats.total_categories} categories`;
+            document.getElementById('statUpdated').textContent = stats.last_updated
+                ? `Updated ${new Date(stats.last_updated).toLocaleDateString()}`
+                : 'Never updated';
+        }
+
+        // --- Companies ---
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(loadCompanies, 300);
+        }
+
+        let currentSort = { by: 'name', dir: 'asc' };
+
+        async function loadCompanies() {
+            const search = document.getElementById('searchInput').value;
+            const starred = document.getElementById('starredFilter').checked;
+            const needsEnrichment = document.getElementById('enrichmentFilter').checked;
+            let url = `/api/companies?project_id=${currentProjectId}&`;
+            if (search) url += `search=${encodeURIComponent(search)}&`;
+            if (activeFilters.category_id) url += `category_id=${activeFilters.category_id}&`;
+            if (starred) url += `starred=1&`;
+            if (needsEnrichment) url += `needs_enrichment=1&`;
+            if (activeFilters.tags.length) url += `tags=${encodeURIComponent(activeFilters.tags.join(','))}&`;
+            if (activeFilters.geography) url += `geography=${encodeURIComponent(activeFilters.geography)}&`;
+            if (activeFilters.funding_stage) url += `funding_stage=${encodeURIComponent(activeFilters.funding_stage)}&`;
+            const relFilter = document.getElementById('relationshipFilter').value;
+            if (relFilter) url += `relationship_status=${encodeURIComponent(relFilter)}&`;
+            url += `sort_by=${currentSort.by}&sort_dir=${currentSort.dir}&`;
+
+            const res = await fetch(url);
+            const companies = await res.json();
+
+            // Update sort indicators
+            document.querySelectorAll('.sort-header').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.sort === currentSort.by) {
+                    th.classList.add(currentSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            const tbody = document.getElementById('companyBody');
+            tbody.innerHTML = companies.map(c => {
+                const compClass = c.completeness >= 0.7 ? 'comp-high' : c.completeness >= 0.4 ? 'comp-mid' : 'comp-low';
+                const compPct = Math.round(c.completeness * 100);
+                return `
+                <tr onclick="showDetail(${c.id})" style="cursor:pointer" data-company-id="${c.id}">
+                    <td><span class="star-btn ${c.is_starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleStar(${c.id},this)" title="Star">${c.is_starred ? '\u2605' : '\u2606'}</span></td>
+                    <td>
+                        <div class="company-name-cell">
+                            <img class="company-logo" src="${c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`}" alt="" onerror="this.style.display='none'">
+                            <strong>${esc(c.name)}</strong>
+                            <span class="completeness-dot ${compClass}" title="${compPct}% complete"></span>
+                            ${c.relationship_status ? `<span class="relationship-dot rel-${c.relationship_status}" title="${relationshipLabel(c.relationship_status)}"></span>` : ''}
+                        </div>
+                    </td>
+                    <td>${esc(c.category_name || 'N/A')}</td>
+                    <td><div class="cell-clamp">${esc(c.what || '')}</div></td>
+                    <td><div class="cell-clamp">${esc(c.target || '')}</div></td>
+                    <td><div class="cell-clamp">${esc(c.geography || '')}</div></td>
+                    <td><span class="source-count">${c.source_count || 0} links</span></td>
+                    <td>${(c.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' ')}</td>
+                    <td>${c.confidence_score != null ? (c.confidence_score * 100).toFixed(0) + '%' : '-'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function extractDomain(url) {
+            try { return new URL(url).hostname.replace('www.', ''); } catch { return ''; }
+        }
+
+        const RELATIONSHIP_LABELS = {
+            watching: 'Watching',
+            to_reach_out: 'To Reach Out',
+            in_conversation: 'In Conversation',
+            met: 'Met',
+            partner: 'Partner',
+            not_relevant: 'Not Relevant',
+        };
+        function relationshipLabel(status) {
+            return RELATIONSHIP_LABELS[status] || status || '';
+        }
+
+        async function toggleStar(id, el) {
+            const res = await fetch(`/api/companies/${id}/star`, { method: 'POST' });
+            const data = await res.json();
+            el.textContent = data.is_starred ? '\u2605' : '\u2606';
+            el.classList.toggle('starred', !!data.is_starred);
+        }
+
+        async function saveRelationship(id) {
+            const status = document.getElementById(`relStatus-${id}`).value;
+            const note = document.getElementById(`relNote-${id}`).value;
+            await fetch(`/api/companies/${id}/relationship`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ status: status || null, note })
+            });
+            loadCompanies();
+        }
+
+        async function showDetail(id) {
+            const res = await fetch(`/api/companies/${id}`);
+            const c = await res.json();
+
+            // Build sources HTML
+            let sourcesHtml = '';
+            if (c.sources && c.sources.length) {
+                sourcesHtml = `<div class="detail-field">
+                    <label>Sources (${c.sources.length})</label>
+                    <div class="sources-list">
+                        ${c.sources.map(s => `
+                            <div class="source-item">
+                                <span class="source-type-badge source-type-${s.source_type}">${esc(s.source_type)}</span>
+                                <a href="${esc(s.url)}" target="_blank">${esc(s.url)}</a>
+                                <span class="source-date">${new Date(s.added_at).toLocaleDateString()}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+
+            const logoUrl = c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`;
+            const fundingAmt = c.total_funding_usd ? '$' + Number(c.total_funding_usd).toLocaleString() : null;
+
+            document.getElementById('detailName').textContent = c.name;
+            document.getElementById('detailContent').innerHTML = `
+                <div class="detail-logo-row">
+                    <img class="detail-logo" src="${logoUrl}" alt="" onerror="this.style.display='none'">
+                    <a href="${esc(c.url)}" target="_blank">${esc(c.url)}</a>
+                    ${c.linkedin_url ? `<a href="${esc(c.linkedin_url)}" target="_blank" class="linkedin-link" title="LinkedIn">in</a>` : ''}
+                </div>
+                <div class="detail-field"><label>What</label><p>${esc(c.what || 'N/A')}</p></div>
+                <div class="detail-field"><label>Target</label><p>${esc(c.target || 'N/A')}</p></div>
+                <div class="detail-field"><label>Products</label><p>${esc(c.products || 'N/A')}</p></div>
+                <div class="detail-firmographics">
+                    <div class="detail-field"><label>Funding</label><p>${esc(c.funding || 'N/A')}</p></div>
+                    <div class="detail-field"><label>Stage</label><p>${esc(c.funding_stage || 'N/A')}</p></div>
+                    <div class="detail-field"><label>Total Raised</label><p>${fundingAmt || 'N/A'}</p></div>
+                    <div class="detail-field"><label>Founded</label><p>${c.founded_year || 'N/A'}</p></div>
+                    <div class="detail-field"><label>Employees</label><p>${esc(c.employee_range || 'N/A')}</p></div>
+                    <div class="detail-field"><label>HQ</label><p>${esc(c.hq_city || '')}${c.hq_city && c.hq_country ? ', ' : ''}${esc(c.hq_country || 'N/A')}</p></div>
+                </div>
+                <div class="detail-field"><label>Geography</label><p>${esc(c.geography || 'N/A')}</p></div>
+                <div class="detail-field"><label>TAM</label><p>${esc(c.tam || 'N/A')}</p></div>
+                <div class="detail-field"><label>Category</label><p>${esc(c.category_name || 'N/A')} / ${esc(c.subcategory_name || 'N/A')}</p></div>
+                <div class="detail-field"><label>Tags</label><p>${(c.tags || []).join(', ') || 'None'}</p></div>
+                <div class="detail-field"><label>Confidence</label><p>${c.confidence_score != null ? (c.confidence_score * 100).toFixed(0) + '%' : 'N/A'}</p></div>
+                <div class="detail-field"><label>Processed</label><p>${c.processed_at || 'N/A'}</p></div>
+                ${sourcesHtml}
+                ${c.status && c.status !== 'active' ? `<div class="lifecycle-badge lifecycle-${c.status}">${esc(c.status)}</div>` : ''}
+                ${c.business_model || c.company_stage || c.primary_focus ? `
+                <div class="detail-facets">
+                    ${c.business_model ? `<span class="facet-badge facet-model">${esc(c.business_model)}</span>` : ''}
+                    ${c.company_stage ? `<span class="facet-badge facet-stage">${esc(c.company_stage)}</span>` : ''}
+                    ${c.primary_focus ? `<span class="facet-badge facet-focus">${esc(c.primary_focus)}</span>` : ''}
+                </div>` : ''}
+                <div class="detail-actions">
+                    <button class="btn" onclick="openEditModal(${c.id})">Edit</button>
+                    <button class="btn" onclick="openReResearch(${c.id})">Re-research</button>
+                    <button class="btn" onclick="findSimilar(${c.id})">Find Similar</button>
+                    <button class="btn" onclick="showVersionHistory(${c.id})">History</button>
+                    <button class="danger-btn" onclick="deleteCompany(${c.id})">Delete</button>
+                </div>
+                <div id="similarResults-${c.id}" class="hidden similar-results"></div>
+
+                <!-- Relationship Section -->
+                <div class="relationship-section">
+                    <label>Relationship</label>
+                    <div class="relationship-controls">
+                        <select id="relStatus-${c.id}" class="relationship-select" onchange="saveRelationship(${c.id})">
+                            <option value="">-- None --</option>
+                            <option value="watching" ${c.relationship_status === 'watching' ? 'selected' : ''}>Watching</option>
+                            <option value="to_reach_out" ${c.relationship_status === 'to_reach_out' ? 'selected' : ''}>To Reach Out</option>
+                            <option value="in_conversation" ${c.relationship_status === 'in_conversation' ? 'selected' : ''}>In Conversation</option>
+                            <option value="met" ${c.relationship_status === 'met' ? 'selected' : ''}>Met</option>
+                            <option value="partner" ${c.relationship_status === 'partner' ? 'selected' : ''}>Partner</option>
+                            <option value="not_relevant" ${c.relationship_status === 'not_relevant' ? 'selected' : ''}>Not Relevant</option>
+                        </select>
+                        ${c.relationship_status ? `<span class="relationship-dot rel-${c.relationship_status}" style="width:10px;height:10px"></span>` : ''}
+                    </div>
+                    <textarea id="relNote-${c.id}" class="relationship-note" rows="2" placeholder="Notes about this relationship..."
+                        onblur="saveRelationship(${c.id})">${esc(c.relationship_note || '')}</textarea>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="detail-notes">
+                    <div class="detail-notes-header">
+                        <label>Notes</label>
+                        <button class="filter-action-btn" onclick="showAddNote(${c.id})">+ Add note</button>
+                    </div>
+                    <div id="addNoteForm-${c.id}" class="hidden" style="margin-bottom:8px">
+                        <textarea id="newNoteText-${c.id}" rows="2" placeholder="Add a note..."></textarea>
+                        <div style="display:flex;gap:6px;margin-top:4px">
+                            <button class="primary-btn" onclick="addNote(${c.id})">Save</button>
+                            <button class="btn" onclick="document.getElementById('addNoteForm-${c.id}').classList.add('hidden')">Cancel</button>
+                        </div>
+                    </div>
+                    <div id="notesList-${c.id}">
+                        ${(c.notes || []).map(n => `
+                            <div class="note-item ${n.is_pinned ? 'note-pinned' : ''}">
+                                <div class="note-content">${esc(n.content)}</div>
+                                <div class="note-meta">
+                                    <span>${new Date(n.created_at).toLocaleDateString()}</span>
+                                    <span class="note-action" onclick="togglePinNote(${n.id},${c.id})">${n.is_pinned ? 'Unpin' : 'Pin'}</span>
+                                    <span class="note-action note-delete" onclick="deleteNote(${n.id},${c.id})">Delete</span>
+                                </div>
+                            </div>
+                        `).join('') || '<p style="font-size:12px;color:var(--text-muted)">No notes yet.</p>'}
+                    </div>
+                </div>
+
+                <!-- Events Section -->
+                <div class="detail-events">
+                    <div class="detail-notes-header">
+                        <label>Events</label>
+                        <button class="filter-action-btn" onclick="showAddEvent(${c.id})">+ Add event</button>
+                    </div>
+                    <div id="addEventForm-${c.id}" class="hidden" style="margin-bottom:8px">
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <select id="newEventType-${c.id}">
+                                <option value="funding_round">Funding Round</option>
+                                <option value="acquired">Acquired</option>
+                                <option value="shut_down">Shut Down</option>
+                                <option value="launched">Product Launch</option>
+                                <option value="pivot">Pivot</option>
+                                <option value="partnership">Partnership</option>
+                            </select>
+                            <input type="date" id="newEventDate-${c.id}">
+                        </div>
+                        <textarea id="newEventDesc-${c.id}" rows="1" placeholder="Description..." style="margin-top:4px"></textarea>
+                        <div style="display:flex;gap:6px;margin-top:4px">
+                            <button class="primary-btn" onclick="addEvent(${c.id})">Save</button>
+                            <button class="btn" onclick="document.getElementById('addEventForm-${c.id}').classList.add('hidden')">Cancel</button>
+                        </div>
+                    </div>
+                    <div id="eventsList-${c.id}">
+                        ${(c.events || []).map(ev => `
+                            <div class="event-item">
+                                <span class="event-type-badge">${esc(ev.event_type)}</span>
+                                <span>${esc(ev.description || '')}</span>
+                                <span class="event-date">${ev.event_date || ''}</span>
+                                <span class="note-action note-delete" onclick="deleteEvent(${ev.id},${c.id})">Delete</span>
+                            </div>
+                        `).join('') || '<p style="font-size:12px;color:var(--text-muted)">No events yet.</p>'}
+                    </div>
+                </div>
+
+                <div id="reResearchForm-${c.id}" class="re-research-form hidden">
+                    <label>Additional source URLs (one per line):</label>
+                    <textarea id="reResearchUrls-${c.id}" rows="3" placeholder="https://example.com/about&#10;https://crunchbase.com/organization/..."></textarea>
+                    <div class="re-research-actions">
+                        <button class="primary-btn" onclick="startReResearch(${c.id})">Run Re-research</button>
+                        <button class="btn" onclick="closeReResearch(${c.id})">Cancel</button>
+                    </div>
+                    <div id="reResearchStatus-${c.id}" class="hidden"></div>
+                </div>
+            `;
+            document.getElementById('detailPanel').classList.remove('hidden');
+        }
+
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.add('hidden');
+        }
+
+        async function deleteCompany(id) {
+            if (!confirm('Delete this company?')) return;
+            await fetch(`/api/companies/${id}`, { method: 'DELETE' });
+            closeDetail();
+            loadCompanies();
+            loadStats();
+        }
+
+        // --- Re-Research ---
+        function openReResearch(id) {
+            document.getElementById(`reResearchForm-${id}`).classList.remove('hidden');
+        }
+
+        function closeReResearch(id) {
+            document.getElementById(`reResearchForm-${id}`).classList.add('hidden');
+        }
+
+        async function startReResearch(companyId) {
+            const urlsText = document.getElementById(`reResearchUrls-${companyId}`).value;
+            const urls = urlsText.split('\n').map(u => u.trim()).filter(Boolean);
+
+            if (!urls.length) { alert('Enter at least one URL'); return; }
+
+            const statusDiv = document.getElementById(`reResearchStatus-${companyId}`);
+            statusDiv.classList.remove('hidden');
+            statusDiv.innerHTML = '<div class="progress-bar"><div class="progress-fill" style="width:30%;animation:pulse 2s infinite"></div></div><p>Re-researching with additional sources...</p>';
+
+            const res = await fetch(`/api/companies/${companyId}/re-research`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ urls, model: document.getElementById('modelSelect').value }),
+            });
+            const data = await res.json();
+            pollReResearch(companyId, data.research_id);
+        }
+
+        async function pollReResearch(companyId, researchId) {
+            const res = await fetch(`/api/re-research/${researchId}`);
+            const data = await res.json();
+
+            if (data.status === 'pending') {
+                setTimeout(() => pollReResearch(companyId, researchId), 3000);
+                return;
+            }
+
+            const statusDiv = document.getElementById(`reResearchStatus-${companyId}`);
+            if (data.status === 'error') {
+                statusDiv.innerHTML = `<p class="re-research-error">${esc(data.error)}</p>`;
+            } else {
+                statusDiv.innerHTML = '<p class="re-research-success">Research updated successfully!</p>';
+                // Refresh the detail panel
+                setTimeout(() => {
+                    showDetail(companyId);
+                    loadCompanies();
+                    loadStats();
+                }, 1000);
+            }
+        }
+
+        // --- Edit Modal ---
+        async function openEditModal(id) {
+            const res = await fetch(`/api/companies/${id}`);
+            const c = await res.json();
+
+            // Load categories for dropdowns
+            const taxRes = await fetch(`/api/taxonomy?project_id=${currentProjectId}`);
+            allCategories = await taxRes.json();
+
+            const topLevel = allCategories.filter(c => !c.parent_id);
+            const catSelect = document.getElementById('editCategory');
+            catSelect.innerHTML = '<option value="">-- Select --</option>' +
+                topLevel.map(cat => `<option value="${cat.id}">${esc(cat.name)}</option>`).join('');
+
+            // Fill form
+            document.getElementById('editId').value = c.id;
+            document.getElementById('editName').value = c.name || '';
+            document.getElementById('editUrl').value = c.url || '';
+            document.getElementById('editWhat').value = c.what || '';
+            document.getElementById('editTarget').value = c.target || '';
+            document.getElementById('editProducts').value = c.products || '';
+            document.getElementById('editFunding').value = c.funding || '';
+            document.getElementById('editGeography').value = c.geography || '';
+            document.getElementById('editTam').value = c.tam || '';
+            document.getElementById('editTags').value = (c.tags || []).join(', ');
+            document.getElementById('editEmployeeRange').value = c.employee_range || '';
+            document.getElementById('editFoundedYear').value = c.founded_year || '';
+            document.getElementById('editFundingStage').value = c.funding_stage || '';
+            document.getElementById('editTotalFunding').value = c.total_funding_usd || '';
+            document.getElementById('editHqCity').value = c.hq_city || '';
+            document.getElementById('editHqCountry').value = c.hq_country || '';
+            document.getElementById('editLinkedin').value = c.linkedin_url || '';
+            document.getElementById('editBusinessModel').value = c.business_model || '';
+            document.getElementById('editCompanyStage').value = c.company_stage || '';
+            document.getElementById('editPrimaryFocus').value = c.primary_focus || '';
+
+            // Set category
+            catSelect.value = c.category_id || '';
+            loadSubcategories();
+            document.getElementById('editSubcategory').value = c.subcategory_id || '';
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function loadSubcategories() {
+            const parentId = parseInt(document.getElementById('editCategory').value);
+            const subSelect = document.getElementById('editSubcategory');
+            const subs = allCategories.filter(c => c.parent_id === parentId);
+            subSelect.innerHTML = '<option value="">-- Select --</option>' +
+                subs.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        async function saveEdit(event) {
+            event.preventDefault();
+            const id = document.getElementById('editId').value;
+            const tagsStr = document.getElementById('editTags').value;
+            const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+            // Capture previous state for undo
+            const prevRes = await fetch(`/api/companies/${id}`);
+            const prevData = await prevRes.json();
+
+            const fields = {
+                name: document.getElementById('editName').value,
+                url: document.getElementById('editUrl').value,
+                what: document.getElementById('editWhat').value,
+                target: document.getElementById('editTarget').value,
+                products: document.getElementById('editProducts').value,
+                funding: document.getElementById('editFunding').value,
+                geography: document.getElementById('editGeography').value,
+                tam: document.getElementById('editTam').value,
+                category_id: document.getElementById('editCategory').value || null,
+                subcategory_id: document.getElementById('editSubcategory').value || null,
+                tags: tags,
+                project_id: currentProjectId,
+                employee_range: document.getElementById('editEmployeeRange').value || null,
+                founded_year: document.getElementById('editFoundedYear').value ? parseInt(document.getElementById('editFoundedYear').value) : null,
+                funding_stage: document.getElementById('editFundingStage').value || null,
+                total_funding_usd: document.getElementById('editTotalFunding').value ? parseFloat(document.getElementById('editTotalFunding').value) : null,
+                hq_city: document.getElementById('editHqCity').value || null,
+                hq_country: document.getElementById('editHqCountry').value || null,
+                linkedin_url: document.getElementById('editLinkedin').value || null,
+                business_model: document.getElementById('editBusinessModel').value || null,
+                company_stage: document.getElementById('editCompanyStage').value || null,
+                primary_focus: document.getElementById('editPrimaryFocus').value || null,
+            };
+
+            await fetch(`/api/companies/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(fields),
+            });
+
+            closeEditModal();
+            closeDetail();
+            loadCompanies();
+            loadStats();
+
+            showUndoToast(`Updated ${fields.name}`, async () => {
+                const undoFields = {
+                    name: prevData.name, url: prevData.url, what: prevData.what,
+                    target: prevData.target, products: prevData.products, funding: prevData.funding,
+                    geography: prevData.geography, tam: prevData.tam,
+                    category_id: prevData.category_id, subcategory_id: prevData.subcategory_id,
+                    tags: prevData.tags || [], project_id: currentProjectId,
+                    employee_range: prevData.employee_range, founded_year: prevData.founded_year,
+                    funding_stage: prevData.funding_stage, total_funding_usd: prevData.total_funding_usd,
+                    hq_city: prevData.hq_city, hq_country: prevData.hq_country,
+                    linkedin_url: prevData.linkedin_url,
+                    business_model: prevData.business_model, company_stage: prevData.company_stage,
+                    primary_focus: prevData.primary_focus,
+                };
+                await fetch(`/api/companies/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(undoFields),
+                });
+                loadCompanies();
+                loadStats();
+            });
+        }
+
+        // --- Taxonomy ---
+        async function loadTaxonomy() {
+            const res = await fetch(`/api/taxonomy?project_id=${currentProjectId}`);
+            const categories = await res.json();
+
+            // Build tree
+            const topLevel = categories.filter(c => !c.parent_id);
+            const subs = categories.filter(c => c.parent_id);
+
+            document.getElementById('taxonomyTree').innerHTML = topLevel.map(cat => {
+                const children = subs.filter(s => s.parent_id === cat.id);
+                const childHtml = children.length
+                    ? `<div class="sub-categories">${children.map(s =>
+                        `<div class="sub-cat">${esc(s.name)} <span class="count">(${s.company_count})</span></div>`
+                    ).join('')}</div>`
+                    : '';
+                return `<div class="category-card">
+                    <div class="cat-header">${esc(cat.name)} <span class="count">(${cat.company_count})</span></div>
+                    ${childHtml}
+                </div>`;
+            }).join('');
+
+            // Populate category filter dropdown
+            const filter = document.getElementById('categoryFilter');
+            filter.innerHTML = '<option value="">+ Category</option>' +
+                topLevel.map(c => `<option value="${c.id}">${esc(c.name)} (${c.company_count})</option>`).join('');
+
+            // Populate report category dropdown
+            const reportSel = document.getElementById('reportCategorySelect');
+            if (reportSel) {
+                reportSel.innerHTML = '<option value="">Select a category...</option>' +
+                    topLevel.map(c => `<option value="${esc(c.name)}">${esc(c.name)} (${c.company_count})</option>`).join('');
+            }
+
+            // Load history
+            const histRes = await fetch(`/api/taxonomy/history?project_id=${currentProjectId}`);
+            const history = await histRes.json();
+            document.getElementById('taxonomyHistory').innerHTML = history.length
+                ? history.map(h => `<div class="history-entry">
+                    <span class="change-type">${esc(h.change_type)}</span>
+                    ${esc(h.reason || '')}
+                    <span class="change-date">${new Date(h.created_at).toLocaleDateString()}</span>
+                  </div>`).join('')
+                : '<p>No taxonomy changes yet.</p>';
+        }
+
+        // --- Taxonomy Review ---
+        let reviewChanges = [];
+
+        async function startTaxonomyReview() {
+            const btn = document.getElementById('reviewBtn');
+            btn.disabled = true;
+            btn.textContent = 'Reviewing...';
+
+            document.getElementById('reviewStatus').classList.remove('hidden');
+            document.getElementById('reviewStatus').innerHTML =
+                '<div class="progress-bar"><div id="reviewProgress" class="progress-fill" style="width:30%;animation:pulse 2s infinite"></div></div>' +
+                '<p>Claude is analyzing all categories and company placements. This may take 1-3 minutes...</p>';
+            document.getElementById('reviewResults').classList.add('hidden');
+
+            const observations = (document.getElementById('reviewObservations').value || '').trim();
+            const res = await fetch('/api/taxonomy/review', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_id: currentProjectId, model: document.getElementById('reviewModelSelect').value, observations }),
+            });
+            const data = await res.json();
+
+            pollReview(data.review_id);
+        }
+
+        async function pollReview(reviewId) {
+            const res = await fetch(`/api/taxonomy/review/${reviewId}`);
+            const data = await res.json();
+
+            if (data.status === 'pending') {
+                setTimeout(() => pollReview(reviewId), 3000);
+                return;
+            }
+
+            // Review complete
+            const btn = document.getElementById('reviewBtn');
+            btn.disabled = false;
+            btn.textContent = 'Review Taxonomy with Claude';
+            document.getElementById('reviewStatus').classList.add('hidden');
+
+            const result = data.result;
+            if (result.error) {
+                document.getElementById('reviewResults').classList.remove('hidden');
+                document.getElementById('reviewResults').innerHTML =
+                    `<div class="review-error">${esc(result.error)}</div>`;
+                return;
+            }
+
+            reviewChanges = result.changes || [];
+            let html = `<div class="review-analysis"><strong>Analysis:</strong> ${esc(result.analysis || '')}</div>`;
+
+            if (result.no_changes_needed || !reviewChanges.length) {
+                html += `<p>No changes recommended.</p>`;
+            } else {
+                html += `<h3>Proposed Changes (${reviewChanges.length})</h3>`;
+                html += `<p class="hint-text">Select changes to apply, then click "Apply Selected".</p>`;
+                html += reviewChanges.map((c, i) => {
+                    let desc = '';
+                    if (c.type === 'move') desc = `Move "${c.category_name}" to ${c.merge_into}`;
+                    else if (c.type === 'merge') desc = `Merge "${c.category_name}" into "${c.merge_into}"`;
+                    else if (c.type === 'rename') desc = `Rename "${c.category_name}" to "${c.new_name}"`;
+                    else if (c.type === 'split') desc = `Split "${c.category_name}" into ${(c.split_into||[]).join(', ')}`;
+                    else if (c.type === 'add') desc = `Add category: "${c.category_name}"`;
+                    else if (c.type === 'add_subcategory') desc = `Add subcategory: "${c.category_name}" under "${c.parent_category}"`;
+                    else desc = `${c.type}: ${c.category_name || ''}`;
+
+                    return `<div class="review-change">
+                        <label>
+                            <input type="checkbox" name="review_change" value="${i}" checked>
+                            <span class="change-type">${esc(c.type)}</span>
+                            ${esc(desc)}
+                        </label>
+                        <div class="review-change-reason">${esc(c.reason || '')}</div>
+                    </div>`;
+                }).join('');
+
+                html += `<div class="review-actions">
+                    <button class="primary-btn" onclick="applyReviewChanges()">Apply Selected</button>
+                    <button class="btn" onclick="dismissReview()">Dismiss</button>
+                </div>`;
+            }
+
+            document.getElementById('reviewResults').classList.remove('hidden');
+            document.getElementById('reviewResults').innerHTML = html;
+        }
+
+        async function applyReviewChanges() {
+            const checkboxes = document.querySelectorAll('input[name="review_change"]:checked');
+            const selected = Array.from(checkboxes).map(cb => reviewChanges[parseInt(cb.value)]);
+
+            if (!selected.length) { alert('No changes selected'); return; }
+
+            const res = await fetch('/api/taxonomy/review/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ changes: selected, project_id: currentProjectId }),
+            });
+            const data = await res.json();
+
+            document.getElementById('reviewResults').innerHTML =
+                `<p>${data.applied} changes applied successfully.</p>`;
+            loadTaxonomy();
+            loadStats();
+        }
+
+        function dismissReview() {
+            document.getElementById('reviewResults').classList.add('hidden');
+            reviewChanges = [];
+        }
+
+        // --- Processing: 2-Phase Triage + Process ---
+        async function submitUrls() {
+            const text = document.getElementById('urlInput').value;
+            if (!text.trim()) { alert('Paste some URLs first'); return; }
+
+            // Phase 1: Start triage
+            const res = await fetch('/api/triage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, project_id: currentProjectId })
+            });
+
+            const data = await res.json();
+            if (data.error) { alert(data.error); return; }
+
+            currentTriageBatchId = data.batch_id;
+            triageData = [];
+
+            // Show triage section
+            document.getElementById('triageSection').classList.remove('hidden');
+            document.getElementById('triageActions').classList.add('hidden');
+            document.getElementById('triageResults').innerHTML = '';
+            document.getElementById('triageStatus').textContent = 'Checking...';
+            document.getElementById('triageStatus').className = 'triage-status-badge checking';
+            document.getElementById('triageProgressText').textContent =
+                `Checking ${data.url_count} URLs for accessibility and relevance...`;
+            document.getElementById('triageProgress').style.width = '0%';
+
+            pollTriage(data.batch_id, data.url_count);
+        }
+
+        async function pollTriage(batchId, expectedCount) {
+            const res = await fetch(`/api/triage/${batchId}`);
+            const results = await res.json();
+
+            const done = results.length;
+            const pct = expectedCount > 0 ? (done / expectedCount) * 100 : 0;
+            document.getElementById('triageProgress').style.width = pct + '%';
+            document.getElementById('triageProgressText').textContent =
+                `Checked ${done} of ${expectedCount} URLs...`;
+
+            if (done < expectedCount) {
+                setTimeout(() => pollTriage(batchId, expectedCount), 2000);
+                return;
+            }
+
+            // Triage complete - render results
+            triageData = results;
+            renderTriageResults(results);
+            document.getElementById('triageStatus').textContent = 'Review';
+            document.getElementById('triageStatus').className = 'triage-status-badge review';
+            document.getElementById('triageActions').classList.remove('hidden');
+            updateTriageSummary();
+        }
+
+        function renderTriageResults(results) {
+            const html = results.map((r, i) => {
+                let statusClass = 'triage-valid';
+                let statusLabel = 'Valid';
+                let actionHtml = '';
+
+                if (r.status === 'error') {
+                    statusClass = 'triage-error';
+                    statusLabel = 'Error';
+                    actionHtml = `
+                        <div class="triage-item-actions">
+                            <label><input type="radio" name="action_${r.id}" value="skip" checked onchange="updateTriageSummary()"> Skip</label>
+                            <label><input type="radio" name="action_${r.id}" value="replace" onchange="showReplacementInput(${r.id})"> Replace URL</label>
+                            <input type="text" id="replacement_${r.id}" class="replacement-input hidden" placeholder="Replacement URL...">
+                        </div>`;
+                } else if (r.status === 'suspect') {
+                    statusClass = 'triage-suspect';
+                    statusLabel = 'Suspect';
+                    actionHtml = `
+                        <div class="triage-item-actions">
+                            <label><input type="radio" name="action_${r.id}" value="include" onchange="updateTriageSummary()"> Include anyway</label>
+                            <label><input type="radio" name="action_${r.id}" value="skip" checked onchange="updateTriageSummary()"> Skip</label>
+                            <label><input type="radio" name="action_${r.id}" value="replace" onchange="showReplacementInput(${r.id})"> Replace URL</label>
+                            <input type="text" id="replacement_${r.id}" class="replacement-input hidden" placeholder="Replacement URL...">
+                        </div>`;
+                } else {
+                    // Valid - auto include
+                    actionHtml = `
+                        <div class="triage-item-actions">
+                            <label><input type="radio" name="action_${r.id}" value="include" checked onchange="updateTriageSummary()"> Include</label>
+                            <label><input type="radio" name="action_${r.id}" value="skip" onchange="updateTriageSummary()"> Skip</label>
+                        </div>`;
+                }
+
+                return `<div class="triage-item ${statusClass}">
+                    <div class="triage-item-header">
+                        <span class="triage-badge ${statusClass}">${statusLabel}</span>
+                        <a href="${esc(r.resolved_url || r.original_url)}" target="_blank">${esc(r.original_url)}</a>
+                    </div>
+                    ${r.title ? `<div class="triage-title">${esc(r.title)}</div>` : ''}
+                    <div class="triage-reason">${esc(r.reason || '')}</div>
+                    ${r.scraped_text_preview ? `<div class="triage-preview">${esc(r.scraped_text_preview)}</div>` : ''}
+                    ${actionHtml}
+                    <input type="text" id="comment_${r.id}" class="triage-comment-input" placeholder="Add a comment (optional)...">
+                </div>`;
+            }).join('');
+
+            document.getElementById('triageResults').innerHTML = html;
+        }
+
+        function showReplacementInput(triageId) {
+            const input = document.getElementById(`replacement_${triageId}`);
+            const radio = document.querySelector(`input[name="action_${triageId}"][value="replace"]`);
+            if (radio && radio.checked) {
+                input.classList.remove('hidden');
+            } else {
+                input.classList.add('hidden');
+            }
+            updateTriageSummary();
+        }
+
+        function updateTriageSummary() {
+            let includeCount = 0;
+            let skipCount = 0;
+            let replaceCount = 0;
+
+            triageData.forEach(r => {
+                const selected = document.querySelector(`input[name="action_${r.id}"]:checked`);
+                if (!selected) return;
+                if (selected.value === 'include') includeCount++;
+                else if (selected.value === 'skip') skipCount++;
+                else if (selected.value === 'replace') replaceCount++;
+            });
+
+            document.getElementById('triageSummaryText').textContent =
+                `${includeCount} to process, ${skipCount} skipped, ${replaceCount} replaced`;
+        }
+
+        async function confirmAndProcess() {
+            // Collect user actions
+            const actions = triageData.map(r => {
+                const selected = document.querySelector(`input[name="action_${r.id}"]:checked`);
+                if (!selected) return null;
+                const action = { triage_id: r.id, action: selected.value };
+                if (selected.value === 'replace') {
+                    const replacement = document.getElementById(`replacement_${r.id}`);
+                    action.replacement_url = replacement ? replacement.value : '';
+                }
+                const commentInput = document.getElementById(`comment_${r.id}`);
+                if (commentInput && commentInput.value.trim()) {
+                    action.comment = commentInput.value.trim();
+                }
+                return action;
+            }).filter(Boolean);
+
+            // Submit confirmations
+            await fetch(`/api/triage/${currentTriageBatchId}/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ actions })
+            });
+
+            // Phase 2: Start processing
+            const model = document.getElementById('modelSelect').value;
+            const workers = parseInt(document.getElementById('workerCount').value);
+
+            const res = await fetch(`/api/triage/${currentTriageBatchId}/process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, workers, project_id: currentProjectId })
+            });
+
+            const data = await res.json();
+            if (data.error) { alert(data.error); return; }
+
+            // Hide triage, show processing
+            document.getElementById('triageSection').classList.add('hidden');
+            document.getElementById('batchId').textContent = data.batch_id;
+            document.getElementById('processStatus').textContent = `Processing ${data.url_count} URLs...`;
+            document.getElementById('processingStatus').classList.remove('hidden');
+            document.getElementById('processProgress').style.width = '0%';
+
+            pollBatch(data.batch_id);
+        }
+
+        function resetTriage() {
+            document.getElementById('triageSection').classList.add('hidden');
+            currentTriageBatchId = null;
+            triageData = [];
+        }
+
+        async function pollBatch(batchId) {
+            const res = await fetch(`/api/jobs/${batchId}`);
+            const summary = await res.json();
+
+            const total = summary.total || 0;
+            const done = summary.done || 0;
+            const errors = summary.errors || 0;
+            const pending = summary.pending || 0;
+
+            // Pipeline thread hasn't created jobs yet — keep waiting
+            if (total === 0) {
+                document.getElementById('processStatus').textContent = 'Preparing batch...';
+                setTimeout(() => pollBatch(batchId), 3000);
+                return;
+            }
+
+            const pct = ((done + errors) / total) * 100;
+            document.getElementById('processProgress').style.width = pct + '%';
+            document.getElementById('processStatus').textContent =
+                `${done} done, ${errors} errors, ${pending} pending of ${total}`;
+
+            if (pending > 0) {
+                setTimeout(() => pollBatch(batchId), 5000);
+            } else {
+                document.getElementById('processStatus').textContent += ' - Complete!';
+                loadStats();
+                loadBatches();
+            }
+        }
+
+        async function loadBatches() {
+            const res = await fetch(`/api/jobs?project_id=${currentProjectId}`);
+            const batches = await res.json();
+
+            document.getElementById('batchList').innerHTML = batches.length
+                ? batches.map(b => {
+                    const errorParts = [];
+                    const otherErrors = (b.errors || 0) - (b.timeouts || 0);
+                    if (b.timeouts) errorParts.push(`${b.timeouts} timeouts`);
+                    if (otherErrors > 0) errorParts.push(`${otherErrors} errors`);
+                    const errorText = errorParts.length ? errorParts.join(', ') : '0 errors';
+                    const pendingText = (b.pending || 0) > 0 ? `, ${b.pending} pending` : '';
+                    return `<div class="batch-entry" onclick="showBatchDetail('${esc(b.batch_id)}')" style="cursor:pointer">
+                    <strong>${esc(b.batch_id)}</strong>:
+                    ${b.done}/${b.total} done, ${errorText}${pendingText}
+                    <span class="batch-date">${new Date(b.started).toLocaleDateString()}</span>
+                  </div>`;
+                }).join('')
+                : '<p>No batches yet. Submit URLs above to start.</p>';
+        }
+
+        async function showBatchDetail(batchId) {
+            const res = await fetch(`/api/jobs/${batchId}/details`);
+            const data = await res.json();
+            const jobs = data.jobs || [];
+            const triage = data.triage || [];
+
+            let html = `<div class="batch-detail-panel">
+                <div class="detail-header">
+                    <h2>Batch ${esc(batchId)}</h2>
+                    <button class="close-btn" onclick="closeBatchDetail()">&times;</button>
+                </div>`;
+
+            // Triage decisions
+            if (triage.length) {
+                html += `<h3>Triage Decisions</h3><div class="batch-detail-list">`;
+                triage.forEach(t => {
+                    const action = t.user_action || (t.status === 'valid' ? 'auto-include' : 'no action');
+                    const badge = t.status === 'valid' ? 'triage-valid'
+                        : t.status === 'suspect' ? 'triage-suspect' : 'triage-error';
+                    html += `<div class="batch-detail-item">
+                        <span class="triage-badge ${badge}">${esc(t.status)}</span>
+                        <a href="${esc(t.resolved_url || t.original_url)}" target="_blank">${esc(t.original_url)}</a>
+                        <span class="batch-detail-action">${esc(action)}</span>
+                        ${t.replacement_url ? `<span class="batch-detail-replaced">&rarr; ${esc(t.replacement_url)}</span>` : ''}
+                        ${t.title ? `<div class="batch-detail-title">${esc(t.title)}</div>` : ''}
+                        ${t.reason ? `<div class="batch-detail-reason">${esc(t.reason)}</div>` : ''}
+                        ${t.user_comment ? `<div class="batch-detail-comment"><em>${esc(t.user_comment)}</em></div>` : ''}
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            // Job results — count timeouts vs other errors
+            const allErrors = jobs.filter(j => j.status === 'error');
+            const timeoutJobs = allErrors.filter(j => (j.error_message || '').startsWith('Timeout:'));
+            const otherErrors = allErrors.filter(j => !(j.error_message || '').startsWith('Timeout:'));
+            const doneJobs = jobs.filter(j => j.status === 'done');
+            const pendingJobs = jobs.filter(j => j.status !== 'done' && j.status !== 'error');
+
+            let summaryParts = [];
+            if (doneJobs.length) summaryParts.push(`${doneJobs.length} done`);
+            if (timeoutJobs.length) summaryParts.push(`${timeoutJobs.length} timeouts`);
+            if (otherErrors.length) summaryParts.push(`${otherErrors.length} errors`);
+            if (pendingJobs.length) summaryParts.push(`${pendingJobs.length} pending`);
+
+            // Retry progress banner
+            if (pendingJobs.length > 0 && retryingBatch === batchId) {
+                const totalJobs = jobs.length;
+                const progress = Math.round((doneJobs.length / totalJobs) * 100);
+                html += `<div class="retry-progress-banner">
+                    <div class="retry-progress-info">
+                        <span class="spinner"></span>
+                        <span>Retrying jobs... ${doneJobs.length}/${totalJobs} complete</span>
+                    </div>
+                    <div class="progress-bar" style="margin:8px 0">
+                        <div class="progress-fill" style="width:${progress}%"></div>
+                    </div>
+                </div>`;
+            }
+
+            // Auto-stop polling when retry finishes
+            if (retryingBatch === batchId && pendingJobs.length === 0) {
+                clearInterval(retryPollInterval);
+                retryPollInterval = null;
+                retryingBatch = null;
+                loadBatches();
+            }
+
+            html += `<div class="batch-results-header">
+                <h3>Processing Results</h3>
+                <span class="batch-results-summary">${summaryParts.join(' / ')}</span>
+                ${timeoutJobs.length ? `<button class="btn retry-timeouts-btn" onclick="retryTimeouts('${esc(batchId)}')">Retry ${timeoutJobs.length} Timeouts</button>` : ''}
+                ${allErrors.length ? `<button class="btn retry-errors-btn" onclick="retryAllErrors('${esc(batchId)}')">Retry All ${allErrors.length} Errors</button>` : ''}
+            </div>`;
+            html += `<div class="batch-detail-list">`;
+            if (jobs.length) {
+                jobs.forEach(j => {
+                    const isTimeout = j.status === 'error' && (j.error_message || '').startsWith('Timeout:');
+                    const statusClass = j.status === 'done' ? 'job-done'
+                        : isTimeout ? 'job-timeout'
+                        : j.status === 'error' ? 'job-error' : 'job-pending';
+                    const statusLabel = isTimeout ? 'timeout' : j.status;
+                    html += `<div class="batch-detail-item ${statusClass}">
+                        <span class="job-status-badge ${statusClass}">${esc(statusLabel)}</span>
+                        <span class="batch-detail-url">${esc(j.url)}</span>
+                        ${j.company_name ? `<span class="batch-detail-company">${esc(j.company_name)}</span>` : ''}
+                        ${j.category_name ? `<span class="tag">${esc(j.category_name)}</span>` : ''}
+                        ${j.error_message ? `<div class="batch-detail-error">${esc(j.error_message)}</div>` : ''}
+                    </div>`;
+                });
+            } else {
+                html += `<p>No processing jobs found for this batch.</p>`;
+            }
+            html += `</div></div>`;
+
+            document.getElementById('batchDetailView').innerHTML = html;
+            document.getElementById('batchDetailView').classList.remove('hidden');
+        }
+
+        function closeBatchDetail() {
+            document.getElementById('batchDetailView').classList.add('hidden');
+            if (retryPollInterval) {
+                clearInterval(retryPollInterval);
+                retryPollInterval = null;
+                retryingBatch = null;
+            }
+        }
+
+        function startRetryPolling(batchId) {
+            retryingBatch = batchId;
+            if (retryPollInterval) clearInterval(retryPollInterval);
+            retryPollInterval = setInterval(() => showBatchDetail(batchId), 5000);
+            setTimeout(() => showBatchDetail(batchId), 1000);
+        }
+
+        async function retryTimeouts(batchId) {
+            if (!confirm(`Retry all timed-out jobs in batch ${batchId}?`)) return;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Retrying...';
+            try {
+                const res = await fetch(`/api/jobs/${batchId}/retry-timeouts`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ model: document.getElementById('modelSelect').value })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    alert(data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Retry Timeouts';
+                } else {
+                    showToast(`Retrying ${data.retry_count} timed-out jobs...`);
+                    startRetryPolling(batchId);
+                }
+            } catch (e) {
+                alert('Network error: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = 'Retry Timeouts';
+            }
+        }
+
+        async function retryAllErrors(batchId) {
+            if (!confirm(`Retry ALL failed jobs in batch ${batchId}?`)) return;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Retrying...';
+            try {
+                const res = await fetch(`/api/jobs/${batchId}/retry-errors`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ model: document.getElementById('modelSelect').value })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    alert(data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Retry All Errors';
+                } else {
+                    showToast(`Retrying ${data.retry_count} failed jobs...`);
+                    startRetryPolling(batchId);
+                }
+            } catch (e) {
+                alert('Network error: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = 'Retry All Errors';
+            }
+        }
+
+        // --- Helpers ---
+        function esc(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // --- Market Map ---
+        let compareSelection = new Set();
+
+        async function loadMarketMap() {
+            const [compRes, taxRes] = await Promise.all([
+                fetch(`/api/companies?project_id=${currentProjectId}`),
+                fetch(`/api/taxonomy?project_id=${currentProjectId}`),
+            ]);
+            const companies = await compRes.json();
+            const categories = await taxRes.json();
+
+            const topLevel = categories.filter(c => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+
+            // Group companies by category
+            const byCategory = {};
+            companies.forEach(c => {
+                const catId = c.category_id || 0;
+                byCategory[catId] = byCategory[catId] || [];
+                byCategory[catId].push(c);
+            });
+
+            const mapDiv = document.getElementById('marketMap');
+            mapDiv.innerHTML = topLevel.map(cat => `
+                <div class="map-column"
+                     ondragover="event.preventDefault();this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="handleMapDrop(event, ${cat.id})"
+                     data-category-id="${cat.id}">
+                    <div class="map-column-header">${esc(cat.name)} <span class="count">(${(byCategory[cat.id] || []).length})</span></div>
+                    <div class="map-tiles">
+                        ${(byCategory[cat.id] || []).sort((a,b) => a.name.localeCompare(b.name)).map(c => `
+                            <div class="map-tile ${compareSelection.has(c.id) ? 'tile-selected' : ''}"
+                                 draggable="true"
+                                 ondragstart="event.dataTransfer.setData('text/plain', '${c.id}')"
+                                 onclick="toggleCompareSelect(${c.id}, this)"
+                                 title="${esc(c.what || '')}">
+                                <img class="map-tile-logo" src="${c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`}" alt="" onerror="this.style.display='none'">
+                                <span class="map-tile-name">${esc(c.name)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            updateCompareBar();
+        }
+
+        async function handleMapDrop(event, targetCategoryId) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('drag-over');
+            const companyId = event.dataTransfer.getData('text/plain');
+            if (!companyId) return;
+
+            await fetch(`/api/companies/${companyId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category_id: targetCategoryId, project_id: currentProjectId }),
+            });
+
+            loadMarketMap();
+            loadTaxonomy();
+        }
+
+        function toggleCompareSelect(id, el) {
+            if (compareSelection.has(id)) {
+                compareSelection.delete(id);
+                el.classList.remove('tile-selected');
+            } else if (compareSelection.size < 4) {
+                compareSelection.add(id);
+                el.classList.add('tile-selected');
+            }
+            updateCompareBar();
+        }
+
+        function updateCompareBar() {
+            const bar = document.getElementById('compareBar');
+            if (compareSelection.size > 0) {
+                bar.classList.remove('hidden');
+                document.getElementById('compareCount').textContent = `${compareSelection.size} selected`;
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        function clearCompareSelection() {
+            compareSelection.clear();
+            document.querySelectorAll('.map-tile.tile-selected').forEach(el => el.classList.remove('tile-selected'));
+            updateCompareBar();
+        }
+
+        async function runComparison() {
+            if (compareSelection.size < 2) { alert('Select at least 2 companies'); return; }
+            const ids = Array.from(compareSelection).join(',');
+            const res = await fetch(`/api/companies/compare?ids=${ids}`);
+            const companies = await res.json();
+
+            const fields = ['what', 'target', 'products', 'funding', 'geography',
+                'employee_range', 'founded_year', 'funding_stage', 'total_funding_usd',
+                'hq_city', 'hq_country', 'tam'];
+
+            let html = '<table class="compare-table"><thead><tr><th>Field</th>';
+            companies.forEach(c => { html += `<th>${esc(c.name)}</th>`; });
+            html += '</tr></thead><tbody>';
+
+            const labels = {
+                what: 'What', target: 'Target', products: 'Products', funding: 'Funding',
+                geography: 'Geography', employee_range: 'Employees', founded_year: 'Founded',
+                funding_stage: 'Stage', total_funding_usd: 'Total Raised',
+                hq_city: 'HQ City', hq_country: 'HQ Country', tam: 'TAM',
+            };
+
+            fields.forEach(f => {
+                html += `<tr><td><strong>${labels[f] || f}</strong></td>`;
+                companies.forEach(c => {
+                    let val = c[f];
+                    if (f === 'total_funding_usd' && val) val = '$' + Number(val).toLocaleString();
+                    html += `<td>${esc(String(val || 'N/A'))}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            // Tags row
+            html += '<tr><td><strong>Tags</strong></td>';
+            companies.forEach(c => { html += `<td>${(c.tags || []).join(', ') || 'None'}</td>`; });
+            html += '</tr>';
+
+            html += '</tbody></table>';
+
+            document.getElementById('compareContent').innerHTML = html;
+            document.getElementById('compareSection').classList.remove('hidden');
+            document.getElementById('compareSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function clearComparison() {
+            document.getElementById('compareSection').classList.add('hidden');
+            clearCompareSelection();
+        }
+
+        async function exportMapPng() {
+            if (typeof html2canvas === 'undefined') {
+                alert('html2canvas is still loading. Please try again in a moment.');
+                return;
+            }
+            const mapEl = document.getElementById('marketMap');
+            const canvas = await html2canvas(mapEl, { backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-container').trim() });
+            const link = document.createElement('a');
+            link.download = 'market-map.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        // --- Notes ---
+        function showAddNote(companyId) {
+            document.getElementById(`addNoteForm-${companyId}`).classList.remove('hidden');
+        }
+
+        async function addNote(companyId) {
+            const content = document.getElementById(`newNoteText-${companyId}`).value.trim();
+            if (!content) return;
+            await fetch(`/api/companies/${companyId}/notes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content }),
+            });
+            showDetail(companyId);
+        }
+
+        async function deleteNote(noteId, companyId) {
+            await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
+            showDetail(companyId);
+        }
+
+        async function togglePinNote(noteId, companyId) {
+            await fetch(`/api/notes/${noteId}/pin`, { method: 'POST' });
+            showDetail(companyId);
+        }
+
+        // --- Events ---
+        function showAddEvent(companyId) {
+            document.getElementById(`addEventForm-${companyId}`).classList.remove('hidden');
+        }
+
+        async function addEvent(companyId) {
+            const event_type = document.getElementById(`newEventType-${companyId}`).value;
+            const description = document.getElementById(`newEventDesc-${companyId}`).value.trim();
+            const event_date = document.getElementById(`newEventDate-${companyId}`).value || null;
+            await fetch(`/api/companies/${companyId}/events`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event_type, description, event_date }),
+            });
+            showDetail(companyId);
+        }
+
+        async function deleteEvent(eventId, companyId) {
+            await fetch(`/api/events/${eventId}`, { method: 'DELETE' });
+            showDetail(companyId);
+        }
+
+        // --- Version History ---
+        async function showVersionHistory(companyId) {
+            const res = await fetch(`/api/companies/${companyId}/versions`);
+            const versions = await res.json();
+
+            let html = '<div class="version-history"><h3>Version History</h3>';
+            if (!versions.length) {
+                html += '<p style="font-size:13px;color:var(--text-muted)">No version history yet. Versions are created automatically when you edit a company.</p>';
+            } else {
+                html += versions.map(v => `
+                    <div class="version-item">
+                        <div class="version-meta">
+                            <span class="version-desc">${esc(v.change_description || 'Edit')}</span>
+                            <span class="version-date">${new Date(v.created_at).toLocaleString()}</span>
+                        </div>
+                        <button class="filter-action-btn" onclick="restoreVersion(${v.id},${companyId})">Restore</button>
+                    </div>
+                `).join('');
+            }
+            html += '<button class="btn" onclick="showDetail(' + companyId + ')" style="margin-top:10px">Back</button></div>';
+
+            document.getElementById('detailContent').innerHTML = html;
+        }
+
+        async function restoreVersion(versionId, companyId) {
+            if (!confirm('Restore this version? Current state will be saved as a version first.')) return;
+            await fetch(`/api/versions/${versionId}/restore`, { method: 'POST' });
+            showDetail(companyId);
+            loadCompanies();
+        }
+
+        // --- Trash ---
+        async function loadTrash() {
+            const container = document.getElementById('trashList');
+            container.classList.remove('hidden');
+            const res = await fetch(`/api/trash?project_id=${currentProjectId}`);
+            const items = await res.json();
+
+            if (!items.length) {
+                container.innerHTML = '<p style="padding:12px;color:var(--text-muted)">Trash is empty.</p>';
+                return;
+            }
+
+            container.innerHTML = items.map(c => `
+                <div class="trash-item">
+                    <div>
+                        <strong>${esc(c.name)}</strong>
+                        <span style="color:var(--text-muted);font-size:12px;margin-left:8px">Deleted ${new Date(c.deleted_at).toLocaleDateString()}</span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn" onclick="restoreFromTrash(${c.id})">Restore</button>
+                        <button class="danger-btn" onclick="permanentDelete(${c.id})">Delete forever</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function restoreFromTrash(id) {
+            await fetch(`/api/companies/${id}/restore`, { method: 'POST' });
+            loadTrash();
+            loadCompanies();
+            loadStats();
+        }
+
+        async function permanentDelete(id) {
+            if (!confirm('Permanently delete? This cannot be undone.')) return;
+            await fetch(`/api/companies/${id}/permanent-delete`, { method: 'DELETE' });
+            loadTrash();
+        }
+
+        // --- CSV Import ---
+        async function importCsv(event) {
+            event.preventDefault();
+            const file = document.getElementById('csvFile').files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('project_id', currentProjectId);
+
+            const res = await fetch('/api/import/csv', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            const resultDiv = document.getElementById('importResult');
+            resultDiv.classList.remove('hidden');
+            if (data.error) {
+                resultDiv.innerHTML = `<p class="re-research-error">${esc(data.error)}</p>`;
+            } else {
+                resultDiv.innerHTML = `<p class="re-research-success">Imported ${data.imported} of ${data.total_rows} rows.</p>`;
+                loadCompanies();
+                loadStats();
+            }
+        }
+
+        // --- Duplicates ---
+        async function findDuplicates() {
+            const container = document.getElementById('duplicatesList');
+            container.classList.remove('hidden');
+            container.innerHTML = '<p>Scanning...</p>';
+            const res = await fetch(`/api/duplicates?project_id=${currentProjectId}`);
+            const dupes = await res.json();
+
+            if (!dupes.length) {
+                container.innerHTML = '<p style="padding:12px;color:var(--text-muted)">No duplicates found.</p>';
+                return;
+            }
+
+            container.innerHTML = dupes.map(d => `
+                <div class="duplicate-group">
+                    <div class="duplicate-header">URL match: ${esc(d.key)}</div>
+                    ${d.companies.map(c => `
+                        <div class="duplicate-item">
+                            <span>${esc(c.name)}</span>
+                            <a href="${esc(c.url)}" target="_blank" style="font-size:12px">${esc(c.url)}</a>
+                        </div>
+                    `).join('')}
+                    ${d.companies.length === 2 ? `
+                        <button class="filter-action-btn" onclick="mergeCompanies(${d.companies[0].id},${d.companies[1].id})">
+                            Merge "${esc(d.companies[1].name)}" into "${esc(d.companies[0].name)}"
+                        </button>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function mergeCompanies(targetId, sourceId) {
+            if (!confirm('Merge these companies? The source will be moved to trash.')) return;
+            await fetch('/api/companies/merge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_id: targetId, source_id: sourceId }),
+            });
+            findDuplicates();
+            loadCompanies();
+            loadStats();
+        }
+
+        // --- Multi-Filter System ---
+        async function loadFilterOptions() {
+            const res = await fetch(`/api/filters/options?project_id=${currentProjectId}`);
+            const data = await res.json();
+
+            // Populate tag filter dropdown
+            const tagSel = document.getElementById('tagFilter');
+            tagSel.innerHTML = '<option value="">+ Tag</option>' +
+                data.tags.map(t => `<option value="${esc(t.tag)}">${esc(t.tag)} (${t.count})</option>`).join('');
+
+            // Populate geography dropdown
+            const geoSel = document.getElementById('geoFilter');
+            geoSel.innerHTML = '<option value="">+ Geography</option>' +
+                data.geographies.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+
+            // Populate funding stage dropdown
+            const stageSel = document.getElementById('stageFilter');
+            stageSel.innerHTML = '<option value="">+ Stage</option>' +
+                data.funding_stages.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+        }
+
+        function addFilterFromSelect(type) {
+            if (type === 'category') {
+                const sel = document.getElementById('categoryFilter');
+                const val = sel.value;
+                if (!val) { activeFilters.category_id = null; activeFilters.category_name = null; }
+                else {
+                    activeFilters.category_id = val;
+                    activeFilters.category_name = sel.options[sel.selectedIndex].text.replace(/\s*\(\d+\)$/, '');
+                }
+                sel.selectedIndex = 0;
+            } else if (type === 'tag') {
+                const sel = document.getElementById('tagFilter');
+                const val = sel.value;
+                if (val && !activeFilters.tags.includes(val)) {
+                    activeFilters.tags.push(val);
+                }
+                sel.selectedIndex = 0;
+            } else if (type === 'geography') {
+                const sel = document.getElementById('geoFilter');
+                activeFilters.geography = sel.value || null;
+                sel.selectedIndex = 0;
+            } else if (type === 'funding_stage') {
+                const sel = document.getElementById('stageFilter');
+                activeFilters.funding_stage = sel.value || null;
+                sel.selectedIndex = 0;
+            }
+            renderFilterChips();
+            loadCompanies();
+        }
+
+        function removeFilter(type, value) {
+            if (type === 'category') { activeFilters.category_id = null; activeFilters.category_name = null; }
+            else if (type === 'tag') { activeFilters.tags = activeFilters.tags.filter(t => t !== value); }
+            else if (type === 'geography') { activeFilters.geography = null; }
+            else if (type === 'funding_stage') { activeFilters.funding_stage = null; }
+            renderFilterChips();
+            loadCompanies();
+        }
+
+        function clearAllFilters() {
+            activeFilters = { category_id: null, category_name: null, tags: [], geography: null, funding_stage: null };
+            document.getElementById('searchInput').value = '';
+            document.getElementById('starredFilter').checked = false;
+            document.getElementById('enrichmentFilter').checked = false;
+            document.getElementById('relationshipFilter').value = '';
+            renderFilterChips();
+            loadCompanies();
+        }
+
+        function renderFilterChips() {
+            const container = document.getElementById('activeFilters');
+            const chips = [];
+
+            if (activeFilters.category_id) {
+                chips.push(`<span class="filter-chip" data-type="category">
+                    Category: ${esc(activeFilters.category_name)}
+                    <span class="chip-remove" onclick="removeFilter('category')">&times;</span>
+                </span>`);
+            }
+            for (const tag of activeFilters.tags) {
+                chips.push(`<span class="filter-chip filter-chip-tag" data-type="tag">
+                    Tag: ${esc(tag)}
+                    <span class="chip-remove" onclick="removeFilter('tag','${esc(tag)}')">&times;</span>
+                </span>`);
+            }
+            if (activeFilters.geography) {
+                chips.push(`<span class="filter-chip" data-type="geography">
+                    Geo: ${esc(activeFilters.geography)}
+                    <span class="chip-remove" onclick="removeFilter('geography')">&times;</span>
+                </span>`);
+            }
+            if (activeFilters.funding_stage) {
+                chips.push(`<span class="filter-chip" data-type="funding_stage">
+                    Stage: ${esc(activeFilters.funding_stage)}
+                    <span class="chip-remove" onclick="removeFilter('funding_stage')">&times;</span>
+                </span>`);
+            }
+
+            if (chips.length) {
+                chips.push(`<span class="filter-chip filter-chip-clear" onclick="clearAllFilters()">Clear all</span>`);
+                container.innerHTML = chips.join('');
+                container.classList.remove('hidden');
+            } else {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+            }
+        }
+
+        // --- Saved Views ---
+        async function loadSavedViews() {
+            const res = await fetch(`/api/views?project_id=${currentProjectId}`);
+            savedViews = await res.json();
+            const sel = document.getElementById('savedViewSelect');
+            sel.innerHTML = '<option value="">Saved views...</option>' +
+                savedViews.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+        }
+
+        function loadSavedView() {
+            const sel = document.getElementById('savedViewSelect');
+            const viewId = parseInt(sel.value);
+            if (!viewId) return;
+            const view = savedViews.find(v => v.id === viewId);
+            if (!view) return;
+
+            const f = view.filters;
+            activeFilters.category_id = f.category_id || null;
+            activeFilters.category_name = f.category_name || null;
+            activeFilters.tags = f.tags || [];
+            activeFilters.geography = f.geography || null;
+            activeFilters.funding_stage = f.funding_stage || null;
+            document.getElementById('starredFilter').checked = !!f.starred;
+            document.getElementById('enrichmentFilter').checked = !!f.needs_enrichment;
+            document.getElementById('searchInput').value = f.search || '';
+
+            renderFilterChips();
+            loadCompanies();
+        }
+
+        async function saveCurrentView() {
+            const name = prompt('Name for this saved view:');
+            if (!name || !name.trim()) return;
+
+            const filters = {
+                category_id: activeFilters.category_id,
+                category_name: activeFilters.category_name,
+                tags: activeFilters.tags,
+                geography: activeFilters.geography,
+                funding_stage: activeFilters.funding_stage,
+                starred: document.getElementById('starredFilter').checked,
+                needs_enrichment: document.getElementById('enrichmentFilter').checked,
+                search: document.getElementById('searchInput').value,
+            };
+
+            await fetch('/api/views', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_id: currentProjectId, name: name.trim(), filters }),
+            });
+            loadSavedViews();
+        }
+
+        // --- Tag Management ---
+        async function openTagManager() {
+            document.getElementById('tagModal').classList.remove('hidden');
+            hideTagForms();
+            const res = await fetch(`/api/tags?project_id=${currentProjectId}`);
+            const tags = await res.json();
+            document.getElementById('tagList').innerHTML = tags.length
+                ? tags.map(t => `<div class="tag-manager-item">
+                    <span class="tag">${esc(t.tag)}</span>
+                    <span class="tag-count">${t.count} companies</span>
+                    <button class="tag-delete-btn" onclick="deleteTag('${esc(t.tag)}')" title="Delete tag">&times;</button>
+                  </div>`).join('')
+                : '<p style="color:var(--text-muted);font-size:13px">No tags yet.</p>';
+        }
+
+        function closeTagManager() {
+            document.getElementById('tagModal').classList.add('hidden');
+        }
+
+        function showTagRenameForm() {
+            hideTagForms();
+            document.getElementById('tagRenameForm').classList.remove('hidden');
+        }
+
+        function showTagMergeForm() {
+            hideTagForms();
+            document.getElementById('tagMergeForm').classList.remove('hidden');
+        }
+
+        function hideTagForms() {
+            document.getElementById('tagRenameForm').classList.add('hidden');
+            document.getElementById('tagMergeForm').classList.add('hidden');
+        }
+
+        async function executeTagRename() {
+            const old_tag = document.getElementById('tagRenameOld').value.trim();
+            const new_tag = document.getElementById('tagRenameNew').value.trim();
+            if (!old_tag || !new_tag) { alert('Enter both tag names'); return; }
+            const res = await fetch('/api/tags/rename', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_tag, new_tag, project_id: currentProjectId }),
+            });
+            const data = await res.json();
+            showUndoToast(`Renamed "${old_tag}" to "${new_tag}" (${data.updated} companies)`, async () => {
+                await fetch('/api/tags/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_tag: new_tag, new_tag: old_tag, project_id: currentProjectId }),
+                });
+                openTagManager();
+                loadCompanies();
+            });
+            openTagManager();
+            loadCompanies();
+            loadFilterOptions();
+        }
+
+        async function executeTagMerge() {
+            const source = document.getElementById('tagMergeSource').value.trim();
+            const target = document.getElementById('tagMergeTarget').value.trim();
+            if (!source || !target) { alert('Enter both tag names'); return; }
+            await fetch('/api/tags/merge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source_tag: source, target_tag: target, project_id: currentProjectId }),
+            });
+            openTagManager();
+            loadCompanies();
+            loadFilterOptions();
+        }
+
+        async function deleteTag(tagName) {
+            if (!confirm(`Remove tag "${tagName}" from all companies?`)) return;
+            await fetch('/api/tags/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tag: tagName, project_id: currentProjectId }),
+            });
+            openTagManager();
+            loadCompanies();
+            loadFilterOptions();
+        }
+
+        // --- Sort Headers ---
+        document.addEventListener('click', (e) => {
+            const th = e.target.closest('.sort-header');
+            if (!th) return;
+            const sortKey = th.dataset.sort;
+            if (currentSort.by === sortKey) {
+                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.by = sortKey;
+                currentSort.dir = 'asc';
+            }
+            loadCompanies();
+        });
+
+        // --- Dark Mode ---
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            // Update toggle button icons
+            document.querySelectorAll('.theme-toggle').forEach(btn => {
+                btn.innerHTML = next === 'dark' ? '&#9788;' : '&#9789;';
+            });
+            // Update mermaid theme
+            if (window.mermaid) {
+                mermaid.initialize({ startOnLoad: false, theme: next === 'dark' ? 'dark' : 'default', securityLevel: 'loose' });
+            }
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.querySelectorAll('.theme-toggle').forEach(btn => {
+                    btn.innerHTML = '&#9788;';
+                });
+            }
+        }
+
+        // --- Toast ---
+        function showToast(message, duration = 5000) {
+            dismissToast();
+            const toast = document.createElement('div');
+            toast.className = 'undo-toast';
+            toast.id = 'undoToast';
+            toast.innerHTML = `
+                <span>${esc(message)}</span>
+                <span class="toast-dismiss" onclick="dismissToast()">&times;</span>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => dismissToast(), duration);
+        }
+
+        // --- Undo Toast ---
+        let undoTimer = null;
+        let undoState = null;
+
+        function showUndoToast(message, undoFn) {
+            dismissToast();
+            const toast = document.createElement('div');
+            toast.className = 'undo-toast';
+            toast.id = 'undoToast';
+            toast.innerHTML = `
+                <span>${esc(message)}</span>
+                <button onclick="executeUndo()">Undo</button>
+                <span class="toast-dismiss" onclick="dismissToast()">&times;</span>
+            `;
+            document.body.appendChild(toast);
+            undoState = undoFn;
+            undoTimer = setTimeout(() => dismissToast(), 8000);
+        }
+
+        function executeUndo() {
+            if (undoState) {
+                undoState();
+                undoState = null;
+            }
+            dismissToast();
+        }
+
+        function dismissToast() {
+            clearTimeout(undoTimer);
+            undoTimer = null;
+            undoState = null;
+            const toast = document.getElementById('undoToast');
+            if (toast) {
+                toast.classList.add('toast-out');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+
+        // --- Keyboard Shortcuts ---
+        let selectedRowIndex = -1;
+        let shortcutOverlayVisible = false;
+
+        function showShortcutHelp() {
+            if (shortcutOverlayVisible) { hideShortcutHelp(); return; }
+            const overlay = document.createElement('div');
+            overlay.className = 'shortcut-overlay';
+            overlay.id = 'shortcutOverlay';
+            overlay.onclick = (e) => { if (e.target === overlay) hideShortcutHelp(); };
+            overlay.innerHTML = `
+                <div class="shortcut-modal">
+                    <h2>Keyboard Shortcuts</h2>
+                    <div class="shortcut-row"><span>Navigate rows</span><span><span class="shortcut-key">j</span> <span class="shortcut-key">k</span></span></div>
+                    <div class="shortcut-row"><span>Open selected</span><span class="shortcut-key">Enter</span></div>
+                    <div class="shortcut-row"><span>Close panel / modal</span><span class="shortcut-key">Esc</span></div>
+                    <div class="shortcut-row"><span>Companies tab</span><span class="shortcut-key">1</span></div>
+                    <div class="shortcut-row"><span>Taxonomy tab</span><span class="shortcut-key">2</span></div>
+                    <div class="shortcut-row"><span>Process tab</span><span class="shortcut-key">3</span></div>
+                    <div class="shortcut-row"><span>Export tab</span><span class="shortcut-key">4</span></div>
+                    <div class="shortcut-row"><span>Focus search</span><span class="shortcut-key">/</span></div>
+                    <div class="shortcut-row"><span>Toggle dark mode</span><span class="shortcut-key">D</span></div>
+                    <div class="shortcut-row"><span>Star selected</span><span class="shortcut-key">S</span></div>
+                    <div class="shortcut-row"><span>This help</span><span class="shortcut-key">?</span></div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            shortcutOverlayVisible = true;
+        }
+
+        function hideShortcutHelp() {
+            const overlay = document.getElementById('shortcutOverlay');
+            if (overlay) overlay.remove();
+            shortcutOverlayVisible = false;
+        }
+
+        function selectRow(index) {
+            const rows = document.querySelectorAll('#companyBody tr');
+            if (!rows.length) return;
+
+            // Clamp index
+            if (index < 0) index = 0;
+            if (index >= rows.length) index = rows.length - 1;
+
+            // Remove old selection
+            rows.forEach(r => r.classList.remove('row-selected'));
+
+            selectedRowIndex = index;
+            rows[index].classList.add('row-selected');
+            rows[index].scrollIntoView({ block: 'nearest' });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            // Ignore when typing in inputs
+            const tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                if (e.key === 'Escape') { e.target.blur(); }
+                return;
+            }
+
+            // Don't intercept when modals/overlays are open (except Esc to close)
+            const editModal = document.getElementById('editModal');
+            const editModalOpen = editModal && !editModal.classList.contains('hidden');
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (shortcutOverlayVisible) { hideShortcutHelp(); return; }
+                if (editModalOpen) { closeEditModal(); return; }
+                if (!document.getElementById('detailPanel').classList.contains('hidden')) { closeDetail(); return; }
+                return;
+            }
+
+            if (editModalOpen || shortcutOverlayVisible) return;
+
+            // Only handle shortcuts when main app is visible
+            const mainApp = document.getElementById('mainApp');
+            if (!mainApp || mainApp.classList.contains('hidden')) {
+                if (e.key === 'd' || e.key === 'D') { toggleTheme(); return; }
+                if (e.key === '?') { showShortcutHelp(); return; }
+                return;
+            }
+
+            const tabNames = ['companies', 'taxonomy', 'map', 'process', 'export'];
+
+            switch (e.key) {
+                case 'j':
+                    e.preventDefault();
+                    selectRow(selectedRowIndex + 1);
+                    break;
+                case 'k':
+                    e.preventDefault();
+                    selectRow(selectedRowIndex - 1);
+                    break;
+                case 'Enter':
+                    if (selectedRowIndex >= 0) {
+                        const rows = document.querySelectorAll('#companyBody tr');
+                        if (rows[selectedRowIndex]) {
+                            const id = rows[selectedRowIndex].getAttribute('data-company-id');
+                            if (id) showDetail(parseInt(id));
+                        }
+                    }
+                    break;
+                case '1': case '2': case '3': case '4': case '5':
+                    e.preventDefault();
+                    const tabIdx = parseInt(e.key) - 1;
+                    const tabs = document.querySelectorAll('.tab');
+                    if (tabs[tabIdx]) {
+                        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                        tabs.forEach(el => el.classList.remove('active'));
+                        document.getElementById('tab-' + tabNames[tabIdx]).classList.add('active');
+                        tabs[tabIdx].classList.add('active');
+                        if (tabNames[tabIdx] === 'companies') loadCompanies();
+                        if (tabNames[tabIdx] === 'taxonomy') loadTaxonomy();
+                        if (tabNames[tabIdx] === 'process') loadBatches();
+                    }
+                    break;
+                case '/':
+                    e.preventDefault();
+                    document.getElementById('searchInput').focus();
+                    break;
+                case 'd':
+                case 'D':
+                    toggleTheme();
+                    break;
+                case 's':
+                case 'S':
+                    if (selectedRowIndex >= 0) {
+                        const rows = document.querySelectorAll('#companyBody tr');
+                        if (rows[selectedRowIndex]) {
+                            const starBtn = rows[selectedRowIndex].querySelector('.star-btn');
+                            const id = rows[selectedRowIndex].getAttribute('data-company-id');
+                            if (id && starBtn) toggleStar(parseInt(id), starBtn);
+                        }
+                    }
+                    break;
+                case '?':
+                    e.preventDefault();
+                    showShortcutHelp();
+                    break;
+            }
+        });
+
+        // --- SSE (Server-Sent Events) ---
+        let eventSource = null;
+
+        function connectSSE() {
+            if (eventSource) eventSource.close();
+            if (!currentProjectId) return;
+
+            eventSource = new EventSource(`/api/events/stream?project_id=${currentProjectId}`);
+
+            eventSource.addEventListener('batch_complete', (e) => {
+                const data = JSON.parse(e.data);
+                loadCompanies();
+                loadStats();
+                loadBatches();
+                showBrowserNotification('Batch Complete', data.message || 'Processing finished');
+                addNotifBellItem(data.message || 'Batch processing complete');
+                // Stop retry polling if this batch was being retried
+                if (retryingBatch && data.batch_id) {
+                    clearInterval(retryPollInterval);
+                    retryPollInterval = null;
+                    const finishedBatch = retryingBatch;
+                    retryingBatch = null;
+                    showBatchDetail(finishedBatch);
+                }
+            });
+
+            eventSource.addEventListener('taxonomy_changed', (e) => {
+                const data = JSON.parse(e.data);
+                loadTaxonomy();
+                addNotifBellItem(data.message || 'Taxonomy updated');
+            });
+
+            eventSource.addEventListener('company_added', (e) => {
+                const data = JSON.parse(e.data);
+                loadCompanies();
+                loadStats();
+                addNotifBellItem(data.message || 'New company added');
+            });
+
+            eventSource.onerror = () => {
+                setTimeout(connectSSE, 5000);
+            };
+        }
+
+        // --- Browser Notifications ---
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+
+        function showBrowserNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, { body, icon: '/static/favicon.ico' });
+            }
+        }
+
+        // --- Notification Bell ---
+        let notifItems = [];
+
+        function addNotifBellItem(message) {
+            notifItems.unshift({ message, time: new Date() });
+            if (notifItems.length > 20) notifItems = notifItems.slice(0, 20);
+            updateBellBadge();
+            renderNotifPanel();
+        }
+
+        function updateBellBadge() {
+            const badge = document.getElementById('bellBadge');
+            if (notifItems.length > 0) {
+                badge.textContent = notifItems.length;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function toggleNotificationPanel() {
+            const panel = document.getElementById('notificationPanel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                renderNotifPanel();
+                loadRecentActivity();
+            }
+        }
+
+        function renderNotifPanel() {
+            const content = document.getElementById('notifPanelContent');
+            if (!notifItems.length) {
+                content.innerHTML = '<p class="hint-text" style="padding:12px">No recent notifications.</p>';
+                return;
+            }
+            content.innerHTML = notifItems.map(n => `
+                <div class="notif-item">
+                    <span>${esc(n.message)}</span>
+                    <span class="notif-time">${n.time.toLocaleTimeString()}</span>
+                </div>
+            `).join('');
+        }
+
+        async function loadRecentActivity() {
+            const res = await fetch(`/api/activity?project_id=${currentProjectId}&limit=10`);
+            const events = await res.json();
+            if (events.length) {
+                const content = document.getElementById('notifPanelContent');
+                let html = content.innerHTML;
+                html += '<div style="border-top:1px solid var(--border-default);margin-top:8px;padding-top:8px"><strong style="font-size:12px;color:var(--text-muted)">Recent Activity</strong></div>';
+                html += events.map(e => `
+                    <div class="notif-item">
+                        <span class="activity-action-badge">${esc(e.action)}</span>
+                        <span>${esc(e.description || '')}</span>
+                        <span class="notif-time">${new Date(e.created_at).toLocaleString()}</span>
+                    </div>
+                `).join('');
+                content.innerHTML = html;
+            }
+        }
+
+        // --- Share Tokens ---
+        async function createShareLink() {
+            const label = document.getElementById('shareLinkLabel').value.trim() || 'Shared link';
+            const res = await fetch('/api/share-tokens', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_id: currentProjectId, label }),
+            });
+            const data = await res.json();
+            document.getElementById('shareLinkLabel').value = '';
+            showUndoToast(`Share link created: ${data.url}`, null);
+            loadShareTokens();
+        }
+
+        async function loadShareTokens() {
+            const res = await fetch(`/api/share-tokens?project_id=${currentProjectId}`);
+            const tokens = await res.json();
+            const container = document.getElementById('shareTokensList');
+            if (!tokens.length) {
+                container.innerHTML = '<p style="font-size:13px;color:var(--text-muted);margin-top:8px">No share links yet.</p>';
+                return;
+            }
+            container.innerHTML = tokens.map(t => `
+                <div class="share-token-item ${t.is_active ? '' : 'share-revoked'}">
+                    <div>
+                        <strong>${esc(t.label)}</strong>
+                        <code class="share-url">${location.origin}/shared/${esc(t.token)}</code>
+                        <button class="copy-btn" onclick="navigator.clipboard.writeText('${location.origin}/shared/${esc(t.token)}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
+                    </div>
+                    ${t.is_active ? `<button class="danger-btn" onclick="revokeShareToken(${t.id})" style="font-size:11px;padding:2px 8px">Revoke</button>` : '<span class="share-revoked-label">Revoked</span>'}
+                </div>
+            `).join('');
+        }
+
+        async function revokeShareToken(tokenId) {
+            await fetch(`/api/share-tokens/${tokenId}`, { method: 'DELETE' });
+            loadShareTokens();
+        }
+
+        // --- Notification Prefs ---
+        async function loadNotifPrefs() {
+            const res = await fetch(`/api/notification-prefs?project_id=${currentProjectId}`);
+            const prefs = await res.json();
+            document.getElementById('slackWebhook').value = prefs.slack_webhook_url || '';
+            document.getElementById('notifBatchComplete').checked = !!prefs.notify_batch_complete;
+            document.getElementById('notifTaxonomyChange').checked = !!prefs.notify_taxonomy_change;
+            document.getElementById('notifNewCompany').checked = !!prefs.notify_new_company;
+        }
+
+        async function saveNotifPrefs() {
+            const res = await fetch('/api/notification-prefs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: currentProjectId,
+                    slack_webhook_url: document.getElementById('slackWebhook').value.trim() || null,
+                    notify_batch_complete: document.getElementById('notifBatchComplete').checked ? 1 : 0,
+                    notify_taxonomy_change: document.getElementById('notifTaxonomyChange').checked ? 1 : 0,
+                    notify_new_company: document.getElementById('notifNewCompany').checked ? 1 : 0,
+                }),
+            });
+            const resultDiv = document.getElementById('notifSaveResult');
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '<p class="re-research-success">Preferences saved.</p>';
+            setTimeout(() => resultDiv.classList.add('hidden'), 3000);
+        }
+
+        async function testSlack() {
+            const url = document.getElementById('slackWebhook').value.trim();
+            if (!url) { alert('Enter a Slack webhook URL first'); return; }
+            const res = await fetch('/api/notification-prefs/test-slack', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slack_webhook_url: url }),
+            });
+            const data = await res.json();
+            if (data.ok) alert('Test message sent!');
+            else alert('Error: ' + (data.error || 'Unknown'));
+        }
+
+        // --- Activity Log ---
+        async function loadActivity() {
+            const container = document.getElementById('activityFeed');
+            container.classList.remove('hidden');
+            container.innerHTML = '<p>Loading...</p>';
+            const res = await fetch(`/api/activity?project_id=${currentProjectId}&limit=50`);
+            const events = await res.json();
+
+            if (!events.length) {
+                container.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No activity recorded yet.</p>';
+                return;
+            }
+
+            container.innerHTML = events.map(e => `
+                <div class="activity-item">
+                    <span class="activity-action-badge">${esc(e.action)}</span>
+                    <span>${esc(e.description || '')}</span>
+                    <span class="activity-time">${new Date(e.created_at).toLocaleString()}</span>
+                </div>
+            `).join('');
+        }
+
+        // --- Taxonomy Quality ---
+        async function loadTaxonomyQuality() {
+            const container = document.getElementById('qualityContent');
+            container.classList.remove('hidden');
+            container.innerHTML = '<p>Loading...</p>';
+            const res = await fetch(`/api/taxonomy/quality?project_id=${currentProjectId}`);
+            const q = await res.json();
+
+            let html = '<div class="quality-cards">';
+
+            // Avg confidence
+            const confColor = q.avg_confidence >= 0.7 ? 'var(--accent-success)' : q.avg_confidence >= 0.4 ? '#e6a817' : 'var(--accent-danger, #dc3545)';
+            html += `<div class="quality-card">
+                <div class="quality-metric" style="color:${confColor}">${q.avg_confidence != null ? Math.round(q.avg_confidence * 100) + '%' : 'N/A'}</div>
+                <div class="quality-label">Avg. Confidence</div>
+                <div class="quality-hint">${q.avg_confidence != null && q.avg_confidence < 0.5 ? 'Consider re-researching low-confidence companies' : q.avg_confidence != null && q.avg_confidence < 0.7 ? 'Moderate — review flagged categories' : 'Good coverage'}</div>
+            </div>`;
+
+            html += `<div class="quality-card">
+                <div class="quality-metric">${q.total_companies}</div>
+                <div class="quality-label">Total Companies</div>
+                <div class="quality-hint">${q.total_companies < 20 ? 'Add more companies for richer analysis' : 'Solid dataset'}</div>
+            </div>`;
+
+            html += `<div class="quality-card">
+                <div class="quality-metric">${q.total_categories}</div>
+                <div class="quality-label">Categories</div>
+                <div class="quality-hint">${q.total_categories > 0 ? Math.round(q.total_companies / q.total_categories) + ' companies per category avg.' : 'No categories'}</div>
+            </div>`;
+
+            html += '</div>';
+
+            // Actionable issues
+            if (q.empty_categories.length) {
+                html += `<div class="quality-issue">
+                    <div class="quality-issue-header"><strong>Empty categories (${q.empty_categories.length})</strong></div>
+                    <p class="quality-issue-desc">These categories have no companies. Either add companies or consider removing them.</p>
+                    <div class="quality-issue-items">${q.empty_categories.map(c =>
+                        `<span class="quality-chip">${esc(c.name)}
+                            <button class="quality-chip-action" onclick="prefillReviewObservation('Remove empty category: ${esc(c.name)}')" title="Suggest removal in review">review</button>
+                        </span>`
+                    ).join('')}</div>
+                </div>`;
+            }
+            if (q.overcrowded_categories.length) {
+                html += `<div class="quality-issue quality-warn">
+                    <div class="quality-issue-header"><strong>Overcrowded categories (>15 companies)</strong></div>
+                    <p class="quality-issue-desc">These categories are too broad. Consider splitting them into subcategories for clearer segmentation.</p>
+                    <div class="quality-issue-items">${q.overcrowded_categories.map(c =>
+                        `<span class="quality-chip">${esc(c.name)} <strong>(${c.count})</strong>
+                            <button class="quality-chip-action" onclick="prefillReviewObservation('Split overcrowded category ${esc(c.name)} (${c.count} companies) into subcategories')" title="Suggest split in review">split</button>
+                        </span>`
+                    ).join('')}</div>
+                </div>`;
+            }
+            if (q.low_confidence_categories.length) {
+                html += `<div class="quality-issue quality-warn">
+                    <div class="quality-issue-header"><strong>Low confidence categories (<50%)</strong></div>
+                    <p class="quality-issue-desc">Companies in these categories may be misclassified. Re-research or manually review placements.</p>
+                    <div class="quality-issue-items">${q.low_confidence_categories.map(c =>
+                        `<span class="quality-chip">${esc(c.name)} <strong>(${Math.round(c.avg_confidence * 100)}%)</strong>
+                            <button class="quality-chip-action" onclick="prefillReviewObservation('Review misclassified companies in ${esc(c.name)} (low confidence ${Math.round(c.avg_confidence * 100)}%)')" title="Suggest review">review</button>
+                        </span>`
+                    ).join('')}</div>
+                </div>`;
+            }
+
+            if (!q.empty_categories.length && !q.overcrowded_categories.length && !q.low_confidence_categories.length) {
+                html += '<p style="color:var(--accent-success);font-size:13px;margin-top:12px">No quality issues found. Taxonomy is well-structured.</p>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function prefillReviewObservation(text) {
+            const textarea = document.getElementById('reviewObservations');
+            if (textarea) {
+                const current = textarea.value.trim();
+                textarea.value = current ? current + '\n' + text : text;
+                textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                textarea.focus();
+            }
+        }
+
+        // --- AI Discovery ---
+        async function startDiscovery() {
+            const query = document.getElementById('discoveryQuery').value.trim();
+            if (!query) { alert('Enter a market segment description'); return; }
+
+            const btn = document.getElementById('discoveryBtn');
+            btn.disabled = true;
+            btn.textContent = 'Searching...';
+
+            document.getElementById('discoveryResults').classList.remove('hidden');
+            document.getElementById('discoveryStatus').classList.remove('hidden');
+            document.getElementById('discoveryList').innerHTML = '';
+
+            const res = await fetch('/api/ai/discover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, project_id: currentProjectId, model: document.getElementById('discoveryModelSelect').value }),
+            });
+            const data = await res.json();
+            pollDiscovery(data.discover_id);
+        }
+
+        async function pollDiscovery(discoverId) {
+            const res = await fetch(`/api/ai/discover/${discoverId}`);
+            const data = await res.json();
+
+            if (data.status === 'pending') {
+                setTimeout(() => pollDiscovery(discoverId), 3000);
+                return;
+            }
+
+            const btn = document.getElementById('discoveryBtn');
+            btn.disabled = false;
+            btn.textContent = 'Discover';
+            document.getElementById('discoveryStatus').classList.add('hidden');
+
+            if (data.status === 'error') {
+                document.getElementById('discoveryList').innerHTML = `<p class="re-research-error">${esc(data.error)}</p>`;
+                return;
+            }
+
+            const companies = data.companies || [];
+            if (!companies.length) {
+                document.getElementById('discoveryList').innerHTML = '<p class="hint-text">No companies found. Try a different description.</p>';
+                return;
+            }
+
+            document.getElementById('discoveryList').innerHTML = `
+                <p class="hint-text">Found ${companies.length} companies. Select ones to add to your URL processing queue.</p>
+                ${companies.map((c, i) => `
+                    <div class="discovery-result">
+                        <label>
+                            <input type="checkbox" name="discovery_company" value="${esc(c.url)}" checked>
+                            <strong>${esc(c.name)}</strong>
+                        </label>
+                        <a href="${esc(c.url)}" target="_blank" class="discovery-url">${esc(c.url)}</a>
+                        <p class="discovery-desc">${esc(c.description || '')}</p>
+                    </div>
+                `).join('')}
+                <button class="primary-btn" onclick="addDiscoveredUrls()" style="margin-top:10px">Add selected to URL input</button>
+            `;
+        }
+
+        function addDiscoveredUrls() {
+            const checked = document.querySelectorAll('input[name="discovery_company"]:checked');
+            const urls = Array.from(checked).map(cb => cb.value);
+            if (!urls.length) { alert('Select at least one company'); return; }
+
+            const urlInput = document.getElementById('urlInput');
+            const existing = urlInput.value.trim();
+            urlInput.value = (existing ? existing + '\n' : '') + urls.join('\n');
+            document.getElementById('discoveryResults').classList.add('hidden');
+            showUndoToast(`Added ${urls.length} URLs to queue`, null);
+        }
+
+        // --- AI Find Similar ---
+        async function findSimilar(companyId) {
+            const container = document.getElementById(`similarResults-${companyId}`);
+            container.classList.remove('hidden');
+            container.innerHTML = '<div class="progress-bar"><div class="progress-fill" style="width:50%;animation:pulse 2s infinite"></div></div><p style="font-size:13px">Finding similar companies...</p>';
+
+            const res = await fetch('/api/ai/find-similar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: companyId, model: document.getElementById('modelSelect').value }),
+            });
+            const data = await res.json();
+            pollSimilar(data.similar_id, companyId);
+        }
+
+        async function pollSimilar(similarId, companyId) {
+            const res = await fetch(`/api/ai/find-similar/${similarId}`);
+            const data = await res.json();
+
+            if (data.status === 'pending') {
+                setTimeout(() => pollSimilar(similarId, companyId), 3000);
+                return;
+            }
+
+            const container = document.getElementById(`similarResults-${companyId}`);
+            if (data.status === 'error') {
+                container.innerHTML = `<p class="re-research-error">${esc(data.error)}</p>`;
+                return;
+            }
+
+            const companies = data.companies || [];
+            if (!companies.length) {
+                container.innerHTML = '<p class="hint-text">No similar companies found.</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h4>Similar Companies</h4>
+                ${companies.map(c => `
+                    <div class="similar-item">
+                        <div class="similar-item-header">
+                            <strong>${esc(c.name)}</strong>
+                            <a href="${esc(c.url)}" target="_blank">${esc(c.url)}</a>
+                        </div>
+                        <p class="similar-desc">${esc(c.description || '')}</p>
+                        ${c.similarity ? `<p class="similar-reason">${esc(c.similarity)}</p>` : ''}
+                    </div>
+                `).join('')}
+                <button class="btn" onclick="addSimilarToQueue()" style="margin-top:8px">Add all to URL queue</button>
+            `;
+
+            // Store URLs for adding
+            container.dataset.urls = JSON.stringify(companies.map(c => c.url));
+        }
+
+        function addSimilarToQueue() {
+            const containers = document.querySelectorAll('.similar-results');
+            let urls = [];
+            containers.forEach(c => {
+                if (c.dataset.urls) urls = urls.concat(JSON.parse(c.dataset.urls));
+            });
+            if (!urls.length) return;
+            showTab('process');
+            const urlInput = document.getElementById('urlInput');
+            const existing = urlInput.value.trim();
+            urlInput.value = (existing ? existing + '\n' : '') + urls.join('\n');
+        }
+
+        // --- AI Market Report ---
+        async function generateMarketReport() {
+            const categoryName = document.getElementById('reportCategorySelect').value;
+            if (!categoryName) { alert('Select a category'); return; }
+
+            const btn = document.getElementById('reportBtn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            document.getElementById('reportStatus').classList.remove('hidden');
+            document.getElementById('reportContent').classList.add('hidden');
+
+            const res = await fetch('/api/ai/market-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category_name: categoryName, project_id: currentProjectId, model: document.getElementById('reportModelSelect').value }),
+            });
+            const data = await res.json();
+            // Persist active report so navigating away/back resumes polling
+            localStorage.setItem('activeReportId', data.report_id);
+            localStorage.setItem('activeReportCategory', categoryName);
+            pollReport(data.report_id);
+        }
+
+        function resumeActiveReport() {
+            const reportId = localStorage.getItem('activeReportId');
+            if (reportId) {
+                document.getElementById('reportStatus').classList.remove('hidden');
+                document.getElementById('reportContent').classList.add('hidden');
+                const btn = document.getElementById('reportBtn');
+                btn.disabled = true;
+                btn.textContent = 'Generating...';
+                pollReport(reportId);
+            }
+        }
+
+        async function pollReport(reportId) {
+            const res = await fetch(`/api/ai/market-report/${reportId}`);
+            const data = await res.json();
+
+            if (data.status === 'pending') {
+                setTimeout(() => pollReport(reportId), 3000);
+                return;
+            }
+
+            // Clear persisted report
+            localStorage.removeItem('activeReportId');
+            localStorage.removeItem('activeReportCategory');
+
+            const btn = document.getElementById('reportBtn');
+            btn.disabled = false;
+            btn.textContent = 'Generate Report';
+            document.getElementById('reportStatus').classList.add('hidden');
+
+            const content = document.getElementById('reportContent');
+            content.classList.remove('hidden');
+
+            if (data.status === 'error') {
+                content.innerHTML = `<p class="re-research-error">${esc(data.error)}</p>`;
+                return;
+            }
+
+            // Render markdown with marked.js
+            let html;
+            if (window.marked) {
+                const renderer = new marked.Renderer();
+                const defaultCode = renderer.code.bind(renderer);
+                renderer.code = function(args) {
+                    if (args.lang === 'mermaid') {
+                        return `<div class="mermaid">${args.text}</div>`;
+                    }
+                    return defaultCode(args);
+                };
+                marked.use({ renderer, breaks: true, gfm: true });
+                html = marked.parse(data.report || '');
+            } else {
+                // Fallback if marked.js didn't load
+                html = esc(data.report || '')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+                    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+                    .replace(/^- (.+)$/gm, '<li>$1</li>')
+                    .replace(/\n/g, '<br>');
+            }
+
+            content.innerHTML = `
+                <div class="report-header">
+                    <h3>Market Report: ${esc(data.category || '')}</h3>
+                    <span class="hint-text">${data.company_count || 0} companies analyzed</span>
+                </div>
+                <div class="report-body">${html}</div>
+            `;
+
+            // Initialize mermaid diagrams
+            if (window.mermaid) {
+                try {
+                    mermaid.run({ nodes: content.querySelectorAll('.mermaid') });
+                } catch (e) {
+                    console.warn('Mermaid rendering failed:', e);
+                }
+            }
+        }
+
+        // --- AI Chat ---
+        let chatOpen = false;
+
+        function toggleChat() {
+            const widget = document.getElementById('chatWidget');
+            if (chatOpen) {
+                closeChat();
+            } else {
+                widget.classList.remove('hidden');
+                chatOpen = true;
+                document.getElementById('chatInput').focus();
+            }
+        }
+
+        function closeChat() {
+            document.getElementById('chatWidget').classList.add('hidden');
+            chatOpen = false;
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const question = input.value.trim();
+            if (!question) return;
+
+            const body = document.getElementById('chatBody');
+            body.innerHTML += `<div class="chat-msg chat-user">${esc(question)}</div>`;
+            body.innerHTML += `<div class="chat-msg chat-assistant" id="chatPending"><em>Thinking...</em></div>`;
+            body.scrollTop = body.scrollHeight;
+            input.value = '';
+
+            try {
+                const res = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, project_id: currentProjectId, model: 'claude-haiku-4-5-20251001' }),
+                });
+                const data = await res.json();
+                const pending = document.getElementById('chatPending');
+                if (pending) {
+                    if (data.error) {
+                        pending.innerHTML = `<span class="re-research-error">${esc(data.error)}</span>`;
+                    } else {
+                        const answer = data.answer || 'No answer';
+                        if (window.marked) {
+                            pending.innerHTML = marked.parse(answer, { breaks: true, gfm: true });
+                        } else {
+                            pending.innerHTML = esc(answer).replace(/\n/g, '<br>');
+                        }
+                    }
+                    pending.removeAttribute('id');
+                }
+            } catch (err) {
+                const pending = document.getElementById('chatPending');
+                if (pending) {
+                    pending.innerHTML = `<span class="re-research-error">Error: ${esc(err.message)}</span>`;
+                    pending.removeAttribute('id');
+                }
+            }
+            body.scrollTop = body.scrollHeight;
+        }
+
+        // --- Init ---
+        window.onload = () => {
+            initTheme();
+            loadProjects();
+        };
+    </script>
+</body>
+</html>

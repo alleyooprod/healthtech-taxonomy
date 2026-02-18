@@ -1,0 +1,30 @@
+You are researching a company for a market taxonomy database covering health, insurance, employee benefits, HR, wellness, wearables, and adjacent digital/physical services.
+
+Company URL: {url}
+
+INSTRUCTIONS:
+1. First, fetch the company's website landing page using WebFetch to get current information
+2. Navigate to key subpages: look for and fetch /about, /products, /pricing, /team, /case-studies, /solutions, or similar pages linked from the main navigation. Fetch at least 2-3 subpages to build a complete picture of the company.
+3. Search the web for: the company name + funding, investors, series, valuation
+4. Search the web for: the company name + relevant sector keywords (health, insurance, benefits, HR tech, wellness, etc.)
+5. Search for the company on Crunchbase, LinkedIn, or press/news sites for additional context
+6. Cross-reference all sources — website landing page, subpages, press, and third-party data
+
+Extract these fields with the specified depth:
+
+- name: Exact company name as they brand themselves
+- url: Their primary website URL (may differ from input if redirected)
+- what: (50-100 words) Detailed value proposition. What they do, how they do it, what differentiates them. Use SPECIFIC details from their website, not generic descriptions. Mention specific technologies, methodologies, or approaches.
+- target: (30-50 words) Specific customer segments with context. B2B/B2C/B2B2C. Demographics, use cases, buyer personas. Who pays, who uses.
+- products: (50-80 words) Key offerings with features and differentiators. Specific product names, delivery methods (app, device, platform, service), pricing model if visible, unique capabilities vs competitors.
+- funding: (20-40 words) Most recent funding round, total raised, key investors, founding year. If not found, state "Funding information not publicly available" rather than guessing.
+- geography: (15-30 words) HQ location, markets served, international presence. Regulatory markets (FDA cleared, CE marked, etc.) if applicable.
+- tam: (40-60 words) Total addressable market. Use real industry data if found via web search. Include market size, growth rate, addressable segments. Cite sources if available.
+- tags: Array from ["competitor", "potential_partner", "adjacent_model", "infrastructure", "inspiration", "out_of_scope"]. A company can have multiple tags.
+- confidence: A number from 0.0 to 1.0 indicating how confident you are in the accuracy of this research. 1.0 = visited website + found multiple corroborating sources. 0.5 = could only access partial information. 0.0 = mostly guessing.
+
+QUALITY RULES:
+- NEVER return placeholder text like "Various products" or "Multiple markets"
+- If you cannot access the website, still do web search research
+- If information is genuinely unavailable for a field, say so explicitly rather than fabricating
+- Minimum 3 sentences for 'what', 2 sentences for 'products'

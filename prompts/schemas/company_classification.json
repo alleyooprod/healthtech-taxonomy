@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "properties": {
+    "skip": { "type": "boolean", "description": "Set to true if this company does not fit ANY category in the taxonomy and is genuinely out of scope for the market being analyzed" },
+    "skip_reason": { "type": "string", "description": "If skip is true, explain why the company is out of scope" },
+    "category": { "type": "string", "description": "Best matching category name from the taxonomy" },
+    "is_new_category": { "type": "boolean", "description": "True if this is a newly proposed category" },
+    "subcategory": { "type": "string", "description": "Specific subcategory name" },
+    "classification_reasoning": { "type": "string", "description": "Brief explanation of why this category was chosen" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": ["skip", "category", "is_new_category", "subcategory", "classification_reasoning", "confidence"]
+}

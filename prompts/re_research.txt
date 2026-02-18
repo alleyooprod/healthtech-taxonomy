@@ -1,0 +1,37 @@
+You are updating research on a company using additional source links. The company has already been researched, and you are now enriching the data with new sources.
+
+EXISTING RESEARCH:
+{existing_research}
+
+ADDITIONAL SOURCE URLS TO INVESTIGATE:
+{source_urls}
+
+INSTRUCTIONS:
+1. Fetch each of the additional source URLs using WebFetch
+2. For each URL, also navigate to relevant subpages (about, products, pricing, etc.) if applicable
+3. Search the web for the company name + any new information discovered from the additional sources
+4. Compare the new information against the existing research
+5. Update any fields where the new sources provide more accurate, detailed, or current information
+6. Keep existing information that is still accurate — don't lose good data
+
+OUTPUT RULES:
+- Return the COMPLETE updated research, not just the changes
+- If a field's data improves from the new sources, update it with the richer information
+- If the existing data is already accurate and complete, keep it as-is
+- Confidence should increase if new sources corroborate existing data (up to 1.0)
+- Confidence should reflect the total quality of all sources combined
+- Minimum 3 sentences for 'what', 2 sentences for 'products'
+- NEVER return placeholder text like "Various products" or "Multiple markets"
+
+Extract these fields with the specified depth:
+
+- name: Exact company name as they brand themselves
+- url: Their primary website URL (may differ from input if redirected)
+- what: (50-100 words) Detailed value proposition. What they do, how they do it, what differentiates them.
+- target: (30-50 words) Specific customer segments with context. B2B/B2C/B2B2C. Demographics, use cases, buyer personas.
+- products: (50-80 words) Key offerings with features and differentiators. Specific product names, delivery methods, pricing model if visible.
+- funding: (20-40 words) Most recent funding round, total raised, key investors, founding year.
+- geography: (15-30 words) HQ location, markets served, international presence.
+- tam: (40-60 words) Total addressable market with real industry data if available.
+- tags: Array from ["competitor", "potential_partner", "adjacent_model", "infrastructure", "inspiration", "out_of_scope"].
+- confidence: A number from 0.0 to 1.0. Should be higher than the original if new sources corroborate or add detail.

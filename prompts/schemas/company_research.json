@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "description": "Exact company name" },
+    "url": { "type": "string", "description": "Primary website URL" },
+    "what": { "type": "string", "description": "50-100 word value proposition" },
+    "target": { "type": "string", "description": "30-50 word target market" },
+    "products": { "type": "string", "description": "50-80 word product summary" },
+    "funding": { "type": "string", "description": "20-40 word funding info" },
+    "geography": { "type": "string", "description": "15-30 word geography" },
+    "tam": { "type": "string", "description": "40-60 word TAM estimate" },
+    "employee_range": { "type": "string", "description": "Estimated employee count range, e.g. '11-50', '51-200', '201-500', '501-1000', '1000+'" },
+    "founded_year": { "type": "integer", "description": "Year the company was founded" },
+    "funding_stage": { "type": "string", "description": "Current funding stage, e.g. 'Seed', 'Series A', 'Series B', 'Series C+', 'Public', 'Bootstrapped'" },
+    "total_funding_usd": { "type": "number", "description": "Total funding raised in USD (numeric, no currency symbol)" },
+    "hq_city": { "type": "string", "description": "Headquarters city name" },
+    "hq_country": { "type": "string", "description": "Headquarters country name" },
+    "linkedin_url": { "type": "string", "description": "LinkedIn company page URL if findable" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["competitor", "potential_partner", "adjacent_model", "infrastructure", "inspiration", "out_of_scope"]
+      }
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": ["name", "url", "what", "target", "products", "funding", "geography", "tam", "tags", "confidence"]
+}

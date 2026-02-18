@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "properties": {
+    "analysis": { "type": "string", "description": "Overall assessment of the taxonomy state" },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["add", "merge", "split", "rename", "add_subcategory"] },
+          "reason": { "type": "string" },
+          "category_name": { "type": "string", "description": "The category being changed or created" },
+          "new_name": { "type": "string", "description": "New name (for rename)" },
+          "parent_category": { "type": "string", "description": "Parent category (for add_subcategory)" },
+          "merge_into": { "type": "string", "description": "Target category (for merge)" },
+          "split_into": { "type": "array", "items": { "type": "string" }, "description": "New categories (for split)" }
+        },
+        "required": ["type", "reason"]
+      }
+    },
+    "no_changes_needed": { "type": "boolean" }
+  },
+  "required": ["analysis", "changes", "no_changes_needed"]
+}

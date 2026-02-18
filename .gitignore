@@ -1,0 +1,11 @@
+.DS_Store
+data/taxonomy.db
+logs/
+__pycache__/
+*.pyc
+venv/
+.env
+batch_*_prompt.txt
+*.egg-info/
+dist/
+build/

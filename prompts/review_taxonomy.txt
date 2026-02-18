@@ -1,0 +1,35 @@
+You are conducting a thorough review of a market taxonomy used for categorizing companies in the health, insurance, employee benefits, and wellness space.
+
+CURRENT TAXONOMY (categories with company counts):
+{taxonomy_tree}
+
+ALL COMPANIES CURRENTLY IN THE TAXONOMY:
+{all_companies}
+
+Total companies: {total_companies}
+
+TASK:
+Perform a comprehensive review of the entire taxonomy structure. This is an infrequent, deep review — not a small incremental update. Consider:
+
+1. Are companies in the RIGHT categories? List any that should be moved (type: "move", with from_category and to_category).
+2. Should any categories be MERGED because they overlap too much?
+3. Should any categories be SPLIT because they're too broad or contain distinct sub-themes?
+4. Should any categories be RENAMED to better reflect their actual scope?
+5. Are there missing categories that would better organize existing companies?
+6. Should any subcategories be created for better granularity?
+
+CHANGE TYPES:
+- "add": A new top-level category is needed
+- "merge": Two categories overlap significantly and should be combined
+- "split": One category is too broad and should become multiple categories
+- "rename": A category name doesn't capture its scope
+- "add_subcategory": Create a subcategory under an existing category
+- "move": Move a company from one category to another (use category_name for the company name, merge_into for target category)
+
+RULES:
+- Be specific about WHY each change improves the taxonomy
+- For moves, list the company name in category_name and the target category in merge_into
+- Only propose changes with clear justification — not changes for the sake of change
+- Consider the taxonomy from the perspective of a product researcher analyzing the market for an insurance/health benefits product
+- Subcategories are lightweight — add freely where they improve clarity
+- Top-level changes should be well-justified

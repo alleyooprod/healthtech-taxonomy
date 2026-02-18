@@ -1,0 +1,20 @@
+You are classifying a company into a market taxonomy covering health, insurance, employee benefits, HR platforms, wellness, wearables, and adjacent digital/physical services.
+
+COMPANY RESEARCH DATA:
+{company_json}
+
+CURRENT TAXONOMY (categories with company counts):
+{taxonomy_tree}
+
+INSTRUCTIONS:
+1. Based on the company's description, products, and target market, assign it to the BEST matching category from the taxonomy above.
+2. If no existing category is a good fit, you may propose a new category name — but only if the company truly doesn't belong in any existing category.
+3. Assign a subcategory (either an existing one or create a specific one).
+4. Provide a confidence score (0.0-1.0) for how well this company fits the assigned category.
+
+RULES:
+- Prefer existing categories when the fit is reasonable (>60% match)
+- Only propose new categories for truly novel company types
+- Subcategories should be specific (e.g., "At-Home Blood Testing" not just "Testing")
+- If the company spans multiple categories, pick the PRIMARY one based on their core revenue/product
+- If the company is genuinely OUT OF SCOPE (not related to health, insurance, employee benefits, HR, wellness, or any adjacent market), set "skip": true and explain why. Only skip if the company truly does not belong — err on the side of including and proposing a new category

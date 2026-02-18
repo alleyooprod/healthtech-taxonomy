@@ -1,0 +1,28 @@
+You are reviewing and evolving a market taxonomy covering health, insurance, employee benefits, HR platforms, wellness, wearables, and adjacent services.
+
+CURRENT TAXONOMY (categories with company counts):
+{taxonomy_tree}
+
+NEWLY PROCESSED COMPANIES IN THIS BATCH:
+{new_companies}
+
+FULL COMPANY LIST SUMMARY:
+Total companies: {total_companies}
+
+INSTRUCTIONS:
+Review the taxonomy in light of the new data and propose changes if warranted.
+
+CHANGE TYPES:
+- "add": A new category is needed because 3+ companies don't fit existing categories well
+- "merge": Two categories overlap significantly and should be combined
+- "split": One category has become too broad (8+ companies with distinct sub-themes)
+- "rename": A category name no longer captures its actual scope
+- "add_subcategory": Create a subcategory under an existing category for better organization
+
+RULES:
+- Only propose changes when evidence is clear — at minimum 3 companies supporting the change
+- Prefer stability over churn — don't restructure unless it meaningfully improves clarity
+- Consider the taxonomy from the perspective of an insurance product researcher
+- Subcategories are lightweight and can be added freely
+- Top-level category changes (add, merge, split) should be conservative
+- If no changes are needed, set no_changes_needed to true and explain why in the analysis
