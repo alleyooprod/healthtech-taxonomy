@@ -26,8 +26,12 @@ mkdir -p "${PROJECT_DIR}/logs"
 # AppleScript apps inherit full user permissions (Documents, Desktop, etc.)
 rm -rf "${PROJECT_DIR}/${APP_DIR}"
 
+# Capture the current PATH (includes Homebrew, claude, git, etc.)
+# and bake it into the launcher so the app has the same tools available.
+CURRENT_PATH="$PATH"
+
 osacompile -o "${PROJECT_DIR}/${APP_DIR}" -e "
-do shell script \"cd '${PROJECT_DIR}' && '${PROJECT_DIR}/venv/bin/python3' '${PROJECT_DIR}/desktop.py' >> '${PROJECT_DIR}/logs/desktop.log' 2>&1 &\"
+do shell script \"export PATH='${CURRENT_PATH}' && cd '${PROJECT_DIR}' && '${PROJECT_DIR}/venv/bin/python3' '${PROJECT_DIR}/desktop.py' >> '${PROJECT_DIR}/logs/desktop.log' 2>&1 &\"
 "
 
 # -- Remove quarantine flag --
