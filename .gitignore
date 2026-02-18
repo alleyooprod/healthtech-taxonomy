@@ -1,6 +1,12 @@
 .DS_Store
+data/taxonomy.db
 data/taxonomy.db-shm
 data/taxonomy.db-wal
+data/taxonomy_data.json
+data/taxonomy_export.csv
+data/taxonomy_master.md
+data/*_result_*.json
+data/.window_state.json
 logs/
 __pycache__/
 *.pyc
@@ -11,3 +17,7 @@ batch_*_prompt.txt
 dist/
 build/
 *.app/
+setup.py
+node_modules/
+test-results/
+playwright-report/
