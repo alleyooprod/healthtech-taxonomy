@@ -50,7 +50,8 @@ HEALTH_KEYWORDS = MARKET_KEYWORDS
 # --- Browser pool: reuse a single Chromium instance per thread (#7, #21) ---
 
 _browser_lock = threading.Lock()
-_browser_instances: dict[int, object] = {}  # thread_id -> (playwright, browser)
+_browser_instances: dict[int, tuple] = {}  # thread_id -> (playwright, browser, created_at)
+_BROWSER_MAX_AGE = 300  # Recycle browser instances after 5 minutes
 
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -70,23 +71,31 @@ def _get_or_create_loop():
 
 
 async def _get_browser():
-    """Get or create a reusable browser for the current thread."""
+    """Get or create a reusable browser for the current thread, with TTL."""
+    import time
     tid = threading.get_ident()
+    now = time.time()
+
     with _browser_lock:
         entry = _browser_instances.get(tid)
     if entry:
-        pw, browser = entry
-        if browser.is_connected():
+        pw, browser, created_at = entry
+        if browser.is_connected() and (now - created_at) < _BROWSER_MAX_AGE:
             return pw, browser
-        # Stale browser, clean up
+        # Stale or expired browser — close and recreate
         with _browser_lock:
             _browser_instances.pop(tid, None)
+        try:
+            await browser.close()
+            await pw.stop()
+        except Exception:
+            pass
 
     from playwright.async_api import async_playwright
     pw = await async_playwright().start()
     browser = await pw.chromium.launch(headless=True)
     with _browser_lock:
-        _browser_instances[tid] = (pw, browser)
+        _browser_instances[tid] = (pw, browser, now)
     return pw, browser
 
 
@@ -96,7 +105,7 @@ async def _close_browser():
     with _browser_lock:
         entry = _browser_instances.pop(tid, None)
     if entry:
-        pw, browser = entry
+        pw, browser, _created = entry
         try:
             await browser.close()
         except Exception:
@@ -108,13 +117,33 @@ async def _close_browser():
 
 
 def close_browser_sync():
-    """Synchronous helper to close the thread-local browser. Call on shutdown."""
+    """Synchronous helper to close ALL browser instances. Call on shutdown."""
     loop = _get_or_create_loop()
-    loop.run_until_complete(_close_browser())
+    # Close all instances, not just the current thread's
+    with _browser_lock:
+        entries = list(_browser_instances.items())
+        _browser_instances.clear()
+    for _tid, entry in entries:
+        pw, browser, _created = entry
+        try:
+            loop.run_until_complete(browser.close())
+        except Exception:
+            pass
+        try:
+            loop.run_until_complete(pw.stop())
+        except Exception:
+            pass
 
 
 async def _scrape_page_async(url: str, timeout_ms: int = 15000) -> ScrapedPage:
-    """Async implementation: reuse browser, create a new context per scrape."""
+    """Async implementation: reuse browser, create a new context per scrape.
+
+    Timeout hierarchy (prevents any single URL from hanging indefinitely):
+    - Per-operation: timeout_ms via context.set_default_timeout() — every
+      Playwright call (goto, evaluate, querySelector, etc.) inherits this.
+    - Overall deadline: 2× timeout_ms via asyncio.wait_for() in the sync
+      wrapper — catches accumulated delays even when individual ops succeed.
+    """
     try:
         _pw, browser = await _get_browser()
     except Exception as e:
@@ -125,6 +154,7 @@ async def _scrape_page_async(url: str, timeout_ms: int = 15000) -> ScrapedPage:
         )
 
     context = await browser.new_context(user_agent=_USER_AGENT)
+    context.set_default_timeout(timeout_ms)
     page = await context.new_page()
 
     try:
@@ -177,12 +207,24 @@ async def _scrape_page_async(url: str, timeout_ms: int = 15000) -> ScrapedPage:
 
 
 def scrape_page(url: str, timeout_ms: int = 15000) -> ScrapedPage:
-    """Synchronous wrapper around the async Playwright scraper.
+    """Synchronous wrapper with overall deadline.
 
-    Reuses a thread-local event loop and browser instance.
+    The deadline (2× timeout_ms) catches accumulated delays: even if goto
+    takes 14s and evaluate takes 14s (both under 15s individually), the
+    overall 30s deadline fires and returns an error instead of blocking.
     """
     loop = _get_or_create_loop()
-    return loop.run_until_complete(_scrape_page_async(url, timeout_ms))
+    deadline_s = (timeout_ms * 2) / 1000
+    try:
+        return loop.run_until_complete(
+            asyncio.wait_for(_scrape_page_async(url, timeout_ms), timeout=deadline_s)
+        )
+    except asyncio.TimeoutError:
+        return ScrapedPage(
+            url=url, final_url=url, title="", meta_description="",
+            main_text="", status_code=0, is_accessible=False,
+            error=f"Scrape deadline exceeded ({deadline_s:.0f}s)",
+        )
 
 
 def check_relevance(scraped: ScrapedPage, keywords: list[str] = None) -> tuple[str, str]:

@@ -225,12 +225,14 @@ CREATE TABLE IF NOT EXISTS reports (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
--- Indexes
+-- Indexes (basic)
 CREATE INDEX IF NOT EXISTS idx_categories_project ON categories(project_id);
+CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
 CREATE INDEX IF NOT EXISTS idx_companies_url ON companies(url);
 CREATE INDEX IF NOT EXISTS idx_companies_category ON companies(category_id);
 CREATE INDEX IF NOT EXISTS idx_companies_project ON companies(project_id);
 CREATE INDEX IF NOT EXISTS idx_sources_company ON company_sources(company_id);
+CREATE INDEX IF NOT EXISTS idx_sources_url ON company_sources(url);
 CREATE INDEX IF NOT EXISTS idx_jobs_batch ON jobs(batch_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_project ON jobs(project_id);
@@ -247,3 +249,10 @@ CREATE INDEX IF NOT EXISTS idx_activity_project ON activity_log(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_reports_project ON reports(project_id);
 CREATE INDEX IF NOT EXISTS idx_reports_report_id ON reports(report_id);
+
+-- Composite indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_companies_active ON companies(project_id, is_deleted, category_id);
+CREATE INDEX IF NOT EXISTS idx_companies_subcategory ON companies(subcategory_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_batch_status ON jobs(batch_id, status);
+CREATE INDEX IF NOT EXISTS idx_notes_company_pinned ON company_notes(company_id, is_pinned);
+CREATE INDEX IF NOT EXISTS idx_triage_batch_status ON triage_results(batch_id, status);

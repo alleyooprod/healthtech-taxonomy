@@ -1,15 +1,32 @@
-"""Call Claude CLI for per-company deep research."""
+"""Per-company deep research using the LLM layer."""
 import json
-import subprocess
+import logging
 
-from config import (
-    CLAUDE_BIN, CLAUDE_COMMON_FLAGS, PROMPTS_DIR,
-    RESEARCH_TIMEOUT,
-)
+from config import PROMPTS_DIR, RESEARCH_TIMEOUT
+from core.llm import run_cli
+
+logger = logging.getLogger(__name__)
+
+_RESEARCH_REQUIRED_FIELDS = {"name", "url"}
+
+
+def _validate_research(data, url):
+    """Validate LLM research output has required fields and sane values."""
+    if not isinstance(data, dict):
+        raise ValueError(f"Research output for {url} is not a dict")
+    missing = _RESEARCH_REQUIRED_FIELDS - set(data.keys())
+    if missing:
+        raise ValueError(f"Research output for {url} missing required fields: {missing}")
+    if "confidence_score" in data and data["confidence_score"] is not None:
+        try:
+            data["confidence_score"] = max(0.0, min(1.0, float(data["confidence_score"])))
+        except (ValueError, TypeError):
+            data["confidence_score"] = None
+    return data
 
 
 def research_company(url, model="claude-opus-4-6"):
-    """Run deep research on a single company URL via Claude CLI.
+    """Run deep research on a single company URL.
 
     Returns a dict with all extracted company fields.
     Raises RuntimeError on failure.
@@ -18,38 +35,11 @@ def research_company(url, model="claude-opus-4-6"):
     prompt = prompt_template.format(url=url)
     schema = (PROMPTS_DIR / "schemas" / "company_research.json").read_text()
 
-    cmd = [
-        CLAUDE_BIN,
-        "-p", prompt,
-        *CLAUDE_COMMON_FLAGS,
-        "--json-schema", schema,
-        "--tools", "WebSearch,WebFetch",
-        "--model", model,
-        "--no-session-persistence",
-    ]
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=RESEARCH_TIMEOUT,
-    )
-
-    if result.returncode != 0:
-        stderr = result.stderr.strip()[:500] if result.stderr else "unknown error"
-        raise RuntimeError(f"Claude CLI failed (exit {result.returncode}): {stderr}")
-
-    try:
-        response = json.loads(result.stdout)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Failed to parse Claude CLI output: {e}\nRaw: {result.stdout[:500]}")
-
-    if response.get("is_error"):
-        raise RuntimeError(f"Claude CLI error: {response.get('result', 'unknown')[:300]}")
+    response = run_cli(prompt, model, timeout=RESEARCH_TIMEOUT,
+                       tools="WebSearch,WebFetch", json_schema=schema)
 
     structured = response.get("structured_output")
     if not structured:
-        # Fall back to trying to parse the result text as JSON
         raw = response.get("result", "")
         try:
             structured = json.loads(raw)
@@ -57,6 +47,8 @@ def research_company(url, model="claude-opus-4-6"):
             raise ValueError(
                 f"No structured output for {url}. Raw result: {raw[:300]}"
             )
+
+    structured = _validate_research(structured, url)
 
     # Attach cost metadata
     structured["_cost_usd"] = response.get("cost_usd", 0)
@@ -84,34 +76,8 @@ def research_company_with_sources(source_urls, existing_research, model="claude-
 
     schema = (PROMPTS_DIR / "schemas" / "company_research.json").read_text()
 
-    cmd = [
-        CLAUDE_BIN,
-        "-p", prompt,
-        *CLAUDE_COMMON_FLAGS,
-        "--json-schema", schema,
-        "--tools", "WebSearch,WebFetch",
-        "--model", model,
-        "--no-session-persistence",
-    ]
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=RESEARCH_TIMEOUT,
-    )
-
-    if result.returncode != 0:
-        stderr = result.stderr.strip()[:500] if result.stderr else "unknown error"
-        raise RuntimeError(f"Re-research failed (exit {result.returncode}): {stderr}")
-
-    try:
-        response = json.loads(result.stdout)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Failed to parse re-research output: {e}")
-
-    if response.get("is_error"):
-        raise RuntimeError(f"Re-research error: {response.get('result', 'unknown')[:300]}")
+    response = run_cli(prompt, model, timeout=RESEARCH_TIMEOUT,
+                       tools="WebSearch,WebFetch", json_schema=schema)
 
     structured = response.get("structured_output")
     if not structured:

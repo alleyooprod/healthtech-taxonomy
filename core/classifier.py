@@ -1,11 +1,8 @@
-"""Call Claude CLI to classify a company into the taxonomy."""
+"""Classify a company into the taxonomy using the LLM layer."""
 import json
-import subprocess
 
-from config import (
-    CLAUDE_BIN, CLAUDE_COMMON_FLAGS, PROMPTS_DIR,
-    CLASSIFY_TIMEOUT,
-)
+from config import PROMPTS_DIR, CLASSIFY_TIMEOUT
+from core.llm import run_cli
 
 
 def classify_company(company_data, taxonomy_tree, model="claude-opus-4-6"):
@@ -31,34 +28,8 @@ def classify_company(company_data, taxonomy_tree, model="claude-opus-4-6"):
 
     schema = (PROMPTS_DIR / "schemas" / "company_classification.json").read_text()
 
-    cmd = [
-        CLAUDE_BIN,
-        "-p", prompt,
-        *CLAUDE_COMMON_FLAGS,
-        "--json-schema", schema,
-        "--tools", "",
-        "--model", model,
-        "--no-session-persistence",
-    ]
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=CLASSIFY_TIMEOUT,
-    )
-
-    if result.returncode != 0:
-        stderr = result.stderr.strip()[:500] if result.stderr else "unknown error"
-        raise RuntimeError(f"Classification failed (exit {result.returncode}): {stderr}")
-
-    try:
-        response = json.loads(result.stdout)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Failed to parse classification output: {e}")
-
-    if response.get("is_error"):
-        raise RuntimeError(f"Classification error: {response.get('result', 'unknown')[:300]}")
+    response = run_cli(prompt, model, timeout=CLASSIFY_TIMEOUT,
+                       json_schema=schema)
 
     structured = response.get("structured_output")
     if not structured:
@@ -67,6 +38,15 @@ def classify_company(company_data, taxonomy_tree, model="claude-opus-4-6"):
             structured = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             raise ValueError(f"No structured classification output. Raw: {raw[:300]}")
+
+    # Validate required fields
+    if not isinstance(structured, dict):
+        raise ValueError("Classification output is not a dict")
+    if "confidence" in structured and structured["confidence"] is not None:
+        try:
+            structured["confidence"] = max(0.0, min(1.0, float(structured["confidence"])))
+        except (ValueError, TypeError):
+            structured["confidence"] = None
 
     return structured
 

@@ -1,0 +1,270 @@
+/* Feature: Integrations — analytics, view toggles, Leaflet, SortableJS, tour, Notyf, Tagify, Driver.js, Tabulator, Tippy, marker clusters */
+
+/* ========== New Library Integration Styles ========== */
+
+/* Analytics Dashboard */
+.analytics-dashboard {
+    margin-bottom: 24px;
+}
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+.chart-card {
+    background: var(--bg-container);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    padding: 16px;
+    min-height: 280px;
+}
+.chart-card h4 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Taxonomy View Toggle */
+.taxonomy-view-toggle,
+.map-view-toggle {
+    display: inline-flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.view-toggle-btn {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bg-container);
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.view-toggle-btn:hover {
+    background: var(--bg-surface-hover);
+}
+.view-toggle-btn.active {
+    background: var(--accent-primary);
+    color: #fff;
+}
+
+/* Map Controls Layout */
+.map-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+/* Leaflet geo map overrides */
+#geoMap {
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.geo-marker-icon {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* SortableJS ghost/drag states */
+.sortable-ghost {
+    opacity: 0.4;
+    background: var(--accent-primary-light) !important;
+    border: 2px dashed var(--accent-primary) !important;
+    border-radius: 8px;
+}
+.sortable-chosen {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: scale(1.02);
+}
+.sortable-drag {
+    opacity: 0.9;
+}
+
+/* Tour FAB button */
+.tour-fab {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 999;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.tour-fab:hover {
+    background: var(--accent-primary);
+    color: #fff;
+    border-color: var(--accent-primary);
+    transform: scale(1.05);
+}
+
+/* Notyf theme overrides */
+.notyf__toast {
+    border-radius: 10px !important;
+    font-family: 'Noto Sans', sans-serif !important;
+    font-size: 13px !important;
+}
+
+/* Tagify overrides */
+.tagify {
+    --tag-bg: var(--accent-primary-light);
+    --tag-text-color: var(--accent-primary);
+    --tag-hover: var(--accent-primary-focus);
+    --tag-remove-bg: var(--accent-danger-light);
+    --tag-remove-btn-color: var(--accent-danger);
+    border-color: var(--border-default);
+    border-radius: 8px;
+    min-height: 38px;
+}
+.tagify__tag {
+    border-radius: 6px;
+}
+.tagify__input {
+    color: var(--text-primary);
+}
+
+/* Driver.js theme overrides */
+.driver-popover {
+    font-family: 'Noto Sans', sans-serif !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border-default) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+}
+.driver-popover-title {
+    font-family: 'Newsreader', serif !important;
+    color: var(--text-heading) !important;
+}
+.driver-popover-description {
+    color: var(--text-secondary) !important;
+    font-size: 13px !important;
+}
+.driver-popover-next-btn,
+.driver-popover-prev-btn {
+    background: var(--accent-primary) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+}
+.driver-popover-prev-btn {
+    background: var(--bg-surface) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-default) !important;
+}
+
+/* Tabulator theme adjustments */
+.tabulator {
+    border: 1px solid var(--border-default) !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+    font-family: 'Noto Sans', sans-serif !important;
+    font-size: 13px !important;
+}
+
+/* Tippy.js theme */
+.tippy-box[data-theme~='light-border'] {
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 12px;
+    border-radius: 8px;
+}
+
+/* Export cards update */
+.export-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+/* Leaflet marker cluster overrides */
+.marker-cluster-small {
+    background-color: rgba(188, 108, 90, 0.3) !important;
+}
+.marker-cluster-small div {
+    background-color: rgba(188, 108, 90, 0.7) !important;
+    color: #fff !important;
+    font-family: 'Noto Sans', sans-serif;
+    font-weight: 600;
+}
+.marker-cluster-medium {
+    background-color: rgba(90, 124, 90, 0.3) !important;
+}
+.marker-cluster-medium div {
+    background-color: rgba(90, 124, 90, 0.7) !important;
+    color: #fff !important;
+    font-family: 'Noto Sans', sans-serif;
+    font-weight: 600;
+}
+.marker-cluster-large {
+    background-color: rgba(107, 143, 163, 0.3) !important;
+}
+.marker-cluster-large div {
+    background-color: rgba(107, 143, 163, 0.7) !important;
+    color: #fff !important;
+    font-family: 'Noto Sans', sans-serif;
+    font-weight: 600;
+}
+
+/* Dark theme additions for new components */
+[data-theme="dark"] .chart-card {
+    background: var(--bg-container);
+    border-color: var(--border-default);
+}
+[data-theme="dark"] .view-toggle-btn {
+    background: var(--bg-container);
+    color: var(--text-secondary);
+    border-color: var(--border-default);
+}
+[data-theme="dark"] .view-toggle-btn.active {
+    background: var(--accent-primary);
+    color: #fff;
+}
+[data-theme="dark"] .tour-fab {
+    background: var(--bg-surface);
+    border-color: var(--border-default);
+    color: var(--text-secondary);
+}
+[data-theme="dark"] .tour-fab:hover {
+    background: var(--accent-primary);
+    color: #fff;
+}
+[data-theme="dark"] .driver-popover {
+    background: var(--bg-container) !important;
+    border-color: var(--border-default) !important;
+}
+[data-theme="dark"] .driver-popover-title {
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] .driver-popover-description {
+    color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .tagify {
+    background: var(--bg-input);
+    border-color: var(--border-default);
+}
+[data-theme="dark"] #geoMap {
+    border-color: var(--border-default);
+}
+[data-theme="dark"] .notyf__toast {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}

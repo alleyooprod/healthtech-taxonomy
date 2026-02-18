@@ -9,11 +9,41 @@ from config import DATA_DIR
 
 
 def export_json(db, output_path=None, project_id=None):
-    """Export full taxonomy to JSON."""
+    """Export full taxonomy to JSON including all related tables."""
     output_path = output_path or (DATA_DIR / "taxonomy_data.json")
     companies = db.get_companies(project_id=project_id)
     categories = db.get_categories(project_id=project_id)
     stats = db.get_stats(project_id=project_id)
+
+    # Collect notes and events per company
+    for c in companies:
+        try:
+            c["notes"] = db.get_notes(c["id"])
+            c["events"] = db.get_events(c["id"])
+        except Exception:
+            pass  # graceful if methods not available
+
+    # Additional tables
+    taxonomy_history = []
+    reports = []
+    activity = []
+    saved_views = []
+    try:
+        taxonomy_history = db.get_taxonomy_history(project_id=project_id, limit=500)
+    except Exception:
+        pass
+    try:
+        reports = db.get_reports(project_id=project_id)
+    except Exception:
+        pass
+    try:
+        activity = db.get_activity(project_id, limit=500) if project_id else []
+    except Exception:
+        pass
+    try:
+        saved_views = db.get_saved_views(project_id) if project_id else []
+    except Exception:
+        pass
 
     data = {
         "metadata": {
@@ -24,6 +54,10 @@ def export_json(db, output_path=None, project_id=None):
         },
         "categories": categories,
         "companies": companies,
+        "taxonomy_history": taxonomy_history,
+        "reports": reports,
+        "activity_log": activity,
+        "saved_views": saved_views,
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

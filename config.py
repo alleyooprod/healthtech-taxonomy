@@ -19,6 +19,8 @@ MODEL_CHOICES = {
     "haiku": "claude-haiku-4-5-20251001",
     "sonnet": "claude-sonnet-4-5-20250929",
     "opus": "claude-opus-4-6",
+    "gemini-flash": "gemini-2.0-flash",
+    "gemini-pro": "gemini-2.5-pro",
 }
 SUB_BATCH_SIZE = 5  # Auto-chunk batches larger than this
 MAX_RETRIES = 3
@@ -37,8 +39,45 @@ CLAUDE_COMMON_FLAGS = [
     *(["--dangerously-skip-permissions"] if _skip_permissions else []),
 ]
 
+# Gemini CLI (via npx; auth: run `npx @google/gemini-cli` interactively once)
+GEMINI_BIN = ["npx", "@google/gemini-cli"]
+GEMINI_COMMON_FLAGS = [
+    "--output-format", "json",
+    "-y",  # auto-approve all tool use (yolo mode)
+]
+
 # Session secret generated per app instance (used for write-endpoint auth)
 SESSION_SECRET = os.environ.get("APP_SESSION_SECRET", secrets.token_urlsafe(32))
+
+# CSRF tokens: per-request tokens signed with SESSION_SECRET
+import hmac, hashlib, time as _time
+
+def generate_csrf_token():
+    """Generate a per-request CSRF token with timestamp."""
+    ts = str(int(_time.time()))
+    sig = hmac.new(SESSION_SECRET.encode(), ts.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{ts}.{sig}"
+
+def verify_csrf_token(token, max_age=86400):
+    """Verify a CSRF token is valid and not expired (default 24h)."""
+    if not token or "." not in token:
+        return False
+    ts_str, sig = token.rsplit(".", 1)
+    try:
+        ts = int(ts_str)
+    except ValueError:
+        return False
+    if _time.time() - ts > max_age:
+        return False
+    expected = hmac.new(SESSION_SECRET.encode(), ts_str.encode(), hashlib.sha256).hexdigest()[:16]
+    return hmac.compare_digest(sig, expected)
+
+# Rate limiting
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX_REQUESTS = {
+    "ai": 10,       # AI endpoints per window
+    "default": 120,  # General endpoints per window
+}
 
 # Taxonomy evolution thresholds
 MIN_COMPANIES_FOR_NEW_CATEGORY = 3

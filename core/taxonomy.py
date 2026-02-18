@@ -1,13 +1,10 @@
 """Taxonomy evolution: reviews and restructures categories after each batch."""
 import json
-import subprocess
 import threading
 
-from config import (
-    CLAUDE_BIN, CLAUDE_COMMON_FLAGS, PROMPTS_DIR,
-    EVOLVE_TIMEOUT,
-)
+from config import PROMPTS_DIR, EVOLVE_TIMEOUT
 from core.classifier import build_taxonomy_tree_string
+from core.llm import run_cli
 
 REVIEW_TIMEOUT = 180  # Full review is more complex, allow 3 minutes
 
@@ -68,22 +65,18 @@ def _apply_single_change(db, change, project_id=None):
             source = change.get("category_name")
             new_cats = change.get("split_into", [])
             if source and new_cats:
-                # Create new categories
                 new_cat_ids = []
                 for new_name in new_cats:
                     cat_id = db.add_category(new_name, project_id=project_id)
                     if cat_id:
                         new_cat_ids.append((new_name, cat_id))
 
-                # Reassign companies from the source category (#9)
                 source_cat = db.get_category_by_name(source, project_id=project_id)
                 if source_cat and new_cat_ids:
                     companies = db.get_companies(
                         project_id=project_id, category_id=source_cat["id"]
                     )
                     if companies and len(new_cat_ids) > 0:
-                        # Distribute evenly across new categories as a starting point.
-                        # The next taxonomy evolution or manual review will fine-tune.
                         for i, c in enumerate(companies):
                             target_name, target_id = new_cat_ids[i % len(new_cat_ids)]
                             db.update_company(c["id"], {"category_id": target_id},
@@ -122,6 +115,18 @@ def _apply_single_change(db, change, project_id=None):
     return None
 
 
+def _parse_structured(response):
+    """Extract structured output from LLM response, falling back to parsing result text."""
+    structured = response.get("structured_output")
+    if structured:
+        return structured
+    raw = response.get("result", "")
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
 def evolve_taxonomy(db, batch_id, model="claude-opus-4-6", project_id=None):
     """Review and evolve taxonomy after a batch completes.
 
@@ -136,7 +141,6 @@ def evolve_taxonomy(db, batch_id, model="claude-opus-4-6", project_id=None):
         print("  No companies in batch to analyze for taxonomy evolution.")
         return []
 
-    # Build summary of new companies
     company_summaries = []
     for c in batch_companies:
         company_summaries.append(
@@ -153,41 +157,17 @@ def evolve_taxonomy(db, batch_id, model="claude-opus-4-6", project_id=None):
 
     schema = (PROMPTS_DIR / "schemas" / "taxonomy_evolution.json").read_text()
 
-    cmd = [
-        CLAUDE_BIN,
-        "-p", prompt,
-        *CLAUDE_COMMON_FLAGS,
-        "--json-schema", schema,
-        "--tools", "",
-        "--model", model,
-        "--no-session-persistence",
-    ]
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=EVOLVE_TIMEOUT,
-    )
-
-    if result.returncode != 0:
-        print(f"  Warning: Taxonomy evolution failed: {result.stderr[:300] if result.stderr else 'unknown'}")
-        return []
-
     try:
-        response = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print(f"  Warning: Could not parse taxonomy evolution output")
+        response = run_cli(prompt, model, timeout=EVOLVE_TIMEOUT,
+                           json_schema=schema)
+    except Exception as e:
+        print(f"  Warning: Taxonomy evolution failed: {e}")
         return []
 
-    structured = response.get("structured_output")
+    structured = _parse_structured(response)
     if not structured:
-        raw = response.get("result", "")
-        try:
-            structured = json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            print(f"  Warning: No structured taxonomy evolution output")
-            return []
+        print("  Warning: No structured taxonomy evolution output")
+        return []
 
     print(f"  Taxonomy analysis: {structured.get('analysis', '')[:200]}")
 
@@ -231,7 +211,6 @@ def review_taxonomy(db, model="claude-opus-4-6", project_id=None, observations="
     if not companies:
         return {"analysis": "No companies in taxonomy to review.", "changes": []}
 
-    # Build full company list summary
     company_lines = []
     for c in companies:
         cat = c.get("category_name", "Uncategorized")
@@ -247,45 +226,20 @@ def review_taxonomy(db, model="claude-opus-4-6", project_id=None, observations="
         total_companies=stats["total_companies"],
     )
 
-    # Append user observations if provided
     if observations:
         prompt += f"\n\nUSER OBSERVATIONS (prioritize these):\n{observations}"
 
     schema = (PROMPTS_DIR / "schemas" / "taxonomy_evolution.json").read_text()
 
-    cmd = [
-        CLAUDE_BIN,
-        "-p", prompt,
-        *CLAUDE_COMMON_FLAGS,
-        "--json-schema", schema,
-        "--tools", "",
-        "--model", model,
-        "--no-session-persistence",
-    ]
-
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        timeout=REVIEW_TIMEOUT,
-    )
-
-    if result.returncode != 0:
-        stderr = result.stderr[:300] if result.stderr else "unknown"
-        return {"error": f"Review failed: {stderr}", "changes": []}
-
     try:
-        response = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return {"error": "Could not parse review output", "changes": []}
+        response = run_cli(prompt, model, timeout=REVIEW_TIMEOUT,
+                           json_schema=schema)
+    except Exception as e:
+        return {"error": f"Review failed: {e}", "changes": []}
 
-    structured = response.get("structured_output")
+    structured = _parse_structured(response)
     if not structured:
-        raw = response.get("result", "")
-        try:
-            structured = json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return {"error": "No structured output from review", "changes": []}
+        return {"error": "No structured output from review", "changes": []}
 
     return structured
 

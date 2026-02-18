@@ -1,0 +1,418 @@
+/* Feature: Processing — process options, progress bar, batches, retry, triage, AI discovery, AI find similar */
+
+/* ========== Process Options ========== */
+.process-input {
+    background: var(--bg-surface);
+    padding: 20px;
+    border-radius: 16px;
+}
+
+.process-options {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.process-options label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.process-options select, .process-options input[type="number"] {
+    padding: 6px 10px;
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.process-options input[type="number"] { width: 60px; }
+
+/* ========== Progress Bar ========== */
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background: var(--border-strong);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin: 12px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--progress-gradient);
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+/* ========== Batch Entries ========== */
+.batch-entry {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-default);
+    font-size: 14px;
+}
+
+.batch-entry:hover { background: var(--bg-surface); }
+
+.batch-date {
+    float: right;
+    color: var(--text-faint);
+    font-size: 13px;
+}
+
+.hint-text {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin-bottom: 8px;
+}
+
+/* ========== Batch Detail View ========== */
+.batch-detail-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 15px;
+}
+
+.batch-detail-list { margin-bottom: 15px; }
+
+.batch-detail-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-default);
+    background: var(--bg-container);
+    font-size: 13px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.batch-detail-item:last-child { border-bottom: none; }
+.batch-detail-item.job-done { border-left: 3px solid var(--accent-success); }
+.batch-detail-item.job-error { border-left: 3px solid var(--accent-danger); }
+.batch-detail-item.job-timeout { border-left: 3px solid var(--wheat); }
+.batch-detail-item.job-pending { border-left: 3px solid var(--accent-warning); }
+
+.job-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.job-status-badge.job-done { background: var(--accent-success-light); color: var(--accent-success-text); }
+.job-status-badge.job-error { background: var(--accent-danger-light); color: var(--accent-danger-text); }
+.job-status-badge.job-timeout { background: var(--accent-warning-light); color: var(--accent-warning-text); }
+.job-status-badge.job-pending { background: var(--accent-warning-light); color: var(--accent-warning-text); }
+
+.batch-results-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 8px;
+}
+.batch-results-header h3 { margin: 0; }
+.batch-results-summary {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.retry-timeouts-btn {
+    margin-left: auto;
+    background: var(--wheat);
+    color: var(--text-heading);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+.retry-timeouts-btn:hover { background: #D4B87A; }
+.retry-errors-btn {
+    margin-left: 8px;
+    background: var(--accent-danger);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+.retry-errors-btn:hover { background: var(--accent-danger-hover); }
+
+/* ========== Retry Progress Banner ========== */
+.retry-progress-banner {
+    background: var(--accent-primary-light);
+    border: 1px solid var(--accent-primary);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 12px 0;
+}
+
+.retry-progress-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-primary);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.retry-progress-info .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--accent-primary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.batch-detail-url { word-break: break-all; flex: 1; min-width: 200px; }
+.batch-detail-company { font-weight: 600; }
+
+.batch-detail-action {
+    padding: 2px 8px;
+    background: var(--border-strong);
+    border-radius: 9999px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.batch-detail-replaced { font-size: 12px; color: var(--accent-primary); }
+.batch-detail-title { width: 100%; font-size: 12px; color: var(--text-secondary); }
+.batch-detail-reason { width: 100%; font-size: 12px; color: var(--text-muted); font-style: italic; }
+
+.batch-detail-error {
+    width: 100%;
+    font-size: 12px;
+    color: var(--accent-danger);
+    background: var(--accent-danger-bg-subtle);
+    padding: 4px 8px;
+    border-radius: 8px;
+    margin-top: 4px;
+}
+
+[data-theme="dark"] .job-status-badge.job-timeout { background: var(--accent-warning-light); color: var(--accent-warning-text); }
+[data-theme="dark"] .retry-timeouts-btn { background: var(--wheat); color: var(--text-heading); }
+[data-theme="dark"] .retry-timeouts-btn:hover { background: #D4B87A; }
+[data-theme="dark"] .retry-errors-btn { background: var(--accent-danger); }
+[data-theme="dark"] .retry-errors-btn:hover { background: var(--accent-danger-hover); }
+
+/* ========== Triage ========== */
+.triage-info { color: var(--text-secondary); font-size: 14px; margin-bottom: 10px; }
+
+.triage-status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.triage-status-badge.checking { background: var(--accent-warning-light); color: var(--accent-warning-text); }
+.triage-status-badge.review { background: var(--accent-info-light); color: var(--accent-info-text); }
+
+.triage-item {
+    border: 1px solid var(--border-default);
+    border-left: 4px solid var(--border-medium);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+}
+
+.triage-item.triage-valid { border-left-color: var(--accent-success); background: var(--accent-success-bg); }
+.triage-item.triage-suspect { border-left-color: var(--accent-warning); background: var(--accent-warning-bg); }
+.triage-item.triage-error { border-left-color: var(--accent-danger); background: var(--accent-danger-bg); }
+
+.triage-item-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.triage-item-header a { font-size: 14px; color: var(--accent-primary); text-decoration: none; word-break: break-all; }
+.triage-item-header a:hover { text-decoration: underline; }
+
+.triage-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.triage-badge.triage-valid { background: var(--accent-success-light); color: var(--accent-success-text); }
+.triage-badge.triage-suspect { background: var(--accent-warning-light); color: var(--accent-warning-text); }
+.triage-badge.triage-error { background: var(--accent-danger-light); color: var(--accent-danger-text); }
+
+.triage-title { font-weight: 500; font-size: 13px; color: var(--text-primary); margin-bottom: 2px; }
+.triage-reason { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+
+.triage-preview {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 6px;
+    max-height: 40px;
+    overflow: hidden;
+}
+
+.triage-item-actions { display: flex; gap: 16px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.triage-item-actions label { font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.triage-item-actions input[type="radio"] { margin: 0; }
+
+.replacement-input {
+    padding: 4px 8px;
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    font-size: 13px;
+    width: 300px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.triage-comment-input {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    font-size: 12px;
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    box-sizing: border-box;
+}
+.triage-comment-input::placeholder { color: var(--text-muted); }
+
+.batch-detail-comment {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.triage-action-bar {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-top: 15px;
+    padding: 15px;
+    background: var(--bg-surface);
+    border-radius: 16px;
+}
+
+.triage-action-bar span { flex: 1; font-size: 14px; color: var(--text-secondary); }
+
+/* ========== AI Discovery ========== */
+.ai-discovery-section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 20px;
+}
+
+.discovery-input {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.discovery-input input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.discovery-result {
+    padding: 10px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    margin-top: 8px;
+    background: var(--bg-container);
+}
+
+.discovery-result label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.discovery-url {
+    font-size: 12px;
+    color: var(--accent-primary);
+    display: block;
+    margin-left: 24px;
+}
+
+.discovery-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 4px 0 0 24px;
+}
+
+/* ========== AI Find Similar ========== */
+.similar-results {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+}
+
+.similar-results h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: var(--text-heading);
+}
+
+.similar-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.similar-item:last-child {
+    border-bottom: none;
+}
+
+.similar-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.similar-item-header a {
+    font-size: 12px;
+    color: var(--accent-primary);
+}
+
+.similar-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 2px 0;
+}
+
+.similar-reason {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 2px 0;
+}

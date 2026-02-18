@@ -1,0 +1,203 @@
+/* Feature: Taxonomy — category cards, history, review, quality dashboard */
+
+/* ========== Taxonomy ========== */
+.category-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.cat-header {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.count {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 13px;
+}
+
+.sub-categories {
+    margin-top: 8px;
+    padding-left: 20px;
+}
+
+.sub-cat {
+    font-size: 13px;
+    padding: 3px 0;
+    color: var(--text-secondary);
+}
+
+/* ========== History ========== */
+.history-entry {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-default);
+    font-size: 13px;
+}
+
+.change-type {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--accent-primary-light);
+    color: var(--accent-primary-hover);
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-right: 8px;
+}
+
+.change-date {
+    float: right;
+    color: var(--text-faint);
+}
+
+/* ========== Taxonomy Review ========== */
+.review-section {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg-surface);
+    border-radius: 16px;
+    border: 1px solid var(--border-default);
+}
+
+.review-analysis {
+    padding: 12px 16px;
+    background: var(--bg-container);
+    border-left: 4px solid var(--accent-primary);
+    border-radius: 12px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.review-change {
+    padding: 10px 16px;
+    background: var(--bg-container);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    margin-bottom: 6px;
+}
+
+.review-change label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.review-change-reason { font-size: 13px; color: var(--text-secondary); margin-left: 26px; margin-top: 4px; }
+.review-actions { display: flex; gap: 10px; margin-top: 15px; }
+
+.review-error {
+    padding: 12px;
+    background: var(--accent-danger-bg-subtle);
+    border: 1px solid var(--accent-danger-light);
+    border-radius: 12px;
+    color: var(--accent-danger-text);
+    font-size: 14px;
+}
+
+/* ========== Taxonomy Quality ========== */
+.quality-dashboard {
+    background: var(--bg-surface);
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--border-default);
+    margin-bottom: 16px;
+}
+
+.quality-cards {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.quality-card {
+    flex: 1;
+    min-width: 120px;
+    background: var(--bg-container);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+}
+
+.quality-metric {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-heading);
+}
+
+.quality-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.quality-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    font-style: italic;
+}
+
+.quality-issue {
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    background: var(--bg-surface);
+    border-left: 3px solid var(--text-muted);
+}
+
+.quality-issue-header {
+    margin-bottom: 4px;
+}
+
+.quality-issue-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 4px 0 8px;
+}
+
+.quality-issue-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.quality-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-container);
+    border: 1px solid var(--border-default);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.quality-chip-action {
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+}
+
+.quality-chip-action:hover {
+    background: var(--accent-primary-hover);
+}
+
+.quality-warn {
+    border-left-color: var(--wheat);
+    background: var(--accent-warning-bg);
+}
+
+[data-theme="dark"] .quality-warn {
+    background: var(--accent-warning-bg);
+}
