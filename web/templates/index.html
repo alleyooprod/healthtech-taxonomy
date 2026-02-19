@@ -405,11 +405,23 @@
                         Analytics Dashboard <span id="analyticsSection-toggle" class="collapse-arrow"><span class="material-symbols-outlined">expand_more</span></span>
                     </h3>
                     <div id="analyticsSection" class="collapsible-body">
-                        <div class="chart-grid">
-                            <div class="chart-card">
-                                <h4>Companies by Category</h4>
-                                <div id="chartCategoryDist" class="chart-container"></div>
+                        <!-- Category Matrix (full width) -->
+                        <div class="chart-card chart-card-wide" style="margin-bottom:16px">
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                                <h4 style="margin:0">Category Matrix</h4>
+                                <div style="display:flex;gap:8px;align-items:center">
+                                    <label style="font-size:12px;color:var(--text-muted)">Columns:</label>
+                                    <select id="matrixDimension" onchange="renderCategoryMatrix()" style="padding:4px 8px;border:1px solid var(--border-default);border-radius:6px;font-size:12px;background:var(--bg-input);color:var(--text-primary)">
+                                        <option value="funding_stage">Funding Stage</option>
+                                        <option value="hq_country">Geography</option>
+                                        <option value="business_model">Business Model</option>
+                                        <option value="employee_range">Company Size</option>
+                                    </select>
+                                </div>
                             </div>
+                            <div id="matrixContainer" class="matrix-container"></div>
+                        </div>
+                        <div class="chart-grid">
                             <div class="chart-card">
                                 <h4>Funding Stage Distribution</h4>
                                 <canvas id="chartFundingStage" height="250"></canvas>
@@ -421,10 +433,6 @@
                             <div class="chart-card">
                                 <h4>Confidence Scores</h4>
                                 <canvas id="chartConfidence" height="250"></canvas>
-                            </div>
-                            <div class="chart-card">
-                                <h4>Tag Cloud</h4>
-                                <div id="chartWordCloud" class="chart-container"></div>
                             </div>
                         </div>
                     </div>

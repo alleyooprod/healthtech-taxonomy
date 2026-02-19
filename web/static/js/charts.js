@@ -1,46 +1,105 @@
 /**
- * ECharts treemap/pie and Chart.js doughnut/bar dashboards.
+ * Analytics dashboards: Category matrix, ECharts pie, Chart.js doughnut/bar.
+ * Color scheme: monochromatic terracotta gradient + sage green accent.
  */
 
 let echartInstances = {};
+
+// Monochromatic palette: terracotta shades (light → dark) + sage accent
+const MONO_PALETTE = [
+    '#f2ddd7', '#e8c4ba', '#daa898', '#cc8c76',
+    '#bc6c5a', '#a05a4b', '#7d463a', '#5a3329',
+];
+const ACCENT_SAGE = '#5a7c5a';
+
+// Cache for matrix re-rendering on dimension change
+let _matrixCompanies = [];
+let _matrixCategories = [];
+
+// --- Category Matrix (replaces treemap) ---
+
+function renderCategoryMatrix(companies, categories) {
+    // Allow re-render from dimension dropdown (no args = use cache)
+    if (companies) _matrixCompanies = companies;
+    else companies = _matrixCompanies;
+    if (categories) _matrixCategories = categories;
+    else categories = _matrixCategories;
+
+    const container = document.getElementById('matrixContainer');
+    if (!container || !companies.length || !categories.length) {
+        if (container) container.innerHTML = '<p class="hint-text" style="padding:20px;text-align:center">No data available</p>';
+        return;
+    }
+
+    const dim = (document.getElementById('matrixDimension') || {}).value || 'funding_stage';
+    const topCats = categories.filter(c => !c.parent_id);
+
+    // Build parent lookup for subcategory companies
+    const parentLookup = {};
+    categories.forEach(c => { if (c.parent_id) parentLookup[c.id] = c.parent_id; });
+
+    // Get unique column values, sorted by frequency (top 10)
+    const colCount = {};
+    companies.forEach(c => {
+        const val = c[dim] || 'Unknown';
+        colCount[val] = (colCount[val] || 0) + 1;
+    });
+    const colValues = Object.entries(colCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([name]) => name);
+
+    // Build matrix: map each company to its top-level category
+    const matrix = {};
+    topCats.forEach(cat => {
+        matrix[cat.id] = {};
+        colValues.forEach(v => { matrix[cat.id][v] = 0; });
+    });
+    companies.forEach(c => {
+        const topCatId = parentLookup[c.category_id] || c.category_id;
+        if (!matrix[topCatId]) return;
+        const val = c[dim] || 'Unknown';
+        if (matrix[topCatId][val] !== undefined) matrix[topCatId][val]++;
+    });
+
+    // Find max for heat intensity
+    let maxVal = 1;
+    Object.values(matrix).forEach(row => {
+        Object.values(row).forEach(v => { if (v > maxVal) maxVal = v; });
+    });
+
+    // Render HTML table
+    let html = '<table class="matrix-table"><thead><tr><th class="matrix-corner"></th>';
+    colValues.forEach(v => {
+        const label = v.length > 18 ? v.substring(0, 17) + '\u2026' : v;
+        html += `<th title="${esc(v)}">${esc(label)}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    topCats.forEach(cat => {
+        const catName = cat.name.length > 28 ? cat.name.substring(0, 27) + '\u2026' : cat.name;
+        html += `<tr><td class="matrix-row-label" title="${esc(cat.name)}">${esc(catName)}</td>`;
+        colValues.forEach(v => {
+            const count = matrix[cat.id]?.[v] || 0;
+            const intensity = count ? Math.min(0.12 + (count / maxVal) * 0.45, 0.6) : 0;
+            const bg = count ? `rgba(188, 108, 90, ${intensity.toFixed(2)})` : 'transparent';
+            const textColor = intensity > 0.35 ? '#fff' : 'var(--text-primary)';
+            html += `<td class="matrix-cell" style="background:${bg};color:${textColor}">${count || ''}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// --- ECharts: Geographic Distribution (Pie) ---
 
 function renderAnalyticsDashboard(companies, categories) {
     if (!window.echarts) return;
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const theme = isDark ? 'dark' : null;
 
-    // Category Distribution (Treemap)
-    const catDiv = document.getElementById('chartCategoryDist');
-    if (catDiv) {
-        if (echartInstances.catDist) echartInstances.catDist.dispose();
-        echartInstances.catDist = echarts.init(catDiv, theme);
-        const topCats = categories.filter(c => !c.parent_id);
-        const treemapData = topCats.map(cat => ({
-            name: cat.name,
-            value: cat.company_count || 0,
-        })).filter(d => d.value > 0);
-        echartInstances.catDist.setOption({
-            tooltip: { trigger: 'item', formatter: '{b}: {c} companies' },
-            series: [{
-                type: 'treemap',
-                data: treemapData,
-                roam: false,
-                breadcrumb: { show: false },
-                label: { show: true, formatter: '{b}\n{c}', fontSize: 12 },
-                itemStyle: {
-                    borderColor: isDark ? '#2a2a2a' : '#fff',
-                    borderWidth: 2,
-                    gapWidth: 2,
-                },
-                levels: [{
-                    colorSaturation: [0.3, 0.6],
-                    itemStyle: { borderColorSaturation: 0.7 },
-                }],
-            }],
-        });
-    }
-
-    // Geographic Distribution (Pie)
+    // Geographic Distribution (Pie — monochromatic terracotta)
     const geoDiv = document.getElementById('chartGeoDist');
     if (geoDiv) {
         if (echartInstances.geoDist) echartInstances.geoDist.dispose();
@@ -53,18 +112,31 @@ function renderAnalyticsDashboard(companies, categories) {
         const geoData = Object.entries(geoMap)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, 15);
+            .slice(0, 12);
+
+        // Monochromatic terracotta gradient for pie slices
+        const pieColors = geoData.map((_, i) => {
+            const t = geoData.length > 1 ? i / (geoData.length - 1) : 0;
+            return _lerpColor('#e8c4ba', '#7d463a', t);
+        });
+        // Accent the top slice with sage green
+        if (pieColors.length > 0) pieColors[0] = ACCENT_SAGE;
+
         echartInstances.geoDist.setOption({
             tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
             series: [{
                 type: 'pie',
                 radius: ['35%', '70%'],
                 data: geoData,
+                color: pieColors,
                 label: { formatter: '{b}: {c}', fontSize: 11 },
-                emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } },
+                emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.15)' } },
             }],
         });
     }
+
+    // Render matrix
+    renderCategoryMatrix(companies, categories);
 }
 
 function _chartTextColor() {
@@ -77,12 +149,14 @@ function _chartGridColor() {
     return isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 }
 
+// --- Chart.js Dashboards (Doughnut + Bar — monochromatic) ---
+
 function renderChartJsDashboard(companies) {
     if (!window.Chart) return;
     const textColor = _chartTextColor();
     const gridColor = _chartGridColor();
 
-    // Funding Stage (Doughnut)
+    // Funding Stage (Doughnut — monochromatic terracotta)
     const fundingCanvas = document.getElementById('chartFundingStage');
     if (fundingCanvas) {
         const ctx = fundingCanvas.getContext('2d');
@@ -93,11 +167,17 @@ function renderChartJsDashboard(companies) {
         });
         const labels = Object.keys(stageMap);
         const data = Object.values(stageMap);
-        const colors = ['#bc6c5a', '#5a7c5a', '#6b8fa3', '#d4a853', '#8b6f8b', '#5a8c8c', '#a67c52', '#7c8c5a'];
+        // Monochromatic terracotta gradient for slices
+        const colors = labels.map((_, i) => {
+            const t = labels.length > 1 ? i / (labels.length - 1) : 0;
+            return _lerpColor('#e8c4ba', '#7d463a', t);
+        });
+        if (colors.length > 0) colors[0] = ACCENT_SAGE;
+
         if (window._chartFunding) window._chartFunding.destroy();
         window._chartFunding = new Chart(ctx, {
             type: 'doughnut',
-            data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length) }] },
+            data: { labels, datasets: [{ data, backgroundColor: colors }] },
             options: {
                 responsive: true,
                 plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, color: textColor } } },
@@ -105,7 +185,7 @@ function renderChartJsDashboard(companies) {
         });
     }
 
-    // Confidence Histogram (Bar)
+    // Confidence Histogram (Bar — terracotta gradient, sage for high)
     const confCanvas = document.getElementById('chartConfidence');
     if (confCanvas) {
         const ctx = confCanvas.getContext('2d');
@@ -118,6 +198,9 @@ function renderChartJsDashboard(companies) {
             else if (pct < 80) buckets['60-80%']++;
             else buckets['80-100%']++;
         });
+        // Terracotta light → dark for low→mid, sage green for high
+        const barColors = ['#e8c4ba', '#daa898', '#cc8c76', '#a05a4b', ACCENT_SAGE];
+
         if (window._chartConf) window._chartConf.destroy();
         window._chartConf = new Chart(ctx, {
             type: 'bar',
@@ -126,7 +209,7 @@ function renderChartJsDashboard(companies) {
                 datasets: [{
                     label: 'Companies',
                     data: Object.values(buckets),
-                    backgroundColor: ['#dc3545', '#e6a817', '#d4a853', '#5a7c5a', '#2d5a2d'],
+                    backgroundColor: barColors,
                 }],
             },
             options: {
@@ -141,52 +224,15 @@ function renderChartJsDashboard(companies) {
     }
 }
 
-function renderWordCloud(companies) {
-    if (!window.echarts) return;
-    const wcDiv = document.getElementById('chartWordCloud');
-    if (!wcDiv) return;
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const theme = isDark ? 'dark' : null;
-
-    // Collect tags and keywords from companies
-    const wordMap = {};
-    companies.forEach(c => {
-        (c.tags || []).forEach(t => { wordMap[t] = (wordMap[t] || 0) + 3; });
-        const cat = c.category_name;
-        if (cat) wordMap[cat] = (wordMap[cat] || 0) + 1;
-    });
-
-    const wordData = Object.entries(wordMap)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 60);
-
-    if (!wordData.length) {
-        wcDiv.innerHTML = '<p class="hint-text" style="padding:40px;text-align:center">Add tags to companies to see the word cloud</p>';
-        return;
-    }
-
-    if (echartInstances.wordCloud) echartInstances.wordCloud.dispose();
-    echartInstances.wordCloud = echarts.init(wcDiv, theme);
-    echartInstances.wordCloud.setOption({
-        tooltip: { show: true, formatter: '{b}: {c}' },
-        series: [{
-            type: 'wordCloud',
-            shape: 'circle',
-            sizeRange: [14, 48],
-            rotationRange: [-30, 30],
-            gridSize: 8,
-            drawOutOfBound: false,
-            textStyle: {
-                fontFamily: 'Noto Sans',
-                color: function() {
-                    const palette = ['#bc6c5a','#5a7c5a','#6b8fa3','#d4a853','#8b6f8b','#5a8c8c','#a67c52'];
-                    return palette[Math.floor(Math.random() * palette.length)];
-                },
-            },
-            data: wordData,
-        }],
-    });
+// Color interpolation helper (hex → hex, linear)
+function _lerpColor(a, b, t) {
+    const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+    const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+    const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+    const r = Math.round(ar + (br - ar) * t);
+    const g = Math.round(ag + (bg - ag) * t);
+    const b2 = Math.round(ab + (bb - ab) * t);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b2).toString(16).slice(1);
 }
 
 async function refreshDashboardCharts() {
@@ -199,7 +245,6 @@ async function refreshDashboardCharts() {
     const categories = await taxRes.json();
     renderAnalyticsDashboard(companies, categories);
     renderChartJsDashboard(companies);
-    renderWordCloud(companies);
 }
 
 // Resize handler for ECharts

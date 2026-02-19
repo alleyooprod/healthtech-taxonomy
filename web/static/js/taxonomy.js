@@ -484,70 +484,84 @@ function renderTaxonomyGraph(categories, companies) {
     });
 
     if (cyInstance) cyInstance.destroy();
-    cyInstance = cytoscape({
-        container,
-        elements,
-        style: [
-            {
-                selector: 'node[type="root"]',
-                style: {
-                    'background-color': '#bc6c5a',
-                    label: 'data(label)',
-                    'text-valign': 'center',
-                    'font-size': '14px',
-                    color: isDark ? '#e8e0d4' : '#3D4035',
-                    width: 60, height: 60,
-                },
-            },
-            {
-                selector: 'node[type="category"]',
-                style: {
-                    'background-color': 'data(catColor)',
-                    label: 'data(label)',
-                    'text-valign': 'center',
-                    'text-wrap': 'wrap',
-                    'text-max-width': '100px',
-                    'font-size': '10px',
-                    color: isDark ? '#e8e0d4' : '#3D4035',
-                    width: 'mapData(count, 0, 30, 30, 70)',
-                    height: 'mapData(count, 0, 30, 30, 70)',
-                },
-            },
-            {
-                selector: 'node[type="subcategory"]',
-                style: {
-                    'background-color': 'data(catColor)',
-                    label: 'data(label)',
-                    'text-valign': 'center',
-                    'text-wrap': 'wrap',
-                    'text-max-width': '80px',
-                    'font-size': '9px',
-                    color: isDark ? '#e8e0d4' : '#3D4035',
-                    width: 25, height: 25,
-                },
-            },
-            {
-                selector: 'edge',
-                style: {
-                    width: 2,
-                    'line-color': isDark ? '#555' : '#ccc',
-                    'target-arrow-color': isDark ? '#555' : '#ccc',
-                    'target-arrow-shape': 'triangle',
-                    'curve-style': 'bezier',
-                },
-            },
-        ],
-        layout: { name: 'cose', animate: true, animationDuration: 500, nodeDimensionsIncludeLabels: true },
-    });
 
-    cyInstance.on('tap', 'node[type="category"]', (evt) => {
-        const catId = evt.target.id().replace('cat-', '');
-        const catName = evt.target.data('label').split('\n')[0];
-        activeFilters.category_id = catId;
-        activeFilters.category_name = catName;
-        renderFilterChips();
-        showTab('companies');
-        loadCompanies();
+    // Use requestAnimationFrame to ensure container has layout dimensions after unhiding
+    requestAnimationFrame(() => {
+        // Force container dimensions before Cytoscape reads them
+        container.style.display = 'block';
+        container.style.width = '100%';
+
+        cyInstance = cytoscape({
+            container,
+            elements,
+            style: [
+                {
+                    selector: 'node[type="root"]',
+                    style: {
+                        'background-color': '#bc6c5a',
+                        label: 'data(label)',
+                        'text-valign': 'center',
+                        'font-size': '14px',
+                        color: isDark ? '#e8e0d4' : '#3D4035',
+                        width: 60, height: 60,
+                    },
+                },
+                {
+                    selector: 'node[type="category"]',
+                    style: {
+                        'background-color': 'data(catColor)',
+                        label: 'data(label)',
+                        'text-valign': 'center',
+                        'text-wrap': 'wrap',
+                        'text-max-width': '100px',
+                        'font-size': '10px',
+                        color: isDark ? '#e8e0d4' : '#3D4035',
+                        width: 'mapData(count, 0, 30, 30, 70)',
+                        height: 'mapData(count, 0, 30, 30, 70)',
+                    },
+                },
+                {
+                    selector: 'node[type="subcategory"]',
+                    style: {
+                        'background-color': 'data(catColor)',
+                        label: 'data(label)',
+                        'text-valign': 'center',
+                        'text-wrap': 'wrap',
+                        'text-max-width': '80px',
+                        'font-size': '9px',
+                        color: isDark ? '#e8e0d4' : '#3D4035',
+                        width: 25, height: 25,
+                    },
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        width: 2,
+                        'line-color': isDark ? '#555' : '#ccc',
+                        'target-arrow-color': isDark ? '#555' : '#ccc',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                    },
+                },
+            ],
+            layout: { name: 'cose', animate: false, nodeDimensionsIncludeLabels: true },
+        });
+
+        // Fit after layout completes
+        cyInstance.one('layoutstop', () => {
+            cyInstance.resize();
+            cyInstance.fit(undefined, 40);
+        });
+
+        cyInstance.on('tap', 'node[type="category"]', (evt) => {
+            const catId = evt.target.id().replace('cat-', '');
+            const catName = evt.target.data('label').split('\n')[0];
+            activeFilters.category_id = catId;
+            activeFilters.category_name = catName;
+            renderFilterChips();
+            showTab('companies');
+            loadCompanies();
+        });
     });
 }
 
@@ -652,85 +666,98 @@ async function renderKnowledgeGraph() {
     }
 
     if (kgInstance) kgInstance.destroy();
-    kgInstance = cytoscape({
-        container,
-        elements,
-        style: [
-            {
-                selector: 'node[type="category"]',
-                style: {
-                    'background-color': 'data(catColor)',
-                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 4,
-                    'font-size': '10px', color: isDark ? '#e8e0d4' : '#3D4035',
-                    width: 30, height: 30, shape: 'round-rectangle',
-                },
-            },
-            {
-                selector: 'node[type="company"]',
-                style: {
-                    'background-color': '#5a7c5a',
-                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 4,
-                    'font-size': '9px', color: isDark ? '#c8d0c4' : '#3D4035',
-                    width: 18, height: 18,
-                },
-            },
-            {
-                selector: 'node[type="tag"]',
-                style: {
-                    'background-color': '#d4a853',
-                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 3,
-                    'font-size': '8px', color: isDark ? '#d4a853' : '#8a6d2b',
-                    width: 12, height: 12, shape: 'diamond',
-                },
-            },
-            {
-                selector: 'node[type="geography"]',
-                style: {
-                    'background-color': '#8b6f8b',
-                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 3,
-                    'font-size': '8px', color: isDark ? '#b89fb8' : '#5a4a5a',
-                    width: 14, height: 14, shape: 'hexagon',
-                },
-            },
-            {
-                selector: 'edge',
-                style: {
-                    width: 1, 'line-color': isDark ? '#444' : '#ddd',
-                    'curve-style': 'bezier', opacity: 0.6,
-                },
-            },
-            {
-                selector: '.kg-dimmed',
-                style: { opacity: 0.15 },
-            },
-            {
-                selector: '.kg-highlighted',
-                style: { opacity: 1, 'border-width': 2, 'border-color': '#bc6c5a' },
-            },
-        ],
-        layout: { name: 'cose', animate: false, nodeDimensionsIncludeLabels: true, nodeRepulsion: () => 8000 },
-        wheelSensitivity: 0.3,
-    });
 
-    // Click to highlight connections
-    kgInstance.on('tap', 'node', (evt) => {
-        const node = evt.target;
-        kgInstance.elements().removeClass('kg-highlighted kg-dimmed').addClass('kg-dimmed');
-        node.removeClass('kg-dimmed').addClass('kg-highlighted');
-        node.connectedEdges().removeClass('kg-dimmed').addClass('kg-highlighted');
-        node.neighborhood('node').removeClass('kg-dimmed').addClass('kg-highlighted');
-    });
+    // Use requestAnimationFrame to ensure container has layout dimensions after unhiding
+    requestAnimationFrame(() => {
+        container.style.display = 'block';
+        container.style.width = '100%';
 
-    kgInstance.on('tap', (evt) => {
-        if (evt.target === kgInstance) {
-            kgInstance.elements().removeClass('kg-highlighted kg-dimmed');
-        }
-    });
+        kgInstance = cytoscape({
+            container,
+            elements,
+            style: [
+                {
+                    selector: 'node[type="category"]',
+                    style: {
+                        'background-color': 'data(catColor)',
+                        label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 4,
+                        'font-size': '10px', color: isDark ? '#e8e0d4' : '#3D4035',
+                        width: 30, height: 30, shape: 'round-rectangle',
+                    },
+                },
+                {
+                    selector: 'node[type="company"]',
+                    style: {
+                        'background-color': '#5a7c5a',
+                        label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 4,
+                        'font-size': '9px', color: isDark ? '#c8d0c4' : '#3D4035',
+                        width: 18, height: 18,
+                    },
+                },
+                {
+                    selector: 'node[type="tag"]',
+                    style: {
+                        'background-color': '#d4a853',
+                        label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 3,
+                        'font-size': '8px', color: isDark ? '#d4a853' : '#8a6d2b',
+                        width: 12, height: 12, shape: 'diamond',
+                    },
+                },
+                {
+                    selector: 'node[type="geography"]',
+                    style: {
+                        'background-color': '#8b6f8b',
+                        label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 3,
+                        'font-size': '8px', color: isDark ? '#b89fb8' : '#5a4a5a',
+                        width: 14, height: 14, shape: 'hexagon',
+                    },
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        width: 1, 'line-color': isDark ? '#444' : '#ddd',
+                        'curve-style': 'bezier', opacity: 0.6,
+                    },
+                },
+                {
+                    selector: '.kg-dimmed',
+                    style: { opacity: 0.15 },
+                },
+                {
+                    selector: '.kg-highlighted',
+                    style: { opacity: 1, 'border-width': 2, 'border-color': '#bc6c5a' },
+                },
+            ],
+            layout: { name: 'cose', animate: false, nodeDimensionsIncludeLabels: true, nodeRepulsion: () => 8000 },
+            wheelSensitivity: 0.3,
+        });
 
-    // Double-click company to navigate
-    kgInstance.on('dbltap', 'node[type="company"]', (evt) => {
-        const id = evt.target.data('companyId');
-        if (id) showDetail(id);
+        // Fit after layout completes
+        kgInstance.one('layoutstop', () => {
+            kgInstance.resize();
+            kgInstance.fit(undefined, 30);
+        });
+
+        // Click to highlight connections
+        kgInstance.on('tap', 'node', (evt) => {
+            const node = evt.target;
+            kgInstance.elements().removeClass('kg-highlighted kg-dimmed').addClass('kg-dimmed');
+            node.removeClass('kg-dimmed').addClass('kg-highlighted');
+            node.connectedEdges().removeClass('kg-dimmed').addClass('kg-highlighted');
+            node.neighborhood('node').removeClass('kg-dimmed').addClass('kg-highlighted');
+        });
+
+        kgInstance.on('tap', (evt) => {
+            if (evt.target === kgInstance) {
+                kgInstance.elements().removeClass('kg-highlighted kg-dimmed');
+            }
+        });
+
+        // Double-click company to navigate
+        kgInstance.on('dbltap', 'node[type="company"]', (evt) => {
+            const id = evt.target.data('companyId');
+            if (id) showDetail(id);
+        });
     });
 }
 
