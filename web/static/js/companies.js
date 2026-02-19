@@ -4,6 +4,107 @@
 
 let currentSort = { by: 'name', dir: 'asc' };
 
+// --- Bulk Selection ---
+let bulkSelection = new Set();
+let _lastCheckedIdx = null;
+
+function toggleBulkSelect(companyId, checkbox, event) {
+    event.stopPropagation();
+    const rows = Array.from(document.querySelectorAll('#companyBody tr[data-company-id]'));
+    const currentIdx = rows.findIndex(r => r.dataset.companyId == companyId);
+
+    if (event.shiftKey && _lastCheckedIdx !== null && currentIdx !== _lastCheckedIdx) {
+        const start = Math.min(_lastCheckedIdx, currentIdx);
+        const end = Math.max(_lastCheckedIdx, currentIdx);
+        const shouldCheck = checkbox.checked;
+        for (let i = start; i <= end; i++) {
+            const id = parseInt(rows[i].dataset.companyId);
+            const cb = rows[i].querySelector('.bulk-checkbox');
+            if (cb) cb.checked = shouldCheck;
+            if (shouldCheck) bulkSelection.add(id); else bulkSelection.delete(id);
+        }
+    } else {
+        if (checkbox.checked) bulkSelection.add(companyId); else bulkSelection.delete(companyId);
+    }
+    _lastCheckedIdx = currentIdx;
+    updateBulkBar();
+}
+
+function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.bulk-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = masterCheckbox.checked;
+        const id = parseInt(cb.dataset.companyId);
+        if (masterCheckbox.checked) bulkSelection.add(id); else bulkSelection.delete(id);
+    });
+    updateBulkBar();
+}
+
+function clearBulkSelection() {
+    bulkSelection.clear();
+    _lastCheckedIdx = null;
+    document.querySelectorAll('.bulk-checkbox').forEach(cb => cb.checked = false);
+    const master = document.getElementById('selectAllCheckbox');
+    if (master) master.checked = false;
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    const bar = document.getElementById('bulkActionBar');
+    if (!bar) return;
+    if (bulkSelection.size > 0) {
+        bar.classList.remove('hidden');
+        document.getElementById('bulkCount').textContent = `${bulkSelection.size} selected`;
+    } else {
+        bar.classList.add('hidden');
+    }
+}
+
+async function bulkAction(action) {
+    if (!bulkSelection.size) return;
+    const ids = Array.from(bulkSelection);
+    let params = {};
+
+    if (action === 'assign_category') {
+        const catId = prompt('Enter category ID to assign:');
+        if (!catId) return;
+        params.category_id = parseInt(catId);
+    } else if (action === 'add_tags') {
+        const tags = prompt('Enter tags (comma-separated):');
+        if (!tags) return;
+        params.tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+    } else if (action === 'set_relationship') {
+        const status = prompt('Enter relationship status (watching, to_reach_out, in_conversation, met, partner, not_relevant):');
+        if (!status) return;
+        params.status = status;
+    } else if (action === 'delete') {
+        if (!confirm(`Delete ${ids.length} companies?`)) return;
+    }
+
+    const res = await safeFetch('/api/companies/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, company_ids: ids, params }),
+    });
+    const data = await res.json();
+
+    if (action === 'delete') {
+        showUndoToast(`Deleted ${data.updated} companies`, async () => {
+            for (const id of ids) {
+                await safeFetch(`/api/companies/${id}/restore`, { method: 'POST' });
+            }
+            loadCompanies();
+            loadStats();
+        });
+    } else {
+        showToast(`Updated ${data.updated} companies`);
+    }
+
+    clearBulkSelection();
+    loadCompanies();
+    loadStats();
+}
+
 function debounceSearch() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(loadCompanies, 300);
@@ -40,9 +141,9 @@ async function loadCompanies() {
         const search = document.getElementById('searchInput').value;
         const hasFilters = search || activeFilters.category_id || activeFilters.tags.length
             || activeFilters.geography || activeFilters.funding_stage;
-        tbody.innerHTML = `<tr><td colspan="9" class="empty-state">
+        tbody.innerHTML = `<tr><td colspan="10" class="empty-state">
             <div class="empty-state-content">
-                <span class="empty-state-icon">&#128269;</span>
+                <span class="empty-state-icon"><span class="material-symbols-outlined">search</span></span>
                 <p class="empty-state-title">${hasFilters ? 'No companies match your filters' : 'No companies yet'}</p>
                 <p class="empty-state-desc">${hasFilters
                     ? 'Try adjusting your search or <button class="empty-state-link" onclick="clearAllFilters()">clearing all filters</button>'
@@ -55,7 +156,8 @@ async function loadCompanies() {
             const compPct = Math.round(c.completeness * 100);
             return `
             <tr onclick="showDetail(${c.id})" style="cursor:pointer" data-company-id="${c.id}">
-                <td><span class="star-btn ${c.is_starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleStar(${c.id},this)" title="Star">${c.is_starred ? '\u2605' : '\u2606'}</span></td>
+                <td class="bulk-cell" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-checkbox" data-company-id="${c.id}" ${bulkSelection.has(c.id) ? 'checked' : ''} onchange="toggleBulkSelect(${c.id}, this, event)"></td>
+                <td><span class="star-btn ${c.is_starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleStar(${c.id},this)" title="Star"><span class="material-symbols-outlined">${c.is_starred ? 'star' : 'star_outline'}</span></span></td>
                 <td>
                     <div class="company-name-cell">
                         <img class="company-logo" src="${c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`}" alt="" onerror="this.style.display='none'">
@@ -64,7 +166,7 @@ async function loadCompanies() {
                         ${c.relationship_status ? `<span class="relationship-dot rel-${c.relationship_status}" title="${relationshipLabel(c.relationship_status)}"></span>` : ''}
                     </div>
                 </td>
-                <td>${esc(c.category_name || 'N/A')}</td>
+                <td>${c.category_id ? `<a class="cat-link" onclick="event.stopPropagation();navigateTo('category',${c.category_id},'${escAttr(c.category_name)}')"><span class="cat-color-dot" style="background:${getCategoryColor(c.category_id) || 'transparent'}"></span> ${esc(c.category_name)}</a>` : 'N/A'}</td>
                 <td><div class="cell-clamp">${esc(c.what || '')}</div></td>
                 <td><div class="cell-clamp">${esc(c.target || '')}</div></td>
                 <td><div class="cell-clamp">${esc(c.geography || '')}</div></td>
@@ -79,7 +181,7 @@ async function loadCompanies() {
 async function toggleStar(id, el) {
     const res = await safeFetch(`/api/companies/${id}/star`, { method: 'POST' });
     const data = await res.json();
-    el.textContent = data.is_starred ? '\u2605' : '\u2606';
+    el.innerHTML = `<span class="material-symbols-outlined">${data.is_starred ? 'star' : 'star_outline'}</span>`;
     el.classList.toggle('starred', !!data.is_starred);
 }
 
@@ -137,7 +239,7 @@ async function showDetail(id) {
         </div>
         <div class="detail-field"><label>Geography</label><p>${esc(c.geography || 'N/A')}</p></div>
         <div class="detail-field"><label>TAM</label><p>${esc(c.tam || 'N/A')}</p></div>
-        <div class="detail-field"><label>Category</label><p>${esc(c.category_name || 'N/A')} / ${esc(c.subcategory_name || 'N/A')}</p></div>
+        <div class="detail-field"><label>Category</label><p>${c.category_id ? `<a class="cat-link" onclick="navigateTo('category',${c.category_id},'${escAttr(c.category_name)}')">${esc(c.category_name)}</a>` : 'N/A'} / ${esc(c.subcategory_name || 'N/A')}</p></div>
         <div class="detail-field"><label>Tags</label><p>${(c.tags || []).join(', ') || 'None'}</p></div>
         <div class="detail-field"><label>Confidence</label><p>${c.confidence_score != null ? (c.confidence_score * 100).toFixed(0) + '%' : 'N/A'}</p></div>
         <div class="detail-field"><label>Processed</label><p>${c.processed_at || 'N/A'}</p></div>
@@ -152,6 +254,7 @@ async function showDetail(id) {
         <div class="detail-actions">
             <button class="btn" onclick="openEditModal(${c.id})">Edit</button>
             <button class="btn" onclick="openReResearch(${c.id})">Re-research</button>
+            <button class="btn" onclick="startCompanyResearch(${c.id}, '${escAttr(c.name)}')">Deep Dive</button>
             <button class="btn" onclick="findSimilar(${c.id})">Find Similar</button>
             <button class="btn" onclick="showVersionHistory(${c.id})">History</button>
             <button class="danger-btn" onclick="deleteCompany(${c.id})">Delete</button>
@@ -524,6 +627,13 @@ async function restoreVersion(versionId, companyId) {
     showDetail(companyId);
     loadCompanies();
 }
+
+// --- Escape to clear bulk selection ---
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && bulkSelection.size > 0) {
+        clearBulkSelection();
+    }
+});
 
 // --- Sort Headers ---
 document.addEventListener('click', (e) => {

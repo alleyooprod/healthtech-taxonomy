@@ -1,0 +1,155 @@
+/* Feature: Canvas — visual workspace for arranging companies and notes */
+
+.canvas-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.canvas-toolbar-left,
+.canvas-toolbar-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.canvas-toolbar select {
+    padding: 6px 10px;
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    min-width: 180px;
+}
+
+.canvas-workspace {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    overflow: hidden;
+    height: calc(100vh - 260px);
+    min-height: 400px;
+}
+
+.canvas-sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-default);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.canvas-sidebar-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.canvas-sidebar-header h4 {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.canvas-sidebar-header input {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    font-size: 12px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    box-sizing: border-box;
+}
+
+.canvas-company-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.canvas-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    cursor: grab;
+    font-size: 12px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-subtle, var(--border-default));
+    transition: background 0.1s;
+    user-select: none;
+}
+
+.canvas-sidebar-item:hover {
+    background: var(--bg-hover, var(--bg-container));
+}
+
+.canvas-sidebar-item:active {
+    cursor: grabbing;
+}
+
+.canvas-sidebar-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.canvas-main {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.canvas-container {
+    flex: 1;
+    position: relative;
+    background: var(--bg-container);
+}
+
+.canvas-empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.canvas-empty-state p {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+/* Context menu */
+.canvas-context-menu {
+    position: absolute;
+    background: var(--bg-container);
+    border: 1px solid var(--border-medium);
+    border-radius: 10px;
+    box-shadow: var(--shadow-modal);
+    z-index: 200;
+    min-width: 160px;
+    padding: 4px 0;
+}
+
+.canvas-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.canvas-ctx-item:hover {
+    background: var(--bg-surface);
+}

@@ -12,6 +12,37 @@
 .cat-header {
     font-weight: 600;
     font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Category color picker */
+.cat-color-picker {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--border-default);
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    background: none;
+}
+
+.cat-color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+.cat-color-picker::-webkit-color-swatch { border: none; border-radius: 50%; }
+.cat-color-picker::-moz-color-swatch { border: none; border-radius: 50%; }
+
+/* Category color dot (inline) */
+.cat-color-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    vertical-align: middle;
 }
 
 .count {

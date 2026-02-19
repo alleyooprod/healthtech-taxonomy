@@ -125,9 +125,11 @@
 }
 
 .bell-icon {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     transition: transform 0.15s;
 }
+.bell-icon .material-symbols-outlined { font-size: 20px; }
 
 .notification-bell:hover .bell-icon {
     transform: rotate(15deg);

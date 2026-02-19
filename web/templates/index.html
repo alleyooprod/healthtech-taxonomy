@@ -91,7 +91,7 @@
 
     <!-- Connection loss banner -->
     <div id="connectionBanner" class="connection-banner hidden" role="alert">
-        <span class="connection-banner-icon">&#9888;</span>
+        <span class="connection-banner-icon"><span class="material-symbols-outlined">warning</span></span>
         <span>Connection lost — retrying...</span>
         <button onclick="location.reload()" class="connection-banner-btn">Reload</button>
     </div>
@@ -137,7 +137,7 @@
                         <h1>Research Taxonomy Library</h1>
                         <p class="header-subtitle">Select a research project or create a new one.</p>
                     </div>
-                    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)" aria-label="Toggle dark mode">&#9789;</button>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)" aria-label="Toggle dark mode"><span class="material-symbols-outlined">dark_mode</span></button>
                 </div>
             </header>
             <div id="projectGrid" class="project-grid" role="list" aria-label="Research projects"></div>
@@ -206,10 +206,10 @@
                     </div>
                     <div class="flex-center-gap">
                         <button class="notification-bell" onclick="toggleNotificationPanel()" title="Notifications" aria-label="Toggle notifications" aria-expanded="false" aria-controls="notificationPanel">
-                            <span class="bell-icon" aria-hidden="true">&#128276;</span>
+                            <span class="bell-icon" aria-hidden="true"><span class="material-symbols-outlined">notifications</span></span>
                             <span class="bell-badge hidden" id="bellBadge" aria-live="polite">0</span>
                         </button>
-                        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)" aria-label="Toggle dark mode">&#9789;</button>
+                        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)" aria-label="Toggle dark mode"><span class="material-symbols-outlined">dark_mode</span></button>
                     </div>
                 </div>
             </header>
@@ -229,10 +229,14 @@
                 <button class="tab active" role="tab" aria-selected="true" aria-controls="tab-companies" onclick="showTab('companies')">Companies</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-taxonomy" onclick="showTab('taxonomy')">Taxonomy</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-map" onclick="showTab('map')">Map</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-reports" onclick="showTab('reports')">Reports</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-reports" onclick="showTab('reports')">Research</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-canvas" onclick="showTab('canvas')">Canvas</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-process" onclick="showTab('process')">Process</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-export" onclick="showTab('export')">Export</button>
             </nav>
+
+            <!-- Breadcrumb Navigation -->
+            <div id="breadcrumbBar" class="breadcrumb-bar hidden"></div>
 
             <!-- Companies Tab -->
             <section id="tab-companies" class="tab-content active" role="tabpanel" aria-label="Companies">
@@ -279,6 +283,7 @@
                 <table id="companyTable">
                     <thead>
                         <tr>
+                            <th class="bulk-header" style="width:2%"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" title="Select all"></th>
                             <th class="sort-header" data-sort="starred" style="width:3%"></th>
                             <th class="sort-header" data-sort="name">Name</th>
                             <th class="sort-header" data-sort="category">Category</th>
@@ -292,6 +297,16 @@
                     </thead>
                     <tbody id="companyBody"></tbody>
                 </table>
+
+                <!-- Bulk Action Bar -->
+                <div id="bulkActionBar" class="bulk-action-bar hidden">
+                    <span id="bulkCount">0 selected</span>
+                    <button class="btn" onclick="bulkAction('assign_category')"><span class="material-symbols-outlined">category</span> Assign Category</button>
+                    <button class="btn" onclick="bulkAction('add_tags')"><span class="material-symbols-outlined">label</span> Add Tags</button>
+                    <button class="btn" onclick="bulkAction('set_relationship')"><span class="material-symbols-outlined">handshake</span> Set Relationship</button>
+                    <button class="danger-btn" onclick="bulkAction('delete')"><span class="material-symbols-outlined">delete</span> Delete</button>
+                    <button class="btn" onclick="clearBulkSelection()"><span class="material-symbols-outlined">close</span></button>
+                </div>
 
                 <!-- Detail Panel -->
                 <div id="detailPanel" class="detail-panel hidden">
@@ -308,7 +323,7 @@
                 <!-- Analytics Dashboard -->
                 <div class="analytics-dashboard">
                     <h3 class="collapsible-header" onclick="toggleSection('analyticsSection')">
-                        Analytics Dashboard <span id="analyticsSection-toggle" class="collapse-arrow">&#9660;</span>
+                        Analytics Dashboard <span id="analyticsSection-toggle" class="collapse-arrow"><span class="material-symbols-outlined">expand_more</span></span>
                     </h3>
                     <div id="analyticsSection" class="collapsible-body">
                         <div class="chart-grid">
@@ -353,7 +368,7 @@
                 </div>
 
                 <h3 class="collapsible-header" onclick="toggleSection('qualitySection')">
-                    Quality Dashboard <span id="qualitySection-toggle" class="collapse-arrow">&#9660;</span>
+                    Quality Dashboard <span id="qualitySection-toggle" class="collapse-arrow"><span class="material-symbols-outlined">expand_more</span></span>
                 </h3>
                 <div id="qualitySection" class="collapsible-body">
                     <div id="qualityDashboard" class="quality-dashboard">
@@ -363,7 +378,7 @@
                 </div>
 
                 <h3 class="collapsible-header" onclick="toggleSection('historySection')">
-                    Change History <span id="historySection-toggle" class="collapse-arrow">&#9660;</span>
+                    Change History <span id="historySection-toggle" class="collapse-arrow"><span class="material-symbols-outlined">expand_more</span></span>
                 </h3>
                 <div id="historySection" class="collapsible-body">
                     <div id="taxonomyHistory"></div>
@@ -375,6 +390,7 @@
                 <div class="map-controls">
                     <div class="map-view-toggle">
                         <button class="view-toggle-btn active" onclick="switchMapView('market')" id="marketMapBtn">Market Map</button>
+                        <button class="view-toggle-btn" onclick="switchMapView('auto')" id="autoMapBtn">Auto-Layout</button>
                         <button class="view-toggle-btn" onclick="switchMapView('geo')" id="geoMapBtn">Geographic Map</button>
                     </div>
                     <button class="primary-btn" onclick="loadMarketMap()">Refresh Map</button>
@@ -382,6 +398,7 @@
                     <span class="hint-text hint-inline">Drag companies between categories to reclassify.</span>
                 </div>
                 <div id="marketMap" class="market-map"></div>
+                <div id="autoLayoutMap" class="hidden auto-layout-container"></div>
                 <div id="geoMap" class="hidden geo-map-container"></div>
 
                 <!-- Comparison Panel -->
@@ -400,29 +417,133 @@
                 </div>
             </section>
 
-            <!-- Reports Tab -->
-            <section id="tab-reports" class="tab-content" role="tabpanel" aria-label="Reports">
-                <div class="market-report-section">
-                    <h3>Generate New Report</h3>
-                    <p class="hint-text">Generate AI-powered market analysis for a category. Reports are saved automatically.</p>
-                    <div class="report-controls">
-                        <select id="reportCategorySelect">
-                            <option value="">Select a category...</option>
-                        </select>
-                        {{ model_select('reportModelSelect', default='sonnet') }}
-                        <button class="primary-btn" id="reportBtn" onclick="generateMarketReport()">Generate Report</button>
+            <!-- Research Tab -->
+            <section id="tab-reports" class="tab-content" role="tabpanel" aria-label="Research">
+                <!-- Research mode toggle -->
+                <div class="research-mode-toggle">
+                    <button class="view-toggle-btn active" id="quickReportModeBtn" onclick="switchResearchMode('report')">Quick Report</button>
+                    <button class="view-toggle-btn" id="deepDiveModeBtn" onclick="switchResearchMode('deepdive')">Deep Dive</button>
+                </div>
+
+                <!-- Quick Report mode (existing) -->
+                <div id="researchModeReport">
+                    <div class="market-report-section">
+                        <h3>Generate Category Report</h3>
+                        <p class="hint-text">Generate AI-powered market analysis for a category. Reports are saved automatically.</p>
+                        <div class="report-controls">
+                            <select id="reportCategorySelect">
+                                <option value="">Select a category...</option>
+                            </select>
+                            {{ model_select('reportModelSelect', default='sonnet') }}
+                            <button class="primary-btn" id="reportBtn" onclick="generateMarketReport()">Generate Report</button>
+                        </div>
+                        <div id="reportStatus" class="hidden">
+                            <div class="progress-bar"><div id="reportProgress" class="progress-fill" style="width:50%;animation:pulse 2s infinite"></div></div>
+                            <p>Generating report... AI is researching the web and analyzing your data. This typically takes 2-4 minutes.</p>
+                        </div>
                     </div>
-                    <div id="reportStatus" class="hidden">
-                        <div class="progress-bar"><div id="reportProgress" class="progress-fill" style="width:50%;animation:pulse 2s infinite"></div></div>
-                        <p>Generating report... AI is researching the web and analyzing your data. This typically takes 2-4 minutes.</p>
+
+                    <div id="reportContent" class="hidden report-viewer"></div>
+
+                    <h3 class="section-heading">Saved Reports</h3>
+                    <p class="hint-text">Previously generated reports are stored here.</p>
+                    <div id="savedReportsList"></div>
+                </div>
+
+                <!-- Deep Dive mode (new) -->
+                <div id="researchModeDeepDive" class="hidden">
+                    <div class="research-input-section">
+                        <h3>Deep Dive Research</h3>
+                        <p class="hint-text">Ask any research question. AI will use your project data and web search to produce a comprehensive report.</p>
+
+                        <div class="research-scope-row">
+                            <label>Scope:</label>
+                            <select id="researchScopeType" onchange="onResearchScopeChange()">
+                                <option value="project">Entire Project</option>
+                                <option value="category">Category</option>
+                                <option value="company">Company</option>
+                                <option value="custom">Custom (no context)</option>
+                            </select>
+                            <select id="researchScopeId" class="hidden">
+                                <option value="">Select...</option>
+                            </select>
+                            <input type="text" id="researchCompanySearch" class="hidden" placeholder="Search company..." oninput="searchResearchCompany()">
+                            <div id="researchCompanyResults" class="research-company-dropdown hidden"></div>
+                        </div>
+
+                        <div class="research-templates">
+                            <span class="hint-text">Templates:</span>
+                            <button class="research-template-btn" onclick="applyResearchTemplate('competitive')">Competitive landscape</button>
+                            <button class="research-template-btn" onclick="applyResearchTemplate('pricing')">Pricing analysis</button>
+                            <button class="research-template-btn" onclick="applyResearchTemplate('trends')">Market trends</button>
+                            <button class="research-template-btn" onclick="applyResearchTemplate('sentiment')">Product reviews &amp; sentiment</button>
+                            <button class="research-template-btn" onclick="applyResearchTemplate('journey')">Customer journey</button>
+                        </div>
+
+                        <div class="research-prompt-row">
+                            <textarea id="researchPrompt" rows="4" placeholder="What do you want to research? Be specific for better results..."></textarea>
+                        </div>
+
+                        <div class="research-action-row">
+                            <input type="text" id="researchTitle" placeholder="Research title (auto-generated if blank)">
+                            {{ model_select('researchModelSelect', default='sonnet') }}
+                            <button class="primary-btn" id="researchBtn" onclick="startDeepDive()">
+                                <span class="material-symbols-outlined">science</span> Start Research
+                            </button>
+                        </div>
+
+                        <div id="researchStatus" class="hidden">
+                            <div class="progress-bar"><div id="researchProgress" class="progress-fill" style="width:50%;animation:pulse 2s infinite"></div></div>
+                            <p id="researchStatusText">Researching... AI is searching the web and analyzing data. This may take 2-5 minutes.</p>
+                        </div>
+                    </div>
+
+                    <div id="researchResult" class="hidden report-viewer"></div>
+
+                    <h3 class="section-heading">Saved Research</h3>
+                    <p class="hint-text">Previously completed deep dives are stored here.</p>
+                    <div id="savedResearchList"></div>
+                </div>
+            </section>
+
+            <!-- Canvas Tab -->
+            <section id="tab-canvas" class="tab-content" role="tabpanel" aria-label="Canvas">
+                <div class="canvas-toolbar">
+                    <div class="canvas-toolbar-left">
+                        <select id="canvasSelect" onchange="loadCanvasFromSelect()">
+                            <option value="">Select canvas...</option>
+                        </select>
+                        <button class="primary-btn" onclick="createNewCanvas()"><span class="material-symbols-outlined">add</span> New Canvas</button>
+                        <button class="btn" id="renameCanvasBtn" onclick="renameCurrentCanvas()" disabled>Rename</button>
+                        <button class="btn" style="color:var(--accent-danger)" id="deleteCanvasBtn" onclick="deleteCurrentCanvas()" disabled>Delete</button>
+                    </div>
+                    <div class="canvas-toolbar-right">
+                        <button class="btn" id="canvasAddNoteBtn" onclick="addCanvasNote()" disabled title="Add text note">
+                            <span class="material-symbols-outlined">note_add</span>
+                        </button>
+                        <button class="btn" id="canvasExportBtn" onclick="exportCanvasPng()" disabled title="Export as PNG">
+                            <span class="material-symbols-outlined">image</span> Export PNG
+                        </button>
                     </div>
                 </div>
 
-                <div id="reportContent" class="hidden report-viewer"></div>
-
-                <h3 class="section-heading">Saved Reports</h3>
-                <p class="hint-text">Previously generated reports are stored here.</p>
-                <div id="savedReportsList"></div>
+                <div class="canvas-workspace">
+                    <div class="canvas-sidebar" id="canvasSidebar">
+                        <div class="canvas-sidebar-header">
+                            <h4>Companies</h4>
+                            <input type="text" id="canvasCompanySearch" placeholder="Search..." oninput="filterCanvasCompanies()">
+                        </div>
+                        <div id="canvasCompanyList" class="canvas-company-list"></div>
+                    </div>
+                    <div class="canvas-main">
+                        <div class="canvas-empty-state" id="canvasEmptyState">
+                            <span class="material-symbols-outlined" style="font-size:48px;color:var(--text-muted)">dashboard</span>
+                            <p>Select or create a canvas to start arranging companies visually.</p>
+                            <p class="hint-text">Drag companies from the sidebar onto the canvas. Double-click empty space to add notes.</p>
+                        </div>
+                        <div id="canvasContainer" class="canvas-container hidden"></div>
+                    </div>
+                </div>
             </section>
 
             <!-- Process Tab -->
@@ -602,7 +723,7 @@
             <button class="primary-btn" onclick="sendChatMessage()">Send</button>
         </div>
     </div>
-    <button id="chatToggle" class="chat-fab hidden" onclick="toggleChat()" title="AI Chat">&#128172;</button>
+    <button id="chatToggle" class="chat-fab hidden" onclick="toggleChat()" title="AI Chat"><span class="material-symbols-outlined">chat</span></button>
     <button id="tourBtn" class="tour-fab hidden" onclick="startProductTour()" title="Product Tour">?</button>
 
     <!-- Edit Modal -->
@@ -783,6 +904,8 @@
     <script src="{{ url_for('static', filename='js/filters.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tags.js') }}"></script>
     <script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/research.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/canvas.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ai.js') }}"></script>
     <script src="{{ url_for('static', filename='js/export.js') }}"></script>
     <script src="{{ url_for('static', filename='js/settings.js') }}"></script>

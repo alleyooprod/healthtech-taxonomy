@@ -11,10 +11,10 @@ from datetime import datetime
 from pathlib import Path
 
 from config import DB_PATH, SEED_CATEGORIES
-from storage.repos import CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin
+from storage.repos import CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin, ResearchMixin, CanvasMixin
 
 
-class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin):
+class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin, ResearchMixin, CanvasMixin):
     def __init__(self, db_path=None):
         self.db_path = db_path or DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -225,6 +225,8 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
         cat_cols = {r[1] for r in conn.execute("PRAGMA table_info(categories)").fetchall()}
         if "synonyms" not in cat_cols:
             conn.execute("ALTER TABLE categories ADD COLUMN synonyms TEXT")
+        if "color" not in cat_cols:
+            conn.execute("ALTER TABLE categories ADD COLUMN color TEXT")
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_companies_starred ON companies(is_starred)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_companies_active ON companies(project_id, is_deleted, category_id)")

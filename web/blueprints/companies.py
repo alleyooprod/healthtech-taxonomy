@@ -52,6 +52,21 @@ def get_company(company_id):
     return jsonify(company)
 
 
+@companies_bp.route("/api/companies/add", methods=["POST"])
+def add_company():
+    """Quick-add a company (used by tests and manual entry)."""
+    db = current_app.db
+    data = request.json or {}
+    if not data.get("url"):
+        return jsonify({"error": "url is required"}), 400
+    if not data.get("project_id"):
+        return jsonify({"error": "project_id is required"}), 400
+    data.setdefault("name", data["url"])
+    data.setdefault("slug", data["name"].lower().replace(" ", "-"))
+    company_id = db.upsert_company(data)
+    return jsonify({"id": company_id, "status": "ok"})
+
+
 @companies_bp.route("/api/companies/<int:company_id>", methods=["POST"])
 def update_company(company_id):
     db = current_app.db
@@ -316,6 +331,67 @@ def merge_companies():
         db.log_activity(project_id, "companies_merged",
                         f"Merged {s_name} into {t_name}", "company", target_id)
     return jsonify({"status": "ok"})
+
+
+# --- Bulk Actions ---
+
+@companies_bp.route("/api/companies/bulk", methods=["POST"])
+def bulk_action():
+    db = current_app.db
+    data = request.json or {}
+    action = data.get("action")
+    company_ids = data.get("company_ids", [])
+    params = data.get("params", {})
+
+    if not action or not company_ids:
+        return jsonify({"error": "action and company_ids are required"}), 400
+
+    updated = 0
+
+    if action == "assign_category":
+        category_id = params.get("category_id")
+        if not category_id:
+            return jsonify({"error": "category_id is required"}), 400
+        for cid in company_ids:
+            db.update_company(cid, {"category_id": category_id})
+            updated += 1
+
+    elif action == "add_tags":
+        new_tags = params.get("tags", [])
+        if not new_tags:
+            return jsonify({"error": "tags are required"}), 400
+        for cid in company_ids:
+            company = db.get_company(cid)
+            if company:
+                existing = company.get("tags") or []
+                merged = list(set(existing + new_tags))
+                db.update_company(cid, {"tags": merged})
+                updated += 1
+
+    elif action == "set_relationship":
+        status = params.get("status")
+        for cid in company_ids:
+            db.update_relationship(cid, status, None)
+            updated += 1
+
+    elif action == "delete":
+        for cid in company_ids:
+            db.delete_company(cid)
+            updated += 1
+
+    else:
+        return jsonify({"error": f"Unknown action: {action}"}), 400
+
+    # Log activity
+    if company_ids:
+        company = db.get_company(company_ids[0], include_deleted=True)
+        project_id = company.get("project_id") if company else None
+        if project_id:
+            db.log_activity(project_id, f"bulk_{action}",
+                            f"Bulk {action} on {updated} companies",
+                            "company", None)
+
+    return jsonify({"updated": updated})
 
 
 # --- Compare ---

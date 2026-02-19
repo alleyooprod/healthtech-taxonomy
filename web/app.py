@@ -142,7 +142,7 @@ def create_app():
                 seed_categories=seed_categories, example_links=example_links,
                 market_keywords=market_keywords, description=description,
             )
-            return jsonify({"id": project_id, "status": "ok"})
+            return jsonify({"id": project_id, "name": name, "status": "ok"})
         except Exception as e:
             return jsonify({"error": str(e)}), 400
 
@@ -166,6 +166,8 @@ def create_app():
     from web.blueprints.ai import ai_bp
     from web.blueprints.data import data_bp
     from web.blueprints.settings import settings_bp
+    from web.blueprints.research import research_bp
+    from web.blueprints.canvas import canvas_bp
 
     app.register_blueprint(companies_bp)
     app.register_blueprint(taxonomy_bp)
@@ -173,6 +175,8 @@ def create_app():
     app.register_blueprint(ai_bp)
     app.register_blueprint(data_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(research_bp)
+    app.register_blueprint(canvas_bp)
 
     return app
 

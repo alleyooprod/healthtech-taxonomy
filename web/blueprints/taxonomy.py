@@ -79,6 +79,28 @@ def apply_taxonomy_review():
     return jsonify({"applied": len(applied), "changes": applied})
 
 
+@taxonomy_bp.route("/api/categories/<int:category_id>")
+def get_category(category_id):
+    cat = current_app.db.get_category(category_id)
+    if not cat:
+        return jsonify({"error": "Not found"}), 404
+    # Include companies in this category
+    companies = current_app.db.get_companies(
+        category_id=category_id,
+        project_id=cat.get("project_id"),
+    )
+    cat["companies"] = companies
+    return jsonify(cat)
+
+
+@taxonomy_bp.route("/api/categories/<int:category_id>/color", methods=["PUT"])
+def update_category_color(category_id):
+    data = request.json or {}
+    color = data.get("color")
+    current_app.db.update_category_color(category_id, color)
+    return jsonify({"status": "ok"})
+
+
 @taxonomy_bp.route("/api/taxonomy/quality")
 def taxonomy_quality():
     project_id = request.args.get("project_id", type=int)

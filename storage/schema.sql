@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS categories (
     is_active INTEGER DEFAULT 1,
     merged_into_id INTEGER REFERENCES categories(id),
     synonyms TEXT,
+    color TEXT,
     UNIQUE(project_id, name)
 );
 
@@ -225,6 +226,24 @@ CREATE TABLE IF NOT EXISTS reports (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Research sessions: deep dive and open-ended research
+CREATE TABLE IF NOT EXISTS research (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    title TEXT NOT NULL,
+    scope_type TEXT NOT NULL,        -- 'project', 'category', 'company', 'custom'
+    scope_id INTEGER,
+    prompt TEXT NOT NULL DEFAULT '',
+    context TEXT,
+    result TEXT,
+    model TEXT,
+    status TEXT DEFAULT 'pending',   -- pending, running, completed, failed
+    cost_usd REAL,
+    duration_ms INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
 -- Indexes (basic)
 CREATE INDEX IF NOT EXISTS idx_categories_project ON categories(project_id);
 CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
@@ -249,6 +268,20 @@ CREATE INDEX IF NOT EXISTS idx_activity_project ON activity_log(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_reports_project ON reports(project_id);
 CREATE INDEX IF NOT EXISTS idx_reports_report_id ON reports(report_id);
+
+CREATE INDEX IF NOT EXISTS idx_research_project ON research(project_id);
+
+-- Canvases: visual workspaces for arranging companies and notes
+CREATE TABLE IF NOT EXISTS canvases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    title TEXT NOT NULL DEFAULT 'Untitled Canvas',
+    data TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_canvases_project ON canvases(project_id);
 
 -- Composite indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_companies_active ON companies(project_id, is_deleted, category_id);

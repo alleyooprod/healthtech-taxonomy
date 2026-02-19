@@ -24,13 +24,16 @@ async function loadMarketMap() {
     });
 
     const mapDiv = document.getElementById('marketMap');
-    mapDiv.innerHTML = topLevel.map(cat => `
+    mapDiv.innerHTML = topLevel.map(cat => {
+        const catColor = getCategoryColor(cat.id);
+        return `
         <div class="map-column"
              ondragover="event.preventDefault();this.classList.add('drag-over')"
              ondragleave="this.classList.remove('drag-over')"
              ondrop="handleMapDrop(event, ${cat.id})"
-             data-category-id="${cat.id}">
-            <div class="map-column-header">${esc(cat.name)} <span class="count">(${(byCategory[cat.id] || []).length})</span></div>
+             data-category-id="${cat.id}"
+             style="${catColor ? `border-top: 3px solid ${catColor}` : ''}">
+            <div class="map-column-header"><span class="cat-color-dot" style="background:${catColor || 'transparent'}"></span> ${esc(cat.name)} <span class="count">(${(byCategory[cat.id] || []).length})</span></div>
             <div class="map-tiles">
                 ${(byCategory[cat.id] || []).sort((a,b) => a.name.localeCompare(b.name)).map(c => `
                     <div class="map-tile ${compareSelection.has(c.id) ? 'tile-selected' : ''}"
@@ -43,8 +46,8 @@ async function loadMarketMap() {
                     </div>
                 `).join('')}
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     updateCompareBar();
 }
@@ -201,16 +204,20 @@ async function renderGeoMap() {
     const res = await safeFetch(`/api/companies?project_id=${currentProjectId}`);
     const companies = await res.json();
 
-    const catColors = {};
-    const colorPalette = ['#bc6c5a','#5a7c5a','#6b8fa3','#d4a853','#8b6f8b','#5a8c8c','#a67c52','#7c8c5a','#c4786e','#4a6a4a'];
+    const fallbackPalette = ['#bc6c5a','#5a7c5a','#6b8fa3','#d4a853','#8b6f8b','#5a8c8c','#a67c52','#7c8c5a','#c4786e','#4a6a4a'];
     let colorIdx = 0;
+    const catColorsFallback = {};
 
     companies.forEach(c => {
         const coords = getCoords(c);
         if (!coords) return;
         const cat = c.category_name || 'Unknown';
-        if (!catColors[cat]) catColors[cat] = colorPalette[colorIdx++ % colorPalette.length];
-        const color = catColors[cat];
+        // Prefer saved category color, fall back to palette
+        let color = getCategoryColor(c.category_id);
+        if (!color) {
+            if (!catColorsFallback[cat]) catColorsFallback[cat] = fallbackPalette[colorIdx++ % fallbackPalette.length];
+            color = catColorsFallback[cat];
+        }
 
         const icon = L.divIcon({
             html: `<div style="background:${color};width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>`,
@@ -227,16 +234,142 @@ async function renderGeoMap() {
 }
 
 function switchMapView(view) {
+    document.getElementById('marketMap').classList.add('hidden');
+    document.getElementById('autoLayoutMap').classList.add('hidden');
+    document.getElementById('geoMap').classList.add('hidden');
+    document.getElementById('marketMapBtn').classList.remove('active');
+    document.getElementById('autoMapBtn').classList.remove('active');
+    document.getElementById('geoMapBtn').classList.remove('active');
+
     if (view === 'market') {
         document.getElementById('marketMap').classList.remove('hidden');
-        document.getElementById('geoMap').classList.add('hidden');
         document.getElementById('marketMapBtn').classList.add('active');
-        document.getElementById('geoMapBtn').classList.remove('active');
+    } else if (view === 'auto') {
+        document.getElementById('autoLayoutMap').classList.remove('hidden');
+        document.getElementById('autoMapBtn').classList.add('active');
+        renderAutoLayoutMap();
     } else {
-        document.getElementById('marketMap').classList.add('hidden');
         document.getElementById('geoMap').classList.remove('hidden');
-        document.getElementById('marketMapBtn').classList.remove('active');
         document.getElementById('geoMapBtn').classList.add('active');
         renderGeoMap();
     }
+}
+
+// --- Auto-Layout Market Map (Cytoscape compound nodes) ---
+let _autoLayoutCy = null;
+
+async function renderAutoLayoutMap() {
+    if (!window.cytoscape) return;
+    const container = document.getElementById('autoLayoutMap');
+    if (!container) return;
+
+    const [compRes, taxRes] = await Promise.all([
+        safeFetch(`/api/companies?project_id=${currentProjectId}`),
+        safeFetch(`/api/taxonomy?project_id=${currentProjectId}`),
+    ]);
+    const companies = await compRes.json();
+    const categories = await taxRes.json();
+    const topLevel = categories.filter(c => !c.parent_id);
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    const elements = [];
+
+    // Add category parent nodes
+    topLevel.forEach(cat => {
+        const color = getCategoryColor(cat.id) || '#999';
+        elements.push({
+            group: 'nodes',
+            data: {
+                id: 'cat-' + cat.id,
+                label: cat.name,
+                type: 'category',
+                color: color,
+            },
+        });
+    });
+
+    // Add company nodes as children of categories
+    companies.forEach(c => {
+        const catId = c.category_id;
+        if (!catId) return;
+        const parentExists = topLevel.some(cat => cat.id === catId);
+        if (!parentExists) return;
+        const color = getCategoryColor(catId) || '#999';
+        elements.push({
+            group: 'nodes',
+            data: {
+                id: 'co-' + c.id,
+                label: c.name,
+                parent: 'cat-' + catId,
+                type: 'company',
+                color: color,
+                companyId: c.id,
+            },
+        });
+    });
+
+    if (_autoLayoutCy) _autoLayoutCy.destroy();
+
+    _autoLayoutCy = cytoscape({
+        container: container,
+        elements: elements,
+        style: [
+            {
+                selector: 'node[type="category"]',
+                style: {
+                    'label': 'data(label)',
+                    'text-valign': 'top',
+                    'text-halign': 'center',
+                    'font-size': '14px',
+                    'font-weight': '600',
+                    'color': isDark ? '#e0ddd5' : '#3D4035',
+                    'background-color': 'data(color)',
+                    'background-opacity': 0.08,
+                    'border-width': 2,
+                    'border-color': 'data(color)',
+                    'border-opacity': 0.4,
+                    'padding': '20px',
+                    'shape': 'round-rectangle',
+                    'text-margin-y': -8,
+                },
+            },
+            {
+                selector: 'node[type="company"]',
+                style: {
+                    'label': 'data(label)',
+                    'background-color': 'data(color)',
+                    'background-opacity': 0.2,
+                    'color': isDark ? '#ccc' : '#555',
+                    'text-valign': 'center',
+                    'text-halign': 'center',
+                    'font-size': '10px',
+                    'width': 40,
+                    'height': 40,
+                    'border-width': 2,
+                    'border-color': 'data(color)',
+                    'text-wrap': 'ellipsis',
+                    'text-max-width': '60px',
+                },
+            },
+        ],
+        layout: {
+            name: 'cose',
+            animate: false,
+            padding: 30,
+            nodeRepulsion: () => 8000,
+            idealEdgeLength: () => 80,
+            nodeOverlap: 20,
+            componentSpacing: 60,
+        },
+        wheelSensitivity: 0.3,
+    });
+
+    // Click company node to open detail
+    _autoLayoutCy.on('tap', 'node[type="company"]', (e) => {
+        const companyId = e.target.data('companyId');
+        if (companyId) {
+            showTab('companies');
+            showDetail(companyId);
+        }
+    });
 }

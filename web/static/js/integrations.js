@@ -300,7 +300,8 @@ function renderFuseResults(companies) {
         const compPct = Math.round((c.completeness || 0) * 100);
         return `
         <tr onclick="showDetail(${c.id})" style="cursor:pointer" data-company-id="${c.id}">
-            <td><span class="star-btn ${c.is_starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleStar(${c.id},this)" title="Star">${c.is_starred ? '\u2605' : '\u2606'}</span></td>
+            <td class="bulk-cell" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-checkbox" data-company-id="${c.id}" ${bulkSelection.has(c.id) ? 'checked' : ''} onchange="toggleBulkSelect(${c.id}, this, event)"></td>
+            <td><span class="star-btn ${c.is_starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleStar(${c.id},this)" title="Star"><span class="material-symbols-outlined">${c.is_starred ? 'star' : 'star_outline'}</span></span></td>
             <td>
                 <div class="company-name-cell">
                     <img class="company-logo" src="${c.logo_url || 'https://logo.clearbit.com/' + extractDomain(c.url)}" alt="" onerror="this.style.display='none'">
@@ -309,7 +310,7 @@ function renderFuseResults(companies) {
                     ${c.relationship_status ? '<span class="relationship-dot rel-' + c.relationship_status + '" title="' + relationshipLabel(c.relationship_status) + '"></span>' : ''}
                 </div>
             </td>
-            <td>${esc(c.category_name || 'N/A')}</td>
+            <td>${c.category_id ? `<a class="cat-link" onclick="event.stopPropagation();navigateTo('category',${c.category_id},'${escAttr(c.category_name)}')"><span class="cat-color-dot" style="background:${getCategoryColor(c.category_id) || 'transparent'}"></span> ${esc(c.category_name)}</a>` : 'N/A'}</td>
             <td><div class="cell-clamp">${esc(c.what || '')}</div></td>
             <td><div class="cell-clamp">${esc(c.target || '')}</div></td>
             <td><div class="cell-clamp">${esc(c.geography || '')}</div></td>

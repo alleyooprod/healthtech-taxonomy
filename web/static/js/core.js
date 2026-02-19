@@ -22,6 +22,63 @@ let activeFilters = {
 };
 let savedViews = [];
 
+// --- Linked Record Navigation ---
+let navHistory = [];  // Stack of {type, id, label}
+
+function navigateTo(type, id, label) {
+    navHistory.push({ type, id, label });
+    renderBreadcrumbs();
+
+    if (type === 'company') {
+        showTab('companies');
+        showDetail(id);
+    } else if (type === 'category') {
+        showTab('companies');
+        if (typeof showCategoryDetail === 'function') showCategoryDetail(id);
+    }
+}
+
+function navBack() {
+    if (navHistory.length <= 1) {
+        navHistory = [];
+        renderBreadcrumbs();
+        closeDetail();
+        return;
+    }
+    navHistory.pop(); // remove current
+    const prev = navHistory[navHistory.length - 1];
+    if (prev.type === 'company') showDetail(prev.id);
+    else if (prev.type === 'category') {
+        if (typeof showCategoryDetail === 'function') showCategoryDetail(prev.id);
+    }
+    renderBreadcrumbs();
+}
+
+function renderBreadcrumbs() {
+    const bar = document.getElementById('breadcrumbBar');
+    if (!bar) return;
+    if (!navHistory.length) {
+        bar.classList.add('hidden');
+        return;
+    }
+    bar.classList.remove('hidden');
+    bar.innerHTML = navHistory.map((item, i) => {
+        const isLast = i === navHistory.length - 1;
+        if (isLast) return `<span class="breadcrumb-current">${esc(item.label)}</span>`;
+        return `<a class="breadcrumb-link" onclick="navJumpTo(${i})">${esc(item.label)}</a><span class="breadcrumb-sep">/</span>`;
+    }).join('');
+}
+
+function navJumpTo(index) {
+    navHistory = navHistory.slice(0, index + 1);
+    const item = navHistory[navHistory.length - 1];
+    if (item.type === 'company') showDetail(item.id);
+    else if (item.type === 'category') {
+        if (typeof showCategoryDetail === 'function') showCategoryDetail(item.id);
+    }
+    renderBreadcrumbs();
+}
+
 // Retry state
 let retryingBatch = null;
 let retryPollInterval = null;
@@ -124,7 +181,7 @@ function showTab(name) {
     });
     document.getElementById('tab-' + name).classList.add('active');
 
-    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'process', 'export'];
+    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'process', 'export'];
     const idx = tabNames.indexOf(name);
     if (idx >= 0) {
         const tabBtn = document.querySelectorAll('.tab')[idx];
@@ -143,7 +200,8 @@ function showTab(name) {
     if (name === 'companies') loadCompanies();
     if (name === 'taxonomy') loadTaxonomy();
     if (name === 'map') loadMarketMap();
-    if (name === 'reports') { loadSavedReports(); resumeActiveReport(); }
+    if (name === 'reports') { loadSavedReports(); resumeActiveReport(); if (typeof loadSavedResearch === 'function') loadSavedResearch(); }
+    if (name === 'canvas') { if (typeof loadCanvasList === 'function') loadCanvasList(); }
     if (name === 'process') loadBatches();
     if (name === 'export') { loadShareTokens(); loadNotifPrefs(); }
 }
@@ -183,7 +241,7 @@ function toggleTheme() {
     html.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
     document.querySelectorAll('.theme-toggle').forEach(btn => {
-        btn.innerHTML = next === 'dark' ? '&#9788;' : '&#9789;';
+        btn.innerHTML = `<span class="material-symbols-outlined">${next === 'dark' ? 'light_mode' : 'dark_mode'}</span>`;
     });
     if (window.mermaid) {
         mermaid.initialize({ startOnLoad: false, theme: next === 'dark' ? 'dark' : 'default', securityLevel: 'strict' });
@@ -199,7 +257,7 @@ function initTheme() {
     if (saved === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
         document.querySelectorAll('.theme-toggle').forEach(btn => {
-            btn.innerHTML = '&#9788;';
+            btn.innerHTML = '<span class="material-symbols-outlined">light_mode</span>';
         });
     }
 }

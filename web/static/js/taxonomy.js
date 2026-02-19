@@ -5,22 +5,66 @@
 let reviewChanges = [];
 let cyInstance = null;
 
+// Default palette for auto-assigning category colors
+const CATEGORY_PALETTE = [
+    '#bc6c5a', '#5a7c5a', '#6b8fa3', '#d4a853', '#8b6f8b',
+    '#5a8c8c', '#a67c52', '#7c8c5a', '#c4786e', '#4a6a4a',
+    '#7a6b8a', '#8c7a5a',
+];
+
+// Cache category data with colors for cross-module use
+let categoryColorMap = {};
+
+function getCategoryColor(categoryId) {
+    return categoryColorMap[categoryId] || null;
+}
+
+async function updateCategoryColor(categoryId, color) {
+    await safeFetch(`/api/categories/${categoryId}/color`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color }),
+    });
+    categoryColorMap[categoryId] = color;
+    // Refresh market map and companies if visible
+    if (document.getElementById('tab-map')?.classList.contains('active')) loadMarketMap();
+}
+
 async function loadTaxonomy() {
     const res = await safeFetch(`/api/taxonomy?project_id=${currentProjectId}`);
     const categories = await res.json();
+
+    // Build color map — use saved color or auto-assign from palette
+    categoryColorMap = {};
+    let paletteIdx = 0;
+    categories.filter(c => !c.parent_id).forEach(cat => {
+        categoryColorMap[cat.id] = cat.color || CATEGORY_PALETTE[paletteIdx++ % CATEGORY_PALETTE.length];
+    });
+    categories.filter(c => c.parent_id).forEach(sub => {
+        categoryColorMap[sub.id] = sub.color || categoryColorMap[sub.parent_id] || CATEGORY_PALETTE[paletteIdx++ % CATEGORY_PALETTE.length];
+    });
 
     const topLevel = categories.filter(c => !c.parent_id);
     const subs = categories.filter(c => c.parent_id);
 
     document.getElementById('taxonomyTree').innerHTML = topLevel.map(cat => {
+        const color = categoryColorMap[cat.id];
         const children = subs.filter(s => s.parent_id === cat.id);
         const childHtml = children.length
-            ? `<div class="sub-categories">${children.map(s =>
-                `<div class="sub-cat">${esc(s.name)} <span class="count">(${s.company_count})</span></div>`
-            ).join('')}</div>`
+            ? `<div class="sub-categories">${children.map(s => {
+                const subColor = categoryColorMap[s.id];
+                return `<div class="sub-cat">
+                    <span class="cat-color-dot" style="background:${subColor}"></span>
+                    ${esc(s.name)} <span class="count">(${s.company_count})</span>
+                </div>`;
+            }).join('')}</div>`
             : '';
-        return `<div class="category-card">
-            <div class="cat-header">${esc(cat.name)} <span class="count">(${cat.company_count})</span></div>
+        return `<div class="category-card" style="border-left: 4px solid ${color}">
+            <div class="cat-header">
+                <input type="color" class="cat-color-picker" value="${color}" title="Category color"
+                    onchange="updateCategoryColor(${cat.id}, this.value)">
+                ${esc(cat.name)} <span class="count">(${cat.company_count})</span>
+            </div>
             ${childHtml}
         </div>`;
     }).join('');
@@ -47,6 +91,45 @@ async function loadTaxonomy() {
             <span class="change-date">${new Date(h.created_at).toLocaleDateString()}</span>
           </div>`).join('')
         : '<p>No taxonomy changes yet.</p>';
+}
+
+// --- Category Detail View ---
+async function showCategoryDetail(categoryId) {
+    const res = await safeFetch(`/api/categories/${categoryId}`);
+    const cat = await res.json();
+    if (cat.error) { showToast(cat.error); return; }
+
+    const color = categoryColorMap[cat.id] || '#888';
+    const companies = cat.companies || [];
+
+    const panel = document.getElementById('detailPanel');
+    document.getElementById('detailName').textContent = cat.name;
+    document.getElementById('detailContent').innerHTML = `
+        <div class="category-detail-header">
+            <span class="cat-color-dot" style="background:${color};width:14px;height:14px"></span>
+            <input type="color" class="cat-color-picker" value="${color}" title="Category color"
+                onchange="updateCategoryColor(${cat.id}, this.value)">
+            <span class="detail-cat-name">${esc(cat.name)}</span>
+        </div>
+        ${cat.description ? `<div class="detail-field"><label>Description</label><p>${esc(cat.description)}</p></div>` : ''}
+        <div class="detail-field"><label>Companies (${companies.length})</label></div>
+        <div class="category-company-list">
+            ${companies.length ? companies.map(c => `
+                <div class="cat-company-item" onclick="navigateTo('company', ${c.id}, '${escAttr(c.name)}')">
+                    <img class="company-logo" src="${c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`}" alt="" onerror="this.style.display='none'">
+                    <span>${esc(c.name)}</span>
+                    <span class="text-muted" style="font-size:11px;margin-left:auto">${esc(c.what || '').substring(0, 60)}</span>
+                </div>
+            `).join('') : '<p style="font-size:12px;color:var(--text-muted)">No companies in this category yet.</p>'}
+        </div>
+        <div class="detail-actions" style="margin-top:16px">
+            <button class="btn" onclick="activeFilters.category_id=${cat.id};activeFilters.category_name='${escAttr(cat.name)}';renderFilterChips();loadCompanies();closeDetail()">
+                Filter by this category
+            </button>
+            <button class="btn" onclick="closeDetail()">Close</button>
+        </div>
+    `;
+    panel.classList.remove('hidden');
 }
 
 // --- Taxonomy Review ---
@@ -255,6 +338,16 @@ function renderTaxonomyGraph(categories, companies) {
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
+    // Build color map for graph nodes
+    let graphColorMap = {};
+    let pIdx = 0;
+    categories.filter(c => !c.parent_id).forEach(cat => {
+        graphColorMap[cat.id] = cat.color || CATEGORY_PALETTE[pIdx++ % CATEGORY_PALETTE.length];
+    });
+    categories.filter(c => c.parent_id).forEach(sub => {
+        graphColorMap[sub.id] = sub.color || graphColorMap[sub.parent_id] || CATEGORY_PALETTE[pIdx++ % CATEGORY_PALETTE.length];
+    });
+
     const elements = [];
     const topLevel = categories.filter(c => !c.parent_id);
     const subs = categories.filter(c => c.parent_id);
@@ -268,6 +361,7 @@ function renderTaxonomyGraph(categories, companies) {
                 label: `${cat.name}\n(${cat.company_count})`,
                 type: 'category',
                 count: cat.company_count,
+                catColor: graphColorMap[cat.id],
             },
         });
         elements.push({ data: { source: 'root', target: `cat-${cat.id}` } });
@@ -280,6 +374,7 @@ function renderTaxonomyGraph(categories, companies) {
                 label: `${sub.name}\n(${sub.company_count})`,
                 type: 'subcategory',
                 count: sub.company_count,
+                catColor: graphColorMap[sub.id],
             },
         });
         elements.push({ data: { source: `cat-${sub.parent_id}`, target: `cat-${sub.id}` } });
@@ -304,7 +399,7 @@ function renderTaxonomyGraph(categories, companies) {
             {
                 selector: 'node[type="category"]',
                 style: {
-                    'background-color': '#5a7c5a',
+                    'background-color': 'data(catColor)',
                     label: 'data(label)',
                     'text-valign': 'center',
                     'text-wrap': 'wrap',
@@ -318,7 +413,7 @@ function renderTaxonomyGraph(categories, companies) {
             {
                 selector: 'node[type="subcategory"]',
                 style: {
-                    'background-color': '#6b8fa3',
+                    'background-color': 'data(catColor)',
                     label: 'data(label)',
                     'text-valign': 'center',
                     'text-wrap': 'wrap',

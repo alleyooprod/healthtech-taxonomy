@@ -20,7 +20,7 @@ export const test = base.extend({
       },
     });
     const project = await resp.json();
-    await use({ id: project.id, csrf });
+    await use({ id: project.id, name: project.name, csrf });
   },
 });
 

@@ -99,10 +99,22 @@ class TaxonomyMixin:
             )
             return True
 
+    def get_category(self, category_id):
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM categories WHERE id = ?", (category_id,)).fetchone()
+            return dict(row) if row else None
+
+    def update_category_color(self, category_id, color):
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE categories SET color = ?, updated_at = ? WHERE id = ?",
+                (color, datetime.now().isoformat(), category_id),
+            )
+
     def get_category_stats(self, project_id=None):
         with self._get_conn() as conn:
             query = """
-                SELECT c.id, c.name, c.parent_id,
+                SELECT c.id, c.name, c.parent_id, c.color,
                        COUNT(DISTINCT co.id) as company_count
                 FROM categories c
                 LEFT JOIN companies co

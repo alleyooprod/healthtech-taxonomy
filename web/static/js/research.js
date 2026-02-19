@@ -1,0 +1,341 @@
+/**
+ * Deep Dive research: scope-based research with web search, templates, saved library.
+ */
+
+let _currentResearchMode = 'report';
+let _researchPollCount = 0;
+const _MAX_RESEARCH_POLL = 120; // 6 min at 3s
+let _selectedResearchCompanyId = null;
+
+// --- Mode switching ---
+function switchResearchMode(mode) {
+    _currentResearchMode = mode;
+    document.getElementById('researchModeReport').classList.toggle('hidden', mode !== 'report');
+    document.getElementById('researchModeDeepDive').classList.toggle('hidden', mode !== 'deepdive');
+    document.getElementById('quickReportModeBtn').classList.toggle('active', mode === 'report');
+    document.getElementById('deepDiveModeBtn').classList.toggle('active', mode === 'deepdive');
+
+    if (mode === 'deepdive') loadSavedResearch();
+}
+
+// --- Scope selector ---
+function onResearchScopeChange() {
+    const scopeType = document.getElementById('researchScopeType').value;
+    const scopeSelect = document.getElementById('researchScopeId');
+    const companySearch = document.getElementById('researchCompanySearch');
+    const companyResults = document.getElementById('researchCompanyResults');
+
+    scopeSelect.classList.add('hidden');
+    companySearch.classList.add('hidden');
+    companyResults.classList.add('hidden');
+    _selectedResearchCompanyId = null;
+
+    if (scopeType === 'category') {
+        scopeSelect.classList.remove('hidden');
+        loadResearchCategories();
+    } else if (scopeType === 'company') {
+        companySearch.classList.remove('hidden');
+        companySearch.value = '';
+    }
+}
+
+async function loadResearchCategories() {
+    const res = await safeFetch(`/api/taxonomy?project_id=${currentProjectId}`);
+    const cats = await res.json();
+    const topLevel = cats.filter(c => !c.parent_id);
+    const sel = document.getElementById('researchScopeId');
+    sel.innerHTML = '<option value="">Select category...</option>' +
+        topLevel.map(c => `<option value="${c.id}">${esc(c.name)} (${c.company_count})</option>`).join('');
+}
+
+let _companySearchTimeout = null;
+function searchResearchCompany() {
+    clearTimeout(_companySearchTimeout);
+    const q = document.getElementById('researchCompanySearch').value.trim();
+    if (q.length < 2) {
+        document.getElementById('researchCompanyResults').classList.add('hidden');
+        return;
+    }
+    _companySearchTimeout = setTimeout(async () => {
+        const res = await safeFetch(`/api/companies?project_id=${currentProjectId}&search=${encodeURIComponent(q)}&limit=8`);
+        const companies = await res.json();
+        const container = document.getElementById('researchCompanyResults');
+        if (!companies.length) {
+            container.classList.add('hidden');
+            return;
+        }
+        container.classList.remove('hidden');
+        container.innerHTML = companies.map(c => `
+            <div class="research-company-option" onclick="selectResearchCompany(${c.id}, '${escAttr(c.name)}')">
+                <strong>${esc(c.name)}</strong>
+                <span class="hint-text">${esc(c.category_name || '')}</span>
+            </div>
+        `).join('');
+    }, 300);
+}
+
+function selectResearchCompany(id, name) {
+    _selectedResearchCompanyId = id;
+    document.getElementById('researchCompanySearch').value = name;
+    document.getElementById('researchCompanyResults').classList.add('hidden');
+}
+
+// --- Templates ---
+const RESEARCH_TEMPLATES = {
+    competitive: 'Map the competitive landscape for {scope}. Identify key players, their positioning, market share estimates, strengths and weaknesses, and recent strategic moves.',
+    pricing: 'Analyze pricing strategies across {scope}. Compare pricing models, tiers, average contract values, and how pricing relates to market positioning.',
+    trends: 'Research current market trends affecting {scope}. Include emerging technologies, regulatory changes, investment patterns, and growth projections for the next 3-5 years.',
+    sentiment: 'Research product reviews and user sentiment for {scope}. Analyze customer feedback from G2, Capterra, app stores, and social media. Identify common praises and complaints.',
+    journey: 'Analyze the customer journey for {scope}. Map how customers discover, evaluate, purchase, and use products in this space. Identify pain points and opportunities.',
+};
+
+function applyResearchTemplate(key) {
+    const scopeType = document.getElementById('researchScopeType').value;
+    let scopeLabel = 'this market';
+    if (scopeType === 'category') {
+        const sel = document.getElementById('researchScopeId');
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.value) scopeLabel = opt.text.replace(/\s*\(\d+\)$/, '');
+    } else if (scopeType === 'company') {
+        const name = document.getElementById('researchCompanySearch').value.trim();
+        if (name) scopeLabel = name;
+    }
+
+    const template = RESEARCH_TEMPLATES[key] || '';
+    document.getElementById('researchPrompt').value = template.replace('{scope}', scopeLabel);
+    document.getElementById('researchPrompt').focus();
+}
+
+// --- Start Deep Dive ---
+async function startDeepDive() {
+    const prompt = document.getElementById('researchPrompt').value.trim();
+    if (!prompt) { showToast('Enter a research question'); return; }
+
+    const scopeType = document.getElementById('researchScopeType').value;
+    let scopeId = null;
+    if (scopeType === 'category') {
+        scopeId = document.getElementById('researchScopeId').value || null;
+    } else if (scopeType === 'company') {
+        scopeId = _selectedResearchCompanyId;
+        if (!scopeId) { showToast('Select a company first'); return; }
+    }
+
+    let title = document.getElementById('researchTitle').value.trim();
+    if (!title) {
+        title = prompt.length > 60 ? prompt.substring(0, 57) + '...' : prompt;
+    }
+
+    const model = document.getElementById('researchModelSelect').value;
+    const btn = document.getElementById('researchBtn');
+    btn.disabled = true;
+
+    document.getElementById('researchStatus').classList.remove('hidden');
+    document.getElementById('researchResult').classList.add('hidden');
+
+    const res = await safeFetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            project_id: currentProjectId,
+            title: title,
+            scope_type: scopeType,
+            scope_id: scopeId ? parseInt(scopeId) : null,
+            prompt: prompt,
+            model: model,
+        }),
+    });
+    const data = await res.json();
+    if (data.error) {
+        showToast(data.error);
+        btn.disabled = false;
+        document.getElementById('researchStatus').classList.add('hidden');
+        return;
+    }
+
+    _researchPollCount = 0;
+    pollResearch(data.research_id);
+}
+
+async function pollResearch(researchId) {
+    const res = await safeFetch(`/api/research/${researchId}/poll`);
+    const data = await res.json();
+
+    if (data.status === 'pending' || data.status === 'running') {
+        if (++_researchPollCount > _MAX_RESEARCH_POLL) {
+            showResearchError('Research timed out. Please try again.');
+            return;
+        }
+        setTimeout(() => pollResearch(researchId), 3000);
+        return;
+    }
+
+    _researchPollCount = 0;
+    document.getElementById('researchBtn').disabled = false;
+    document.getElementById('researchStatus').classList.add('hidden');
+
+    if (data.status === 'failed' || data.status === 'error') {
+        loadResearchDetail(researchId);
+        return;
+    }
+
+    loadResearchDetail(researchId);
+    loadSavedResearch();
+}
+
+function showResearchError(msg) {
+    document.getElementById('researchBtn').disabled = false;
+    document.getElementById('researchStatus').classList.add('hidden');
+    const content = document.getElementById('researchResult');
+    content.classList.remove('hidden');
+    content.innerHTML = `<p class="re-research-error">${esc(msg)}</p>`;
+}
+
+// --- View research result ---
+async function loadResearchDetail(researchId) {
+    const res = await safeFetch(`/api/research/${researchId}`);
+    const data = await res.json();
+    if (!data || data.error) return;
+
+    const content = document.getElementById('researchResult');
+    content.classList.remove('hidden');
+
+    if (data.status === 'failed') {
+        content.innerHTML = `<p class="re-research-error">${esc(data.result || 'Research failed')}</p>`;
+        return;
+    }
+
+    let html;
+    if (window.marked) {
+        const renderer = new marked.Renderer();
+        const defaultCode = renderer.code.bind(renderer);
+        renderer.code = function(args) {
+            if (args.lang === 'mermaid') {
+                return `<div class="mermaid">${args.text}</div>`;
+            }
+            return defaultCode(args);
+        };
+        marked.use({ renderer, breaks: true, gfm: true });
+        html = sanitize(marked.parse(data.result || ''));
+    } else {
+        html = esc(data.result || '').replace(/\n/g, '<br>');
+    }
+
+    const durationStr = data.duration_ms ? `${(data.duration_ms / 1000).toFixed(0)}s` : '';
+    const costStr = data.cost_usd ? `$${data.cost_usd.toFixed(3)}` : '';
+    const metaParts = [data.model, durationStr, costStr].filter(Boolean).join(' · ');
+
+    content.innerHTML = `
+        <div class="report-header">
+            <h3>${esc(data.title)}</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+                <span class="hint-text">${metaParts}</span>
+                <button class="btn" onclick="exportResearchMd(${researchId})">Export .md</button>
+                <button class="btn" onclick="exportResearchPdf()">Export PDF</button>
+            </div>
+        </div>
+        <div class="report-body">${html}</div>
+    `;
+
+    if (window.mermaid) {
+        try { mermaid.run({ nodes: content.querySelectorAll('.mermaid') }); } catch (e) {}
+    }
+
+    content.scrollIntoView({ behavior: 'smooth' });
+}
+
+// --- Export ---
+function exportResearchMd(researchId) {
+    safeFetch(`/api/research/${researchId}`).then(r => r.json()).then(data => {
+        if (!data.result) return;
+        const blob = new Blob([`# ${data.title}\n\n${data.result}`], { type: 'text/markdown' });
+        if (window.saveAs) saveAs(blob, `research-${researchId}.md`);
+    });
+}
+
+function exportResearchPdf() {
+    const body = document.querySelector('#researchResult .report-body');
+    if (!body) return;
+    const printWin = window.open('', '_blank');
+    printWin.document.write(`<!DOCTYPE html><html><head>
+        <title>Research</title>
+        <style>
+            body { font-family: 'Noto Sans', sans-serif; font-size: 13px; line-height: 1.7; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+            h1, h2, h3, h4 { color: #3D4035; }
+            table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px; }
+            th, td { padding: 8px 10px; border: 1px solid #ddd; text-align: left; }
+            th { background: #f5f2eb; font-weight: 600; }
+            blockquote { margin: 12px 0; padding: 10px 16px; border-left: 3px solid #BC6C5A; background: #fff5f0; }
+            a { color: #BC6C5A; }
+            .mermaid { display: none; }
+        </style>
+    </head><body>${body.innerHTML}</body></html>`);
+    printWin.document.close();
+    printWin.onload = () => { printWin.print(); };
+}
+
+// --- Saved research library ---
+async function loadSavedResearch() {
+    const container = document.getElementById('savedResearchList');
+    if (!container) return;
+
+    const res = await safeFetch(`/api/research?project_id=${currentProjectId}`);
+    const items = await res.json();
+
+    if (!items.length) {
+        container.innerHTML = '<p class="hint-text">No saved research yet. Start a deep dive above.</p>';
+        return;
+    }
+
+    container.innerHTML = items.map(r => {
+        const scopeLabel = r.scope_type === 'project' ? 'Project' :
+            r.scope_type === 'custom' ? 'Custom' :
+            r.scope_type.charAt(0).toUpperCase() + r.scope_type.slice(1);
+        const statusIcon = r.status === 'completed' ? 'check_circle' :
+            r.status === 'running' ? 'hourglass_top' :
+            r.status === 'failed' ? 'error' : 'schedule';
+        const statusClass = r.status === 'completed' ? 'research-status-done' :
+            r.status === 'failed' ? 'research-status-failed' : 'research-status-pending';
+
+        return `
+        <div class="saved-report-item">
+            <div class="saved-report-info">
+                <strong>${esc(r.title)}</strong>
+                <span class="hint-text">
+                    <span class="material-symbols-outlined ${statusClass}" style="font-size:14px;vertical-align:middle">${statusIcon}</span>
+                    ${scopeLabel} · ${r.model || ''} · ${new Date(r.created_at).toLocaleDateString()}
+                </span>
+            </div>
+            <div class="saved-report-actions">
+                ${r.status === 'completed'
+                    ? `<button class="btn" onclick="viewSavedResearch(${r.id})">View</button>
+                       <button class="btn" onclick="exportResearchMd(${r.id})">MD</button>`
+                    : r.status === 'running'
+                    ? '<span class="hint-text">Running...</span>'
+                    : `<span class="re-research-error" style="font-size:12px">Failed</span>`
+                }
+                <button class="btn" style="color:var(--accent-danger)" onclick="deleteResearch(${r.id})">Delete</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function viewSavedResearch(researchId) {
+    await loadResearchDetail(researchId);
+}
+
+async function deleteResearch(researchId) {
+    await safeFetch(`/api/research/${researchId}`, { method: 'DELETE' });
+    loadSavedResearch();
+    showToast('Research deleted');
+}
+
+// --- Company detail panel "Research" button support ---
+function startCompanyResearch(companyId, companyName) {
+    showTab('reports');
+    switchResearchMode('deepdive');
+    document.getElementById('researchScopeType').value = 'company';
+    onResearchScopeChange();
+    document.getElementById('researchCompanySearch').value = companyName;
+    _selectedResearchCompanyId = companyId;
+    document.getElementById('researchPrompt').focus();
+}

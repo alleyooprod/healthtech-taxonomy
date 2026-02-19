@@ -249,11 +249,13 @@ tr:hover { background: var(--bg-surface); }
 /* ========== Star / Bookmark ========== */
 .star-btn {
     cursor: pointer;
-    font-size: 16px;
     color: var(--border-medium);
     user-select: none;
     transition: color 0.15s;
+    display: inline-flex;
+    align-items: center;
 }
+.star-btn .material-symbols-outlined { font-size: 18px; }
 
 .star-btn:hover { color: var(--accent-star); }
 .star-btn.starred { color: var(--accent-star); }
@@ -264,6 +266,43 @@ tr:hover { background: var(--bg-surface); }
 .sort-header::after { content: ''; margin-left: 4px; font-size: 10px; }
 .sort-header.sort-asc::after { content: '\25B2'; }
 .sort-header.sort-desc::after { content: '\25BC'; }
+
+/* ========== Bulk Select ========== */
+.bulk-cell { width: 28px; text-align: center; }
+.bulk-header { width: 28px; text-align: center; }
+.bulk-checkbox { cursor: pointer; width: 14px; height: 14px; accent-color: var(--accent-primary); }
+
+.bulk-action-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-heading);
+    color: var(--bg-container);
+    padding: 10px 20px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-modal);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 3000;
+    font-size: 13px;
+}
+
+.bulk-action-bar .btn,
+.bulk-action-bar .danger-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 8px;
+}
+
+.bulk-action-bar .btn { background: rgba(255,255,255,0.15); color: inherit; border: 1px solid rgba(255,255,255,0.2); }
+.bulk-action-bar .btn:hover { background: rgba(255,255,255,0.25); }
+.bulk-action-bar .danger-btn { background: var(--accent-danger); color: white; }
+.bulk-action-bar .material-symbols-outlined { font-size: 16px; }
 
 /* ========== Filter Checkboxes ========== */
 .filter-checkbox {
