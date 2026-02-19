@@ -396,6 +396,117 @@ def bulk_action():
 
 # --- Compare ---
 
+# --- Enrichment ---
+
+def _run_enrich_single(job_id, company_id, fields_to_fill, model):
+    from core.enrichment import run_enrichment
+    from storage.db import Database
+    from datetime import datetime
+    enrich_db = Database()
+    company = enrich_db.get_company(company_id)
+    if not company:
+        write_result("enrich", job_id, {"status": "error", "error": "Company not found"})
+        return
+
+    enrich_db.update_company(company_id, {"enrichment_status": "enriching"})
+    try:
+        result = run_enrichment(company, fields_to_fill, model)
+        enriched = result.get("enriched_fields", {})
+        if enriched:
+            # Handle tags specially (merge instead of replace)
+            if "tags" in enriched:
+                existing_tags = company.get("tags") or []
+                enriched["tags"] = list(set(existing_tags + enriched["tags"]))
+            enriched["enrichment_status"] = "enriched"
+            enriched["last_verified_at"] = datetime.now().isoformat()
+            enrich_db.update_company(company_id, enriched)
+        else:
+            enrich_db.update_company(company_id, {"enrichment_status": "enriched"})
+        write_result("enrich", job_id, {
+            "status": "complete", "enriched_fields": list(enriched.keys()),
+            "steps_run": result.get("steps_run", 0),
+        })
+    except Exception as e:
+        enrich_db.update_company(company_id, {"enrichment_status": "failed"})
+        write_result("enrich", job_id, {"status": "error", "error": str(e)[:300]})
+
+
+@companies_bp.route("/api/companies/<int:company_id>/enrich", methods=["POST"])
+def enrich_company(company_id):
+    db = current_app.db
+    company = db.get_company(company_id)
+    if not company:
+        return jsonify({"error": "Company not found"}), 404
+    data = request.json or {}
+    fields_to_fill = data.get("fields_to_fill")
+    model = data.get("model", DEFAULT_MODEL)
+    job_id = start_async_job("enrich", _run_enrich_single,
+                              company_id, fields_to_fill, model)
+    return jsonify({"job_id": job_id})
+
+
+@companies_bp.route("/api/enrich/<job_id>")
+def poll_enrich(job_id):
+    return jsonify(poll_result("enrich", job_id))
+
+
+def _run_enrich_batch(job_id, project_id, company_ids, model):
+    from core.enrichment import run_enrichment, identify_missing_fields
+    from storage.db import Database
+    from datetime import datetime
+    enrich_db = Database()
+
+    results = []
+    for cid in company_ids:
+        company = enrich_db.get_company(cid)
+        if not company:
+            continue
+        missing = identify_missing_fields(company)
+        if not missing:
+            continue
+        enrich_db.update_company(cid, {"enrichment_status": "enriching"})
+        try:
+            result = run_enrichment(company, missing, model)
+            enriched = result.get("enriched_fields", {})
+            if enriched:
+                if "tags" in enriched:
+                    existing_tags = company.get("tags") or []
+                    enriched["tags"] = list(set(existing_tags + enriched["tags"]))
+                enriched["enrichment_status"] = "enriched"
+                enriched["last_verified_at"] = datetime.now().isoformat()
+                enrich_db.update_company(cid, enriched)
+            else:
+                enrich_db.update_company(cid, {"enrichment_status": "enriched"})
+            results.append({"id": cid, "fields": list(enriched.keys())})
+        except Exception as e:
+            enrich_db.update_company(cid, {"enrichment_status": "failed"})
+            results.append({"id": cid, "error": str(e)[:200]})
+
+    write_result("enrich", job_id, {"status": "complete", "results": results})
+
+
+@companies_bp.route("/api/companies/enrich-batch", methods=["POST"])
+def enrich_batch():
+    db = current_app.db
+    data = request.json or {}
+    project_id = data.get("project_id")
+    company_ids = data.get("company_ids")
+    model = data.get("model", DEFAULT_MODEL)
+
+    if not company_ids:
+        # Enrich all companies with missing fields
+        companies = db.get_companies(project_id=project_id, limit=500)
+        from core.enrichment import identify_missing_fields
+        company_ids = [c["id"] for c in companies if identify_missing_fields(c)]
+
+    if not company_ids:
+        return jsonify({"error": "No companies need enrichment"}), 400
+
+    job_id = start_async_job("enrich", _run_enrich_batch,
+                              project_id, company_ids, model)
+    return jsonify({"job_id": job_id, "count": len(company_ids)})
+
+
 @companies_bp.route("/api/companies/compare")
 def compare_companies():
     db = current_app.db

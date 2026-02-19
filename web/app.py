@@ -1,18 +1,45 @@
 """Flask web app for browsing and managing the taxonomy."""
 import logging
+import sys
 import time
 from collections import defaultdict
+from logging.handlers import RotatingFileHandler
 
 from flask import Flask, render_template, request, jsonify, g
 
 from config import (
-    WEB_HOST, WEB_PORT, DATA_DIR, SESSION_SECRET,
+    WEB_HOST, WEB_PORT, DATA_DIR, LOGS_DIR, SESSION_SECRET, APP_VERSION,
     generate_csrf_token, verify_csrf_token,
     RATE_LIMIT_WINDOW, RATE_LIMIT_MAX_REQUESTS,
 )
 from storage.db import Database
 
 logger = logging.getLogger(__name__)
+
+
+def _setup_logging():
+    """Configure file + console logging with rotation."""
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    log_file = LOGS_DIR / "app.log"
+    file_handler = RotatingFileHandler(
+        str(log_file), maxBytes=5 * 1024 * 1024, backupCount=5,
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    root = logging.getLogger()
+    root.addHandler(file_handler)
+    root.setLevel(logging.INFO)
+
+    def _exception_hook(exc_type, exc_value, exc_tb):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_tb)
+            return
+        logger.critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_tb))
+
+    sys.excepthook = _exception_hook
 
 # --- Rate limiting (in-memory, per-process) ---
 _rate_buckets = defaultdict(list)  # key -> [timestamps]
@@ -46,6 +73,9 @@ def _cleanup_stale_results():
 
 
 def create_app():
+    _setup_logging()
+    logger.info("Starting Research Taxonomy Library v%s", APP_VERSION)
+
     app = Flask(
         __name__,
         template_folder="templates",

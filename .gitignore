@@ -7,6 +7,9 @@ data/taxonomy_export.csv
 data/taxonomy_master.md
 data/*_result_*.json
 data/.window_state.json
+data/.app_settings.json
+data/backups/
+data/logs/
 logs/
 __pycache__/
 *.pyc

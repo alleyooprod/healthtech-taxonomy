@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS categories (
     merged_into_id INTEGER REFERENCES categories(id),
     synonyms TEXT,
     color TEXT,
+    scope_note TEXT,
+    inclusion_criteria TEXT,
+    exclusion_criteria TEXT,
     UNIQUE(project_id, name)
 );
 
@@ -69,6 +72,7 @@ CREATE TABLE IF NOT EXISTS companies (
     primary_focus TEXT,
     relationship_status TEXT,  -- watching | to_reach_out | in_conversation | met | partner | not_relevant
     relationship_note TEXT,
+    enrichment_status TEXT,    -- pending | enriching | enriched | failed
     UNIQUE(project_id, url)
 );
 
@@ -243,6 +247,20 @@ CREATE TABLE IF NOT EXISTS research (
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
+
+-- Research templates: user-editable prompt templates per project
+CREATE TABLE IF NOT EXISTS research_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    name TEXT NOT NULL,
+    prompt_template TEXT NOT NULL,
+    scope_type TEXT DEFAULT 'project',  -- project | category | company
+    is_default INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(project_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_templates_project ON research_templates(project_id);
 
 -- Indexes (basic)
 CREATE INDEX IF NOT EXISTS idx_categories_project ON categories(project_id);

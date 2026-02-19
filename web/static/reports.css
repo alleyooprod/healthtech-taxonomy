@@ -445,6 +445,39 @@
     color: var(--accent-primary);
 }
 
+.research-template-manage {
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Template Manager */
+.template-item {
+    padding: 10px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    background: var(--bg-container);
+}
+
+.template-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.template-item-body {
+    font-size: 12px;
+    margin: 4px 0;
+}
+
+.template-item-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
 .research-prompt-row textarea {
     width: 100%;
     padding: 10px 14px;

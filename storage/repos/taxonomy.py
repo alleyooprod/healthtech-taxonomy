@@ -111,10 +111,21 @@ class TaxonomyMixin:
                 (color, datetime.now().isoformat(), category_id),
             )
 
+    def update_category_metadata(self, category_id, scope_note=None,
+                                  inclusion_criteria=None, exclusion_criteria=None):
+        with self._get_conn() as conn:
+            conn.execute(
+                """UPDATE categories SET scope_note = ?, inclusion_criteria = ?,
+                   exclusion_criteria = ?, updated_at = ? WHERE id = ?""",
+                (scope_note, inclusion_criteria, exclusion_criteria,
+                 datetime.now().isoformat(), category_id),
+            )
+
     def get_category_stats(self, project_id=None):
         with self._get_conn() as conn:
             query = """
                 SELECT c.id, c.name, c.parent_id, c.color,
+                       c.scope_note, c.inclusion_criteria, c.exclusion_criteria,
                        COUNT(DISTINCT co.id) as company_count
                 FROM categories c
                 LEFT JOIN companies co

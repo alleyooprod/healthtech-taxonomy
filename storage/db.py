@@ -11,10 +11,10 @@ from datetime import datetime
 from pathlib import Path
 
 from config import DB_PATH, SEED_CATEGORIES
-from storage.repos import CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin, ResearchMixin, CanvasMixin
+from storage.repos import CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin, ResearchMixin, CanvasMixin, TemplateMixin
 
 
-class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin, ResearchMixin, CanvasMixin):
+class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin, ResearchMixin, CanvasMixin, TemplateMixin):
     def __init__(self, db_path=None):
         self.db_path = db_path or DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -50,6 +50,7 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
             if "categories" in tables:
                 self._migrate_phase1(conn)
                 self._migrate_phase4(conn)
+                self._migrate_phase5(conn)
 
             if "triage_results" in tables:
                 triage_cols = {r[1] for r in conn.execute("PRAGMA table_info(triage_results)").fetchall()}
@@ -249,6 +250,17 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
         for col_name, col_type in new_cols:
             if col_name not in company_cols:
                 conn.execute(f"ALTER TABLE companies ADD COLUMN {col_name} {col_type}")
+
+    def _migrate_phase5(self, conn):
+        """Add scope notes to categories and enrichment_status to companies."""
+        cat_cols = {r[1] for r in conn.execute("PRAGMA table_info(categories)").fetchall()}
+        for col_name in ("scope_note", "inclusion_criteria", "exclusion_criteria"):
+            if col_name not in cat_cols:
+                conn.execute(f"ALTER TABLE categories ADD COLUMN {col_name} TEXT")
+
+        company_cols = {r[1] for r in conn.execute("PRAGMA table_info(companies)").fetchall()}
+        if "enrichment_status" not in company_cols:
+            conn.execute("ALTER TABLE companies ADD COLUMN enrichment_status TEXT")
 
     # --- Projects ---
 

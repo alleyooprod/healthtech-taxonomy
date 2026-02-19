@@ -1,11 +1,22 @@
-"""Settings API: share tokens, shared view, notifications, activity, SSE stream."""
+"""Settings API: share tokens, shared view, notifications, activity, SSE stream,
+   app settings, backups, prerequisites, auto-update."""
 import json
+import logging
 import queue
+import shutil
+import urllib.request
+from datetime import datetime
+from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
 
+from config import (
+    APP_VERSION, DATA_DIR, BACKUP_DIR, DB_PATH, LOGS_DIR,
+    load_app_settings, save_app_settings, check_prerequisites,
+)
 from web.notifications import sse_clients, _is_valid_slack_webhook
 
+logger = logging.getLogger(__name__)
 settings_bp = Blueprint("settings", __name__)
 
 
@@ -101,7 +112,6 @@ def test_slack():
         return jsonify({"error": "No webhook URL provided"}), 400
     if not _is_valid_slack_webhook(webhook_url):
         return jsonify({"error": "Invalid Slack webhook URL. Must be https://hooks.slack.com/services/..."}), 400
-    import urllib.request
     try:
         req = urllib.request.Request(
             webhook_url,
@@ -110,6 +120,177 @@ def test_slack():
         )
         urllib.request.urlopen(req, timeout=10)
         return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# --- App Settings ---
+
+@settings_bp.route("/api/app-settings", methods=["GET"])
+def get_app_settings():
+    settings = load_app_settings()
+    # Mask API key for frontend display
+    if settings.get("anthropic_api_key"):
+        key = settings["anthropic_api_key"]
+        settings["anthropic_api_key_masked"] = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
+    else:
+        settings["anthropic_api_key_masked"] = ""
+    settings.pop("anthropic_api_key", None)
+    return jsonify(settings)
+
+
+@settings_bp.route("/api/app-settings", methods=["POST"])
+def update_app_settings():
+    data = request.json
+    settings = load_app_settings()
+    allowed_keys = {
+        "llm_backend", "anthropic_api_key", "default_model", "research_model",
+        "git_sync_enabled", "git_remote_url", "auto_backup_enabled",
+        "update_check_enabled",
+    }
+    for key in allowed_keys:
+        if key in data:
+            settings[key] = data[key]
+    save_app_settings(settings)
+    return jsonify({"ok": True})
+
+
+# --- Prerequisites Check ---
+
+@settings_bp.route("/api/prerequisites")
+def get_prerequisites():
+    return jsonify(check_prerequisites())
+
+
+# --- Database Backup & Restore ---
+
+@settings_bp.route("/api/backups", methods=["GET"])
+def list_backups():
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backups = []
+    for f in sorted(BACKUP_DIR.glob("taxonomy_*.db"), reverse=True):
+        stat = f.stat()
+        backups.append({
+            "filename": f.name,
+            "size_mb": round(stat.st_size / 1024 / 1024, 2),
+            "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        })
+    return jsonify(backups)
+
+
+@settings_bp.route("/api/backups", methods=["POST"])
+def create_backup():
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"taxonomy_{timestamp}.db"
+    backup_path = BACKUP_DIR / backup_name
+    try:
+        shutil.copy2(str(DB_PATH), str(backup_path))
+        size_mb = round(backup_path.stat().st_size / 1024 / 1024, 2)
+        logger.info("Created backup: %s (%.2f MB)", backup_name, size_mb)
+        return jsonify({
+            "ok": True,
+            "filename": backup_name,
+            "size_mb": size_mb,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@settings_bp.route("/api/backups/<filename>/restore", methods=["POST"])
+def restore_backup(filename):
+    # Validate filename to prevent path traversal
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return jsonify({"error": "Invalid filename"}), 400
+    backup_path = BACKUP_DIR / filename
+    if not backup_path.exists():
+        return jsonify({"error": "Backup not found"}), 404
+    try:
+        # Create a safety backup of current DB before restoring
+        safety = BACKUP_DIR / f"taxonomy_pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+        shutil.copy2(str(DB_PATH), str(safety))
+        shutil.copy2(str(backup_path), str(DB_PATH))
+        # Reinitialize DB connection
+        from storage.db import Database
+        current_app.db = Database()
+        logger.info("Restored from backup: %s", filename)
+        return jsonify({"ok": True, "restored_from": filename})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@settings_bp.route("/api/backups/<filename>", methods=["DELETE"])
+def delete_backup(filename):
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return jsonify({"error": "Invalid filename"}), 400
+    backup_path = BACKUP_DIR / filename
+    if not backup_path.exists():
+        return jsonify({"error": "Backup not found"}), 404
+    backup_path.unlink()
+    return jsonify({"ok": True})
+
+
+# --- Auto-Update Check ---
+
+_UPDATE_CHECK_URL = "https://api.github.com/repos/olly/taxonomy-library/releases/latest"
+
+
+@settings_bp.route("/api/update-check")
+def check_for_updates():
+    try:
+        req = urllib.request.Request(
+            _UPDATE_CHECK_URL,
+            headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "TaxonomyLibrary"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+        latest = data.get("tag_name", "").lstrip("v")
+        settings = load_app_settings()
+        settings["last_update_check"] = datetime.now().isoformat()
+        save_app_settings(settings)
+        return jsonify({
+            "current_version": APP_VERSION,
+            "latest_version": latest,
+            "update_available": latest and latest != APP_VERSION,
+            "release_url": data.get("html_url", ""),
+            "release_notes": data.get("body", ""),
+        })
+    except Exception:
+        return jsonify({
+            "current_version": APP_VERSION,
+            "latest_version": None,
+            "update_available": False,
+            "error": "Could not check for updates",
+        })
+
+
+# --- Crash Logs ---
+
+@settings_bp.route("/api/logs")
+def get_logs():
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    log_files = []
+    for f in sorted(LOGS_DIR.glob("*.log"), reverse=True)[:10]:
+        stat = f.stat()
+        log_files.append({
+            "filename": f.name,
+            "size_kb": round(stat.st_size / 1024, 1),
+            "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        })
+    return jsonify(log_files)
+
+
+@settings_bp.route("/api/logs/<filename>")
+def get_log_content(filename):
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return jsonify({"error": "Invalid filename"}), 400
+    log_path = LOGS_DIR / filename
+    if not log_path.exists():
+        return jsonify({"error": "Log not found"}), 404
+    # Return last 500 lines
+    try:
+        lines = log_path.read_text().splitlines()[-500:]
+        return jsonify({"filename": filename, "content": "\n".join(lines)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

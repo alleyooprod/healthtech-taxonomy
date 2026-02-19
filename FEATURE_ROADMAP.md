@@ -1,18 +1,20 @@
 # Feature Roadmap — Research Taxonomy Library
 
-Generated 2026-02-18 based on deep research of 35+ SaaS tools across 9 categories.
+Updated 2026-02-19. Based on deep research of 35+ SaaS tools across 9 categories.
 
 ---
 
-## Current Feature Inventory (58+ features)
+## Current Feature Inventory (70+ features)
 
 | Area | Count | Key Features |
 |------|-------|-------------|
-| Companies | 12 | List, detail, edit, star, relationship tracking, re-research, notes, events, versions, trash, duplicates, comparison |
-| Taxonomy | 6 | Tree view, graph view (Cytoscape), AI review, apply changes, quality dashboard, change history |
-| Market Map | 3 | Drag-drop kanban map, geographic map (Leaflet), company comparison |
-| Reports | 3 | AI market report generation, saved reports, markdown export |
+| Companies | 14 | List, detail, edit, star, relationship tracking, re-research, notes, events, versions, trash, duplicates, comparison, bulk select + bulk actions, quick-add API |
+| Taxonomy | 7 | Tree view, graph view (Cytoscape), AI review, apply changes, quality dashboard, change history, category color coding |
+| Market Map | 5 | Drag-drop kanban, geographic map (Leaflet), company comparison, auto-layout (Cytoscape compound nodes), PNG export |
+| Research | 5 | AI market reports, deep dive (scoped LLM research), templates, saved results, markdown/PDF export |
+| Canvas | 4 | Cytoscape workspace, drag-drop companies, note nodes, edge drawing, auto-save |
 | Processing | 5 | AI discovery, URL triage, batch pipeline, recent batches, retry |
+| Navigation | 3 | Linked record navigation, breadcrumbs, category detail view |
 | Filtering | 2 | Active filter chips, saved views |
 | Tags | 2 | Tag manager (rename/merge/delete), tag filtering |
 | Analytics | 2 | Dashboard charts (ECharts/Chart.js), project statistics |
@@ -21,239 +23,314 @@ Generated 2026-02-18 based on deep research of 35+ SaaS tools across 9 categorie
 | Notifications | 3 | In-app SSE panel, Slack integration, activity log |
 | AI Chat | 2 | Data Q&A widget, find similar companies |
 | UX | 3 | Keyboard shortcuts, shortcuts overlay, product tour |
-| Theme | 1 | Dark/light toggle |
+| Theme | 1 | Dark/light toggle with Material Symbols icons |
 | Desktop | 4 | Native window, macOS menu, notifications, git sync |
 
 ---
 
 ## Competitive Landscape Summary
 
-| Tool | Taxonomy | Discovery | AI Research | Map Viz | Enrichment |
-|------|----------|-----------|-------------|---------|------------|
-| CB Insights | Partial | Yes | No | **Best** | Partial |
-| Crunchbase | No | **Best** | No | No | Partial |
-| Tracxn | **Best** | Yes | No | Partial | Manual |
-| PoolParty | **Best** | No | No | Partial | No |
-| Notion | Partial | No | Yes | No | No |
-| Airtable | Partial | No | No | No | No |
-| Perplexity | No | No | **Best** | No | No |
-| Clay | No | No | No | No | **Best** |
-| **This App** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** |
+| Tool | Taxonomy | Discovery | AI Research | Map Viz | Enrichment | Canvas |
+|------|----------|-----------|-------------|---------|------------|--------|
+| CB Insights | Partial | Yes | No | **Best** | Partial | No |
+| Crunchbase | No | **Best** | No | No | Partial | No |
+| Tracxn | **Best** | Yes | No | Partial | Manual | No |
+| PoolParty | **Best** | No | No | Partial | No | No |
+| Notion | Partial | No | Yes | No | No | No |
+| Airtable | Partial | No | No | No | No | No |
+| Perplexity | No | No | **Best** | No | No | No |
+| Clay | No | No | No | No | **Best** | No |
+| **This App** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** | **Yes** |
 
-**Key insight**: No single tool combines all five columns. This app already occupies a unique position.
+**Key insight**: No single tool combines all six columns. This app occupies a unique position in the market.
 
 ---
 
-## Feature Ideas — Organized by Impact
+## Recently Built (Feb 2026)
 
-### Tier 1: High Impact, High Differentiation
+These features were just implemented:
 
-#### 1. Company Deep Dive Mode
-**Inspired by**: CB Insights company profiles, Perplexity Deep Research, Crunchbase
-**What**: Dedicated deep-research view for a single company — AI generates a comprehensive profile including product analysis, customer journeys, UX/aesthetic review, competitive positioning, tech stack, leadership team, and recent news.
-**Why**: You mentioned wanting to "do a deep-dive into their product, the customer journeys, experience, aesthetics." This is the natural extension of re-research.
-**Implementation**:
-- New "Deep Dive" button on company detail panel
-- Multi-step AI research: product pages, reviews (G2/Capterra), Glassdoor, LinkedIn, press
-- Structured output: product teardown, customer journey map (Mermaid), UX screenshots analysis
-- Saved as a company-level report (alongside market reports)
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Category Color Coding | Built | Color pickers in taxonomy, color dots in table/map/taxonomy tree |
+| Bulk Select + Bulk Actions | Built | Checkbox column, floating action bar, assign/tag/relationship/delete |
+| Linked Record Navigation | Built | Breadcrumbs, category detail view, clickable entity links |
+| Deep Dive Research | Built | Scoped LLM research with web search, templates, saved library |
+| Research Canvas | Built | Cytoscape.js workspace with drag-drop, notes, edges, auto-save |
+| Auto-Build Market Map | Built | Cytoscape compound node layout, category-grouped, PNG export |
+| E2E Test Suite | Built | 125 Playwright tests across 22 spec files |
 
-#### 2. Auto-Build Market Map Visualization
-**Inspired by**: CB Insights Market Map Maker (bin-packing algorithm), Beautiful.ai (auto-layout)
-**What**: One-click generates a polished, exportable market landscape image from your taxonomy data. Company logos auto-positioned within category sections. Hover shows key metrics.
-**Why**: Current market map is functional (drag-drop kanban) but not presentation-ready. CB Insights charges thousands for this.
-**Implementation**:
-- Canvas/SVG renderer using existing taxonomy + company data
-- Layout algorithm: grid within sections, sized by company count
-- Company logos as tiles (already have Clearbit logos)
-- Export as high-res PNG/SVG for presentations
-- Optional: include funding/confidence as visual indicators (size, color)
+---
 
-#### 3. Cross-Project Portfolio Dashboard
+## Existing Roadmap — Not Yet Built
+
+### Tier 1: High Impact
+
+#### 1. Cross-Project Portfolio Dashboard
 **Inspired by**: Asana Portfolios, Monday.com dashboards, Airtable Interface Designer
 **What**: Overview across all taxonomy projects — completion metrics, coverage gaps, recent activity, cross-project company overlap detection.
-**Why**: With multiple projects, you need a bird's-eye view. Which projects need attention? Where are there overlapping companies?
-**Implementation**:
-- New "Portfolio" view on project selection screen
-- Cards per project: company count, category count, last activity, completion %
-- Cross-project duplicate detection
-- Aggregated activity timeline
-- Charts: companies per project, total research coverage
+**Complexity**: Medium
 
-#### 4. AI Research Plan Display + Streaming
-**Inspired by**: Perplexity Deep Research (shows plan before executing), ChatGPT streaming
-**What**: Before AI starts researching, show the plan ("I will search for X, analyze Y, compare Z"). Stream results as they arrive rather than waiting for completion.
-**Why**: Current AI operations are black-box with just a progress bar. Users want transparency.
-**Implementation**:
-- SSE streaming for all AI operations (discovery, re-research, reports, reviews)
-- Show research plan as expandable section before execution
-- Progressive rendering: show partial results as they arrive
-- Allow cancellation mid-research
+#### 2. AI Research Plan Display + Streaming
+**Inspired by**: Perplexity Deep Research, ChatGPT streaming
+**What**: Show research plan before execution, stream results as they arrive, allow cancellation mid-research. Progressive rendering for all AI operations.
+**Complexity**: High
 
-#### 5. Waterfall Company Enrichment
-**Inspired by**: Clay (100+ enrichment providers), Apollo (waterfall), Clearbit (auto-refresh)
-**What**: Systematically fill company data gaps by trying multiple sources in sequence: AI extraction from URL, then Crunchbase search, then LinkedIn, then web search.
-**Why**: Current enrichment relies on a single AI pass. Many fields stay empty.
-**Implementation**:
-- Data completeness score per company (already exists as `completeness`)
-- "Enrich" button that runs multi-source waterfall
-- Configurable source priority: AI > web search > LinkedIn scrape > manual
-- Scheduled auto-enrichment for stale data (>30 days old)
-- Bulk enrichment for all companies below completeness threshold
+#### 3. Waterfall Company Enrichment
+**Inspired by**: Clay (100+ providers), Apollo (waterfall), Clearbit (auto-refresh)
+**What**: Systematically fill company data gaps by trying multiple sources in sequence. Bulk enrichment for companies below completeness threshold.
+**Complexity**: Medium
 
-#### 6. Comparison Tables (Auto-Generated)
-**Inspired by**: Elicit (paper comparison tables), G2 (product comparison), CB Insights
-**What**: Auto-generate structured comparison tables for companies in a category. AI fills in standardized comparison dimensions.
-**Why**: Current comparison panel is manual and limited to 4 companies. Analysts need quick category-level comparisons.
-**Implementation**:
-- "Compare All in Category" button on taxonomy view
-- AI generates comparison dimensions based on category context
-- Table view with companies as columns, dimensions as rows
-- Export as standalone report or embed in market report
-- Interactive: sort by any dimension, highlight best-in-class
+#### 4. Auto-Generated Comparison Tables
+**Inspired by**: Elicit (paper comparison), G2 (product comparison), CB Insights
+**What**: AI generates structured comparison tables for all companies in a category, with custom dimensions. Export as standalone report.
+**Complexity**: Medium
 
----
+### Tier 2: Clear Value
 
-### Tier 2: Medium Impact, Clear Value
+#### 5. Multiple Taxonomy Views (Gallery/Timeline/Matrix)
+**Inspired by**: Airtable, Notion database views
+**What**: Gallery cards with logos, timeline by founding year/funding, 2D matrix with categories vs. geography/stage.
+**Complexity**: Medium
 
-#### 7. Multiple Taxonomy Views (Board/Gallery/Timeline)
-**Inspired by**: Airtable (Grid/Kanban/Gallery/Calendar), Notion (database views)
-**What**: Same company data viewable in multiple ways beyond table + kanban + geo.
-**Options**:
-- **Gallery view**: Company cards with logo, description, key metrics (like Crunchbase search results)
-- **Timeline view**: Companies on a timeline by founding year or last funding
-- **Matrix view**: 2D grid with categories on one axis, another dimension (geography, stage) on the other
+#### 6. Smart Alerts & Change Detection
+**Inspired by**: Browse AI, Apollo (job change alerts), ZoomInfo
+**What**: Periodic web check for tracked companies, detect funding/pivots/shutdowns, alert via notification + Slack.
+**Complexity**: High
 
-#### 8. Linked Record Navigation
-**Inspired by**: Airtable (linked records), Notion (relational databases), Obsidian (backlinks)
-**What**: Click-through navigation: Project > Category > Subcategory > Company > Research Notes. Every entity links bidirectionally.
-**Why**: Currently you jump between tabs. Linked navigation creates a more fluid research experience.
-**Implementation**:
-- Breadcrumb navigation at top of detail panels
-- Category cards link to filtered company list
-- Company detail shows related companies in same category
-- Backlinks: "Also appears in" for cross-referenced entities
+#### 7. Report Templates & Brand Kit
+**Inspired by**: Beautiful.ai, Gamma, Canva brand kit
+**What**: Upload logo, set brand colors, create reusable report templates. PDF export uses brand kit automatically.
+**Complexity**: Medium
 
-#### 9. Smart Alerts & Change Detection
-**Inspired by**: Browse AI (monitoring), Apollo (job change alerts), ZoomInfo (intent signals)
-**What**: Monitor company websites for changes. Alert when a company raises funding, pivots, launches new products, or goes down.
-**Why**: Market research goes stale. Automated monitoring keeps it current.
-**Implementation**:
-- Periodic web check for tracked companies (configurable: daily/weekly/monthly)
-- Detect: site down, major content changes, new funding announcements
-- Alert via in-app notification + optional Slack
-- Dashboard showing recently changed companies
+#### 8. Company Scoring / Signal System
+**Inspired by**: CB Insights Mosaic Score, ZoomInfo intent signals
+**What**: Composite score per company based on completeness, relevance, funding momentum, category fit. Visual indicators + sorting.
+**Complexity**: Low
 
-#### 10. Report Templates & Brand Kit
-**Inspired by**: Beautiful.ai (brand consistency), Gamma (card-based), Canva (brand kit)
-**What**: Customizable report templates with your logo, colors, and standard sections. Consistent professional output every time.
-**Implementation**:
-- Upload logo and set brand colors in project settings
-- Report template builder: choose sections, ordering, formatting
-- PDF export uses brand kit automatically
-- Reusable templates across projects
+### Tier 3: Future Differentiation
 
-#### 11. Research Workspace / Canvas
-**Inspired by**: Heptabase (infinite canvas), Miro (whiteboard), FigJam
-**What**: Freeform canvas where you drag company cards, category nodes, and research notes. Draw connections, annotate clusters, zoom for context.
-**Why**: Sometimes you need spatial thinking to see market structure.
-**Implementation**:
-- Infinite canvas (could use Excalidraw or custom Canvas API)
-- Drag entities from sidebar onto canvas
-- Connection lines between entities
-- Freehand annotation, text blocks, grouping
-- Save/load canvas state per project
+#### 9. Automation Recipes
+**Inspired by**: Monday.com, Airtable automations, Zapier
+**What**: Trigger-action automations (e.g., auto-enrich on add, suggest subcategories when category exceeds 15 companies).
+**Complexity**: High
 
-#### 12. Company Scoring / Signal System
-**Inspired by**: CB Insights Mosaic Score, ZoomInfo intent signals, Monday.com battery indicators
-**What**: Computed composite score per company based on: data completeness, market relevance, funding momentum, category fit confidence.
-**Why**: Helps prioritize which companies to research deeper.
-**Implementation**:
-- Scoring algorithm combining existing fields
-- Visual indicators: colored badge, progress ring, or battery icon
-- Sortable/filterable by score
-- Score breakdown tooltip
+#### 10. Multi-User Collaboration
+**Inspired by**: Notion multiplayer, Miro real-time
+**What**: Auth system, WebSocket presence, comments, assignment. Major architectural change.
+**Complexity**: Very High
 
----
+#### 11. API & Integrations Hub
+**Inspired by**: Airtable API, Miro app marketplace
+**What**: REST API for external integrations + connectors (Slack, Notion, Google Sheets, Airtable).
+**Complexity**: Medium
 
-### Tier 3: Nice-to-Have, Future Differentiation
+#### 12. AI-Powered Taxonomy Suggestions
+**Inspired by**: Semaphore, Tana supertags, PoolParty concept extraction
+**What**: AI monitors incoming companies and suggests new categories/subcategories when it detects clusters.
+**Complexity**: Medium
 
-#### 13. Automation Recipes
-**Inspired by**: Monday.com (200+ automation recipes), Airtable (automations), Zapier
-**What**: Trigger-action automations for repetitive workflows.
-**Examples**:
-- "When a new company is added, auto-enrich from URL"
-- "When a category has 15+ companies, suggest subcategories"
-- "When research completes, generate a summary report"
-- "When company data is >30 days old, schedule re-enrichment"
+#### 13. Knowledge Graph Visualization
+**Inspired by**: Obsidian graph view, PoolParty, Neo4j
+**What**: Interactive graph of all relationships: companies, categories, tags, funding, geography — all as connected nodes.
+**Complexity**: High
 
-#### 14. Multi-User Collaboration
-**Inspired by**: Notion (multiplayer), Miro (real-time), Google Docs
-**What**: Multiple users can research simultaneously with presence indicators, comments, and assignment.
-**Implementation**: Would require auth system, WebSocket for real-time, and conflict resolution. Major architectural change.
+#### 14. Presentation Mode
+**Inspired by**: Miro frame presentations, CB Insights, Gamma
+**What**: Turn market map or report into a walkable presentation. Full-screen, category-as-slide navigation.
+**Complexity**: Medium
 
-#### 15. API & Integrations Hub
-**Inspired by**: Airtable API, Miro app marketplace, Clay integrations
-**What**: REST API for external integrations + pre-built connectors (Slack, Notion, Google Sheets, Airtable).
-**Why**: Let the taxonomy data flow into other tools.
-
-#### 16. AI-Powered Taxonomy Suggestions
-**Inspired by**: Semaphore (auto-classification), Tana (supertags), PoolParty (concept extraction)
-**What**: AI monitors incoming companies and suggests new categories or subcategories when it detects clusters that don't fit existing taxonomy.
-**Why**: Taxonomy should evolve as market understanding deepens.
-
-#### 17. Knowledge Graph Visualization
-**Inspired by**: Obsidian graph view, PoolParty concept neighborhoods, Neo4j
-**What**: Interactive graph showing all relationships: companies, categories, tags, funding rounds, geography clusters, research notes — all as connected nodes.
-**Why**: Reveals hidden patterns and connections in the research.
-
-#### 18. Presentation Mode
-**Inspired by**: Miro (frame-based presentations), CB Insights (presentation mode), Gamma
-**What**: Turn your market map or report into a walkable presentation. Click through categories and companies in a storytelling flow.
-**Implementation**:
-- "Present" button on market map or report
-- Full-screen mode with navigation controls
-- Each category/section as a "slide"
-- Presenter notes optional
-
-#### 19. Customer Journey Mapping
+#### 15. Customer Journey Mapping
 **Inspired by**: UXPressia, Smaply, Miro journey templates
-**What**: For deep-dive mode — map out a company's customer journey from discovery to activation to retention.
-**Implementation**:
-- Template-based journey canvas
-- Stages: Awareness, Consideration, Purchase, Onboarding, Engagement, Advocacy
-- Touchpoints, pain points, opportunities per stage
-- AI-generated from website/product analysis
+**What**: Template-based journey canvas for deep dives. AI-generated from website/product analysis.
+**Complexity**: Medium
 
-#### 20. Competitive Intelligence Feed
+#### 16. Competitive Intelligence Feed
 **Inspired by**: Crayon, Klue, Contify
-**What**: Aggregated news/signal feed for tracked companies. Shows recent funding, leadership changes, product launches, press mentions.
-**Implementation**:
-- Web scraping + news API aggregation
-- Filterable by company, category, signal type
-- "Morning brief" summary generation via AI
+**What**: Aggregated news/signal feed for tracked companies. Filterable by company, category, signal type. AI "morning brief" generation.
+**Complexity**: High
+
+---
+
+## New Feature Ideas (Feb 2026 Research)
+
+### High Impact, Lower Effort
+
+#### N1. Taxonomy Concept Definitions & Scope Notes
+**Inspired by**: SKOS standard (TopBraid, Semaphore), PoolParty concept scheme editor
+**What**: Add structured metadata to each category: formal definition, inclusion/exclusion criteria, related concept links. Feed scope notes into classifier LLM prompt to improve classification accuracy by 15-25%.
+**Why it matters**: Currently the classifier only gets category names. Precise scope notes dramatically improve `confidence_score`.
+**Complexity**: Low
+
+#### N2. Data Freshness Dashboard
+**Inspired by**: Crayon data staleness alerts, Apollo accuracy scoring, Clay last-enriched tracking
+**What**: Project-level dashboard showing data freshness per company and category. Staleness indicators based on `last_verified_at` age. Prioritized re-research queue with one-click batch re-research for stale records.
+**Why it matters**: Already store `last_verified_at` but don't expose it as a decision tool. Makes the difference between a live intelligence system and a static database.
+**Complexity**: Low
+
+#### N3. Inline LLM Field Suggestions
+**Inspired by**: Notion AI inline, GitHub Copilot, Clay's AI field filling
+**What**: "AI suggest" button next to each company field in edit mode. Uses other known fields as context to generate a suggestion for empty fields. Accept, edit, or dismiss inline without a full research workflow.
+**Why it matters**: Full research pipeline is heavy. For quick data entry after CSV import or manual add, inline suggestions provide just-in-time enrichment.
+**Complexity**: Low
+
+#### N4. Research Question Library (Reusable Prompts)
+**Inspired by**: Elicit's structured workflows, Clay's AI agent templates
+**What**: Library of parameterized research question templates with variables (e.g., "Compare pricing models of companies in {category_name}"). One-click apply to any scope. Includes suggested models and output formats.
+**Why it matters**: 80% of research questions fall into patterns. Templates speed up research and ensure consistency.
+**Complexity**: Low
+
+#### N5. Source-Specific Importers (Crunchbase/PitchBook/Dealroom)
+**Inspired by**: Clay's 75+ integrations, Apollo's list import
+**What**: Import company lists from Crunchbase, PitchBook, Dealroom, CB Insights CSV exports with pre-built column mappings. Preview with field mapping before committing.
+**Why it matters**: Current CSV import is generic. Source-specific importers reduce import friction from 15 minutes to one click.
+**Complexity**: Low
+
+#### N6. Taxonomy SKOS/JSON-LD Export
+**Inspired by**: PoolParty SKOS export, TopBraid interchange, Semaphore
+**What**: Export/import taxonomy in standard SKOS RDF/XML or JSON-LD format for interoperability with enterprise taxonomy tools and knowledge graphs.
+**Why it matters**: Standard interchange format enables taxonomy reuse beyond this tool.
+**Complexity**: Low
+
+### High Impact, Medium Effort
+
+#### N7. Category Playbook Pages (Battlecards)
+**Inspired by**: Klue's battlecards, Crayon's competitive battlecard builder, Notion-style wiki
+**What**: Each category gets a rich wiki-style page: definition, auto-generated report, curated bullet points (trends, risks, opportunities), quick stats header, pinned companies, embedded research results. Becomes THE reference document for a market segment.
+**Why it matters**: Battlecard/playbook pages are the #1 feature request in competitive intelligence platforms. Transforms category detail from a company list into a stakeholder deliverable.
+**Complexity**: Medium
+
+#### N8. Funding Round Timeline (Cross-Company)
+**Inspired by**: Harmonic.ai funding signals, Dealroom funding timeline, Crunchbase visualization
+**What**: Aggregate all funding events across companies into a single interactive swimlane timeline. Filter by category, stage, amount, date range. Spot patterns like "Series B clustering in Q3 2025 in RPM."
+**Why it matters**: Funding patterns are the strongest signals of market momentum. Leverages existing `company_events` table.
+**Complexity**: Medium
+
+#### N9. Source Provenance Chain
+**Inspired by**: Elicit's claim provenance, AlphaSense's document annotation
+**What**: For each company field, store and display provenance: which URL, which LLM, when, what prompt. Click any value to see "Extracted from [URL] on [date] by [model]." Stale facts flagged by age.
+**Why it matters**: "Where did this number come from?" is the #1 stakeholder question. Makes every claim auditable.
+**Complexity**: Medium
+
+#### N10. Company Lifecycle State Machine
+**Inspired by**: Dealroom status tracking, PitchBook deal flow
+**What**: Configurable state machine per project (Active -> Acquired -> Integrated, Active -> Pivoted -> Renamed). Each transition logged with date, notes, optional triggers. Visual timeline of transitions per company.
+**Why it matters**: In insurance/healthtech, companies get acquired constantly. A proper state machine captures these transitions as first-class data.
+**Complexity**: Medium
+
+#### N11. Market Sizing Calculator
+**Inspired by**: Dealroom market sizing, PitchBook TAM/SAM/SOM, Gartner methodology
+**What**: Per category, aggregate funding, employee counts, stated TAMs into bottom-up market size estimate. Allow top-down inputs from analyst reports. AI cross-references with web-searched market data. Export as market sizing slide.
+**Why it matters**: Every market research project needs "how big is this market." Structured calculator rolls up across categories — the core deliverable for investment/strategy research.
+**Complexity**: Medium
+
+#### N12. AI Taxonomy Gap Finder
+**Inspired by**: Contify signal analysis, Semantic Scholar gap detection, PoolParty consistency checker
+**What**: AI analyzes taxonomy vs. company data to find: (a) missing categories based on keyword clusters, (b) companies straddling two categories that indicate needed splits, (c) categories with too-heterogeneous members. Presents actionable suggestions.
+**Why it matters**: Goes beyond existing taxonomy review (structure critique) by using actual company data as evidence. Data-driven taxonomy maintenance.
+**Complexity**: Medium
+
+#### N13. Evidence Notebook (Structured Annotations)
+**Inspired by**: Sentieo's document annotation, Roam Research bidirectional linking
+**What**: Per-project notebook of structured "evidence cards": a claim, source (linked to company/research), confidence level, tags. Cards link bidirectionally to companies and categories. Reports pull relevant evidence cards as citations.
+**Why it matters**: Current notes are per-company. Market findings often span companies ("3 companies pivoted to B2B2C in 2025"). Evidence notebook captures cross-cutting insights.
+**Complexity**: Medium
+
+#### N14. Cohort Analysis View
+**Inspired by**: Harmonic.ai cohorts, PitchBook peer benchmarking, Observable notebooks
+**What**: Select companies by category/tag/stage/geography and see aggregate stats: founding year distribution, funding breakdown, geographic heat map, common tags. Save cohorts for comparison.
+**Why it matters**: The power of a taxonomy tool is in aggregate views. "What does the average Series B telehealth company look like?" can't be answered without this.
+**Complexity**: Medium
+
+#### N15. Research Session Branching (Follow-Up Chains)
+**Inspired by**: Perplexity follow-up threads, ChatGPT branching, Elicit iterative refinement
+**What**: After a deep dive, system suggests 3-5 follow-up questions. Users click to start linked follow-up sessions. Sessions form a navigable tree capturing the research trail.
+**Why it matters**: Research is iterative — one finding raises new questions. Branching preserves the chain of reasoning.
+**Complexity**: Medium
+
+#### N16. Snapshot & Diff (Point-in-Time Comparison)
+**Inspired by**: Wayback Machine concept, Klue change tracking, git diff for data
+**What**: Take named snapshots of project state. Diff two snapshots: companies added/removed, category changes, funding stage changes. Structured changelog with visual indicators.
+**Why it matters**: Market landscapes change quarterly. "What changed since last time?" is unanswerable without point-in-time comparison.
+**Complexity**: Medium
+
+#### N17. Relationship Web Visualization
+**Inspired by**: Crunchbase acquisition graph, Dealroom investor-company network, Neo4j
+**What**: Network graph showing inter-company relationships: partnerships, acquisitions, shared investors, shared customers. Users add relationships manually or AI extracts from research. Click edges for details.
+**Why it matters**: In insurance/healthtech, the partnership/acquisition graph IS the market structure. Reveals dynamics that a flat list never will.
+**Complexity**: Medium
+
+#### N18. Thesis Builder (Investment Memo Generator)
+**Inspired by**: PitchBook investment thesis templates, Harmonic.ai deal memo assistant
+**What**: Select a category + companies and generate a structured investment thesis: market overview, competitive dynamics, white space analysis, key risks, potential winners, summary thesis statement. Specialized LLM prompt for investment memo format.
+**Why it matters**: The end product of much market research is an investment thesis or partnership recommendation. Different from general market reports.
+**Complexity**: Medium
+
+#### N19. Multi-Axis Scatter Plot Builder
+**Inspired by**: Dealroom dynamic scatter plots, Flourish chart builder, Observable Plot
+**What**: Pick X-axis, Y-axis, bubble size, and color from numeric/categorical company fields. Interactive scatter/bubble plot with hover detail and click-to-open. Save chart configurations.
+**Why it matters**: Quantitative analysis requires scatter plots. Plotting any two dimensions against each other is core to investment research and pattern recognition.
+**Complexity**: Medium
+
+#### N20. Sankey Diagram Builder
+**Inspired by**: Flourish Sankey templates, Observable flow diagrams, Datawrapper
+**What**: Generate interactive Sankey diagrams showing flows between any two dimensions: Funding Stage -> Category, Geography -> Category, Business Model -> Stage. Users pick source and target from dropdowns.
+**Why it matters**: Understanding distribution across multiple dimensions simultaneously is impossible from a flat table. Sankey reveals allocation patterns instantly.
+**Complexity**: Medium
+
+#### N21. Taxonomy Diff & Merge Across Projects
+**Inspired by**: PoolParty taxonomy alignment, git merge concepts applied to ontologies
+**What**: Side-by-side diff of two project taxonomies, highlighting overlapping categories. Selectively merge or align categories across projects with drag-and-drop reconciliation.
+**Why it matters**: Parallel projects evolve independently — without cross-project reconciliation, knowledge silos form.
+**Complexity**: Medium
+
+#### N22. AI Field Extraction from URLs (One-Click Enrich)
+**Inspired by**: Clay's Claygent, Diffbot auto-extraction, Firecrawl
+**What**: Click "Enrich from Website" to extract specific missing fields (employee range, pricing model, product names) without full re-research. Field-targeted extraction is 10x faster and cheaper.
+**Why it matters**: Current pipeline is all-or-nothing. Often you just need 2-3 missing fields on an already-categorized company.
+**Complexity**: Medium
+
+### Ambitious / High Effort
+
+#### N23. Semantic Search (Embedding-Based)
+**Inspired by**: AlphaSense semantic search, Perplexity natural language, Consensus claim-level search
+**What**: Generate text embeddings for company descriptions, store in SQLite virtual table (sqlite-vss). Enable natural language queries like "companies using AI to reduce claims processing time" with cosine similarity ranking.
+**Why it matters**: Current search is SQL LIKE-based. Semantic search catches companies described differently but doing the same thing. Single biggest leap in research UX.
+**Complexity**: High
+
+#### N24. Watchlist with Web Monitoring Triggers
+**Inspired by**: Contify company monitoring, Crayon competitive monitoring, Feedly AI
+**What**: Mark companies/categories as "watched." Configure triggers for news about acquisitions/funding/launches. Periodic LLM web searches surface new findings with one-click "Add to events."
+**Why it matters**: Turns the tool from a point-in-time snapshot into a living intelligence system.
+**Complexity**: High
+
+#### N25. Company Similarity Heatmap
+**Inspired by**: Sentieo peer comparison matrix, AlphaSense similarity scoring
+**What**: NxN heatmap showing similarity scores between all companies (based on tags, descriptions, category, funding, geography). Reveals clusters and outliers. Sortable and filterable.
+**Why it matters**: Comparison panel shows up to 4 companies. Understanding full competitive landscape structure requires seeing all pairwise relationships.
+**Complexity**: Medium
 
 ---
 
 ## Quick Wins (< 1 day each)
 
-These are small improvements that would make an immediate difference:
-
-1. **Bulk select + bulk actions** on company table (delete, tag, re-categorize, star multiple)
-2. **Column visibility toggle** — let users choose which table columns to show/hide
-3. **Keyboard shortcut for star** — press `s` on highlighted row
-4. **Category color coding** — assign colors to categories, show in table and map
-5. **Export filtered results** — export only the current filtered view, not everything
-6. **Inline editing** — double-click a table cell to edit without opening modal
-7. **Company count badges** on tab labels (e.g., "Companies (47)")
-8. **Last-viewed breadcrumb** — "Back to [last company]" after navigating away
-9. **Drag-to-reorder categories** in taxonomy tree
-10. **Confidence threshold filter** — slider to filter by minimum confidence score
-11. **URL deduplication on paste** — warn/skip if URL already exists in project
-12. **Batch progress notifications** — desktop notification when batch completes (non-desktop mode)
-13. **Search within detail panel** — Cmd+F scoped to the detail content
-14. **Export market map as SVG** — in addition to PNG, for scalable graphics
-15. **Copy company data as JSON/Markdown** — quick copy for sharing
+| # | Feature | Status |
+|---|---------|--------|
+| 1 | Bulk select + bulk actions | **Built** |
+| 2 | Column visibility toggle | Not started |
+| 3 | Keyboard shortcut for star (s on highlighted row) | Not started |
+| 4 | Category color coding | **Built** |
+| 5 | Export filtered results only | Not started |
+| 6 | Inline editing (double-click table cell) | Not started |
+| 7 | Company count badges on tab labels | Not started |
+| 8 | Last-viewed breadcrumb | **Built** (linked navigation) |
+| 9 | Drag-to-reorder categories in taxonomy tree | Not started |
+| 10 | Confidence threshold slider filter | Not started |
+| 11 | URL deduplication on paste | Not started |
+| 12 | Batch progress notifications (non-desktop) | Not started |
+| 13 | Search within detail panel | Not started |
+| 14 | Export market map as SVG | Not started |
+| 15 | Copy company data as JSON/Markdown | Not started |
 
 ---
 
@@ -268,29 +345,37 @@ These are small improvements that would make an immediate difference:
 
 ### Suggested Implementation Order
 
-**Phase 1 — Immediate (this week)**
-- Company Deep Dive Mode (#1)
-- Bulk select + bulk actions (QW #1)
-- Category color coding (QW #4)
-- Column visibility toggle (QW #2)
+**Phase 1 — Next Sprint**
+- N1. Taxonomy Scope Notes (low effort, improves classification)
+- N2. Data Freshness Dashboard (low effort, leverages existing data)
+- N3. Inline LLM Field Suggestions (low effort, big UX win)
+- N4. Research Question Library (low effort, speeds up research)
+- 8. Company Scoring / Signal System (low effort, adds prioritization)
+- Quick wins: #2 Column toggle, #5 Export filtered, #6 Inline editing
 
-**Phase 2 — Near-term (next 2 weeks)**
-- Auto-Build Market Map (#2)
-- AI Research Plan Display + Streaming (#4)
-- Comparison Tables (#6)
-- Quick wins #5, #7, #9, #11
+**Phase 2 — Near-Term**
+- N7. Category Playbook Pages (stakeholder deliverable)
+- N8. Funding Round Timeline (leverages existing data)
+- 4. Auto-Generated Comparison Tables
+- 2. AI Research Plan Display + Streaming
+- N18. Thesis Builder (investment memo generator)
+- Quick wins: #9, #10, #11, #14
 
-**Phase 3 — Medium-term (next month)**
-- Cross-Project Portfolio Dashboard (#3)
-- Waterfall Enrichment (#5)
-- Multiple Taxonomy Views (#7)
-- Smart Alerts (#9)
+**Phase 3 — Medium-Term**
+- 1. Cross-Project Portfolio Dashboard
+- 3. Waterfall Company Enrichment
+- N12. AI Taxonomy Gap Finder
+- N14. Cohort Analysis View
+- N16. Snapshot & Diff
+- N19. Multi-Axis Scatter Plot Builder
 
-**Phase 4 — Longer-term**
-- Research Workspace Canvas (#11)
-- Presentation Mode (#18)
-- Customer Journey Mapping (#19)
-- Knowledge Graph (#17)
+**Phase 4 — Longer-Term**
+- N23. Semantic Search
+- N17. Relationship Web Visualization
+- N24. Watchlist with Monitoring
+- 14. Presentation Mode
+- 15. Customer Journey Mapping
+- 13. Knowledge Graph Visualization
 
 ---
 
@@ -314,3 +399,14 @@ These are small improvements that would make an immediate difference:
 - Monday.com — 200+ automation recipes, color-coded statuses, dashboards
 - Apollo — waterfall enrichment, job change alerts, bi-directional CRM sync
 - ZoomInfo — Mosaic-like scoring, intent signals, 260M+ profiles
+- AlphaSense — semantic search, document annotation, peer comparison
+- Sentieo — notebook system, structured annotations, similarity heatmaps
+- Dealroom — market sizing, dynamic scatter plots, funding timelines
+- PitchBook — investment thesis templates, deal flow tracking, cohort analysis
+- Harmonic.ai — funding signals, cohort analysis, deal memos
+- Contify — company monitoring, configurable alerts, signal analysis
+- Crayon — competitive monitoring, data staleness tracking, battlecards
+- Klue — battlecard builder, competitive intelligence, change tracking
+- Flourish — Sankey diagrams, interactive charts, data storytelling
+- Semaphore — auto-classification, SKOS, taxonomy consistency
+- TopBraid — taxonomy interchange, concept definitions, SKOS export

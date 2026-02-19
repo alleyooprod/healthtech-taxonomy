@@ -221,3 +221,50 @@ def poll_research(research_id):
     if not item:
         return jsonify({"error": "Not found"}), 404
     return jsonify({"status": item["status"], "research_id": research_id})
+
+
+# --- Research Templates ---
+
+@research_bp.route("/api/research/templates")
+def list_templates():
+    project_id = request.args.get("project_id", type=int)
+    if not project_id:
+        return jsonify({"error": "project_id required"}), 400
+    templates = current_app.db.get_research_templates(project_id)
+    if not templates:
+        current_app.db.seed_default_templates(project_id)
+        templates = current_app.db.get_research_templates(project_id)
+    return jsonify(templates)
+
+
+@research_bp.route("/api/research/templates", methods=["POST"])
+def create_template():
+    data = request.json or {}
+    project_id = data.get("project_id")
+    name = data.get("name", "").strip()
+    prompt_template = data.get("prompt_template", "").strip()
+    if not project_id or not name or not prompt_template:
+        return jsonify({"error": "project_id, name, and prompt_template required"}), 400
+    tid = current_app.db.create_research_template(
+        project_id, name, prompt_template, data.get("scope_type", "project"),
+    )
+    return jsonify({"id": tid, "status": "ok"})
+
+
+@research_bp.route("/api/research/templates/<int:template_id>", methods=["PUT"])
+def update_template(template_id):
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    prompt_template = data.get("prompt_template", "").strip()
+    if not name or not prompt_template:
+        return jsonify({"error": "name and prompt_template required"}), 400
+    current_app.db.update_research_template(
+        template_id, name, prompt_template, data.get("scope_type"),
+    )
+    return jsonify({"status": "ok"})
+
+
+@research_bp.route("/api/research/templates/<int:template_id>", methods=["DELETE"])
+def delete_template(template_id):
+    current_app.db.delete_research_template(template_id)
+    return jsonify({"status": "ok"})

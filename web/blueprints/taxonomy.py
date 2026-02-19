@@ -101,6 +101,18 @@ def update_category_color(category_id):
     return jsonify({"status": "ok"})
 
 
+@taxonomy_bp.route("/api/categories/<int:category_id>/metadata", methods=["PUT"])
+def update_category_metadata(category_id):
+    data = request.json or {}
+    current_app.db.update_category_metadata(
+        category_id,
+        scope_note=data.get("scope_note"),
+        inclusion_criteria=data.get("inclusion_criteria"),
+        exclusion_criteria=data.get("exclusion_criteria"),
+    )
+    return jsonify({"status": "ok"})
+
+
 @taxonomy_bp.route("/api/taxonomy/quality")
 def taxonomy_quality():
     project_id = request.args.get("project_id", type=int)

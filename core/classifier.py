@@ -60,10 +60,20 @@ def build_taxonomy_tree_string(db, project_id=None):
     subcategories = [s for s in stats if s["parent_id"] is not None]
 
     for cat in sorted(top_level, key=lambda x: x["name"]):
-        lines.append(f"- {cat['name']} ({cat['company_count']} companies)")
+        line = f"- {cat['name']} ({cat['company_count']} companies)"
+        if cat.get("scope_note"):
+            line += f" — {cat['scope_note']}"
+        lines.append(line)
+        if cat.get("inclusion_criteria"):
+            lines.append(f"  Includes: {cat['inclusion_criteria']}")
+        if cat.get("exclusion_criteria"):
+            lines.append(f"  Excludes: {cat['exclusion_criteria']}")
         # Find subcategories
         subs = [s for s in subcategories if s["parent_id"] == cat["id"]]
         for sub in sorted(subs, key=lambda x: x["name"]):
-            lines.append(f"  - {sub['name']} ({sub['company_count']} companies)")
+            sub_line = f"  - {sub['name']} ({sub['company_count']} companies)"
+            if sub.get("scope_note"):
+                sub_line += f" — {sub['scope_note']}"
+            lines.append(sub_line)
 
     return "\n".join(lines)

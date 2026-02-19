@@ -96,6 +96,20 @@
         <button onclick="location.reload()" class="connection-banner-btn">Reload</button>
     </div>
 
+    <!-- Offline banner -->
+    <div id="offlineBanner" class="connection-banner hidden" role="alert" style="background:#4a3a20">
+        <span class="connection-banner-icon"><span class="material-symbols-outlined">wifi_off</span></span>
+        <span>You're offline — AI features are disabled. Data browsing still works.</span>
+    </div>
+
+    <!-- Update available banner -->
+    <div id="updateBanner" class="update-banner hidden" role="status">
+        <span class="material-symbols-outlined">system_update</span>
+        <span>Update available: <strong id="updateVersion"></strong></span>
+        <a id="updateLink" href="#" target="_blank" class="btn btn-sm" style="margin-left:8px">Download</a>
+        <button class="update-dismiss" onclick="dismissUpdateBanner()">&times;</button>
+    </div>
+
     <!-- Keyboard shortcuts overlay -->
     <div id="shortcutsOverlay" class="shortcuts-overlay hidden" onclick="if(event.target===this)toggleShortcutsOverlay()">
         <div class="shortcuts-panel">
@@ -137,7 +151,10 @@
                         <h1>Research Taxonomy Library</h1>
                         <p class="header-subtitle">Select a research project or create a new one.</p>
                     </div>
-                    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)" aria-label="Toggle dark mode"><span class="material-symbols-outlined">dark_mode</span></button>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <button class="icon-btn" onclick="openAppSettings()" title="Settings" aria-label="App settings"><span class="material-symbols-outlined">settings</span></button>
+                        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode (D)" aria-label="Toggle dark mode"><span class="material-symbols-outlined">dark_mode</span></button>
+                    </div>
                 </div>
             </header>
             <div id="projectGrid" class="project-grid" role="list" aria-label="Research projects"></div>
@@ -280,6 +297,23 @@
                     <button class="filter-action-btn" onclick="saveCurrentView()" title="Save current filters">Save view</button>
                 </div>
 
+                <div class="company-view-toggle">
+                    <button class="view-toggle-btn active" id="viewTableBtn" onclick="switchCompanyView('table')">
+                        <span class="material-symbols-outlined" style="font-size:16px">table_rows</span> Table
+                    </button>
+                    <button class="view-toggle-btn" id="viewGalleryBtn" onclick="switchCompanyView('gallery')">
+                        <span class="material-symbols-outlined" style="font-size:16px">grid_view</span> Gallery
+                    </button>
+                    <button class="view-toggle-btn" id="viewTimelineBtn" onclick="switchCompanyView('timeline')">
+                        <span class="material-symbols-outlined" style="font-size:16px">timeline</span> Timeline
+                    </button>
+                    <button class="view-toggle-btn" id="viewMatrixBtn" onclick="switchCompanyView('matrix')">
+                        <span class="material-symbols-outlined" style="font-size:16px">grid_on</span> Matrix
+                    </button>
+                </div>
+
+                <div id="companyViewContainer" class="hidden"></div>
+
                 <table id="companyTable">
                     <thead>
                         <tr>
@@ -304,6 +338,7 @@
                     <button class="btn" onclick="bulkAction('assign_category')"><span class="material-symbols-outlined">category</span> Assign Category</button>
                     <button class="btn" onclick="bulkAction('add_tags')"><span class="material-symbols-outlined">label</span> Add Tags</button>
                     <button class="btn" onclick="bulkAction('set_relationship')"><span class="material-symbols-outlined">handshake</span> Set Relationship</button>
+                    <button class="btn" onclick="startBatchEnrichment()"><span class="material-symbols-outlined">auto_fix_high</span> Enrich</button>
                     <button class="danger-btn" onclick="bulkAction('delete')"><span class="material-symbols-outlined">delete</span> Delete</button>
                     <button class="btn" onclick="clearBulkSelection()"><span class="material-symbols-outlined">close</span></button>
                 </div>
@@ -351,9 +386,19 @@
                 <div class="taxonomy-view-toggle">
                     <button class="view-toggle-btn active" onclick="switchTaxonomyView('tree')" id="treeViewBtn">Tree View</button>
                     <button class="view-toggle-btn" onclick="switchTaxonomyView('graph')" id="graphViewBtn">Graph View</button>
+                    <button class="view-toggle-btn" onclick="switchTaxonomyView('knowledge')" id="kgViewBtn">Knowledge Graph</button>
                 </div>
                 <div id="taxonomyTree"></div>
                 <div id="taxonomyGraph" class="hidden graph-container"></div>
+                <div id="knowledgeGraph" class="hidden">
+                    <div class="kg-filter-panel">
+                        <label><input type="checkbox" checked onchange="toggleKgNodeType('category')"> Categories</label>
+                        <label><input type="checkbox" checked onchange="toggleKgNodeType('company')"> Companies</label>
+                        <label><input type="checkbox" checked onchange="toggleKgNodeType('tag')"> Tags</label>
+                        <label><input type="checkbox" checked onchange="toggleKgNodeType('geography')"> Geographies</label>
+                    </div>
+                    <div id="kgCanvas" class="kg-container"></div>
+                </div>
 
                 <div class="review-section">
                     <h3>Taxonomy Review</h3>
@@ -395,6 +440,7 @@
                     </div>
                     <button class="primary-btn" onclick="loadMarketMap()">Refresh Map</button>
                     <button class="btn" onclick="exportMapPng()">Export as PNG</button>
+                    <button class="btn" onclick="startPresentation('map')"><span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle">slideshow</span> Present</button>
                     <span class="hint-text hint-inline">Drag companies between categories to reclassify.</span>
                 </div>
                 <div id="marketMap" class="market-map"></div>
@@ -473,11 +519,7 @@
 
                         <div class="research-templates">
                             <span class="hint-text">Templates:</span>
-                            <button class="research-template-btn" onclick="applyResearchTemplate('competitive')">Competitive landscape</button>
-                            <button class="research-template-btn" onclick="applyResearchTemplate('pricing')">Pricing analysis</button>
-                            <button class="research-template-btn" onclick="applyResearchTemplate('trends')">Market trends</button>
-                            <button class="research-template-btn" onclick="applyResearchTemplate('sentiment')">Product reviews &amp; sentiment</button>
-                            <button class="research-template-btn" onclick="applyResearchTemplate('journey')">Customer journey</button>
+                            <span id="researchTemplateButtons"><!-- loaded dynamically --></span>
                         </div>
 
                         <div class="research-prompt-row">
@@ -894,6 +936,137 @@
         </div>
     </div>
 
+    <!-- Template Manager Modal -->
+    <div id="templateManagerModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="templateManagerTitle">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="templateManagerTitle">Research Templates</h2>
+                <button class="close-btn" onclick="closeTemplateManager()" aria-label="Close">&times;</button>
+            </div>
+            <div id="templateManagerList"></div>
+            <div id="templateFormSection" class="hidden" style="margin-top:12px;padding:12px;background:var(--bg-container);border-radius:12px">
+                <h4 id="templateFormTitle">New Template</h4>
+                <input type="hidden" id="templateFormId">
+                <input type="text" id="templateFormName" placeholder="Template name" style="width:100%;margin-bottom:8px">
+                <textarea id="templateFormPrompt" rows="3" placeholder="Prompt template... Use {scope}, {company_name}, {category_name} as variables" style="width:100%;margin-bottom:8px"></textarea>
+                <div style="display:flex;gap:8px">
+                    <button class="primary-btn" onclick="saveTemplate()">Save</button>
+                    <button class="btn" onclick="document.getElementById('templateFormSection').classList.add('hidden')">Cancel</button>
+                </div>
+            </div>
+            <div style="margin-top:12px">
+                <button class="btn" onclick="showAddTemplateForm()">+ Add Template</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-Run Onboarding Overlay -->
+    <div id="onboardingOverlay" class="onboarding-overlay hidden">
+        <div class="onboarding-card">
+            <h1>Welcome to Research Taxonomy Library</h1>
+            <p>Build market taxonomies — discover, research, classify, and organize companies.</p>
+            <div id="onboardingPrereqs" class="onboarding-prereqs"></div>
+            <div class="onboarding-actions">
+                <button class="primary-btn" onclick="onboardingCreateProject()">Create Your First Project</button>
+                <button class="btn" onclick="dismissOnboarding()">Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Settings Modal -->
+    <div id="appSettingsModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2>App Settings</h2>
+                <button class="close-btn" onclick="closeAppSettings()">&times;</button>
+            </div>
+            <div class="settings-grid">
+                <div class="settings-section">
+                    <h3>LLM Configuration</h3>
+                    <div class="settings-field">
+                        <label for="settingLlmBackend">Backend</label>
+                        <select id="settingLlmBackend" class="filter-select">
+                            <option value="cli">Claude CLI (subscription)</option>
+                            <option value="sdk">Anthropic SDK (API key)</option>
+                        </select>
+                    </div>
+                    <div class="settings-field">
+                        <label>API Key</label>
+                        <div class="settings-api-key">
+                            <span id="settingApiKeyDisplay" class="api-key-display">Not set</span>
+                            <input type="password" id="settingApiKeyInput" placeholder="Enter new API key..." class="api-key-input">
+                        </div>
+                    </div>
+                    <div class="settings-field">
+                        <label for="settingDefaultModel">Default Model (Processing)</label>
+                        <select id="settingDefaultModel" class="filter-select">
+                            <option value="claude-haiku-4-5-20251001">Haiku (fast)</option>
+                            <option value="claude-sonnet-4-5-20250929">Sonnet (balanced)</option>
+                            <option value="claude-opus-4-6">Opus (powerful)</option>
+                        </select>
+                    </div>
+                    <div class="settings-field">
+                        <label for="settingResearchModel">Research Model</label>
+                        <select id="settingResearchModel" class="filter-select">
+                            <option value="claude-sonnet-4-5-20250929">Sonnet (balanced)</option>
+                            <option value="claude-opus-4-6">Opus (powerful)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>General</h3>
+                    <label class="settings-toggle"><input type="checkbox" id="settingGitSync"> Auto-sync to Git on close</label>
+                    <label class="settings-toggle"><input type="checkbox" id="settingAutoBackup"> Daily auto-backup</label>
+                    <label class="settings-toggle"><input type="checkbox" id="settingUpdateCheck"> Check for updates on launch</label>
+                </div>
+
+                <div class="settings-section">
+                    <h3>System Status</h3>
+                    <div id="prereqStatus"></div>
+                    <div class="settings-info">
+                        <span>Version: <strong id="settingVersion"></strong></span>
+                        <span>Data: <code id="settingDataDir" class="settings-path"></code></span>
+                    </div>
+                    <button class="btn btn-sm" onclick="checkForUpdates(false)" style="margin-top:8px">Check for Updates</button>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Backup & Restore</h3>
+                    <button class="primary-btn btn-sm" onclick="createBackup()" style="margin-bottom:8px">Create Backup Now</button>
+                    <div id="backupList"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeAppSettings()">Cancel</button>
+                <button class="primary-btn" onclick="saveAppSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Viewer Modal -->
+    <div id="logViewerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2>Application Logs</h2>
+                <button class="close-btn" onclick="closeLogViewer()">&times;</button>
+            </div>
+            <div id="logFileList" class="log-file-list"></div>
+            <pre id="logContent" class="log-content"></pre>
+        </div>
+    </div>
+
+    <!-- About Dialog -->
+    <div id="aboutModal" class="modal-overlay hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeAboutDialog()">
+        <div class="modal modal-narrow" style="text-align:center;padding:32px">
+            <h2 style="font-family:'Newsreader',serif;font-size:28px;margin-bottom:8px">Research Taxonomy Library</h2>
+            <p id="aboutVersion" style="color:var(--text-muted);margin-bottom:16px">v1.0.0</p>
+            <p style="font-size:13px;color:var(--text-muted)">Market research taxonomy builder with AI-powered company discovery, classification, and analysis.</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:16px">Built with Flask, SQLite, Claude &amp; Gemini</p>
+            <button class="btn" onclick="closeAboutDialog()" style="margin-top:16px">Close</button>
+        </div>
+    </div>
+
     <!-- App JS modules (load order matters: core first, integrations/init last) -->
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
     <script src="{{ url_for('static', filename='js/projects.js') }}"></script>
@@ -905,6 +1078,7 @@
     <script src="{{ url_for('static', filename='js/tags.js') }}"></script>
     <script src="{{ url_for('static', filename='js/reports.js') }}"></script>
     <script src="{{ url_for('static', filename='js/research.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/presentation.js') }}"></script>
     <script src="{{ url_for('static', filename='js/canvas.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ai.js') }}"></script>
     <script src="{{ url_for('static', filename='js/export.js') }}"></script>
@@ -912,6 +1086,7 @@
     <script src="{{ url_for('static', filename='js/keyboard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sse.js') }}"></script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app-settings.js') }}"></script>
     <script src="{{ url_for('static', filename='js/integrations.js') }}"></script>
     <script src="{{ url_for('static', filename='js/init.js') }}"></script>
 </body>

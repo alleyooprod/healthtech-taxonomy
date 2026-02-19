@@ -5,3 +5,4 @@ from storage.repos.social import SocialMixin
 from storage.repos.settings import SettingsMixin
 from storage.repos.research import ResearchMixin
 from storage.repos.canvas import CanvasMixin
+from storage.repos.templates import TemplateMixin

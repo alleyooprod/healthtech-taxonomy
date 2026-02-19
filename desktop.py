@@ -6,6 +6,9 @@ Features:
   - Loading splash while Flask starts
   - Native macOS notifications for background events
   - Auto git-sync on close
+  - Database backup/restore via File menu
+  - Dock badge for background job completions
+  - Crash logging to ~/Library/Logs or data/logs
 """
 import json
 import logging
@@ -19,7 +22,7 @@ from pathlib import Path
 import webview
 from webview.menu import Menu, MenuAction, MenuSeparator
 
-from config import WEB_HOST, WEB_PORT, DATA_DIR
+from config import WEB_HOST, WEB_PORT, DATA_DIR, APP_VERSION, BACKUP_DIR, load_app_settings
 from core.git_sync import sync_to_git
 from web.app import create_app
 
@@ -37,7 +40,6 @@ def _load_window_state():
         if _WINDOW_STATE_FILE.exists():
             state = json.loads(_WINDOW_STATE_FILE.read_text())
             merged = {**_DEFAULT_STATE, **state}
-            # Validate saved position is on a visible screen
             try:
                 from AppKit import NSScreen
                 screens = NSScreen.screens()
@@ -47,7 +49,6 @@ def _load_window_state():
                         frame = screen.frame()
                         sx, sy = frame.origin.x, frame.origin.y
                         sw, sh = frame.size.width, frame.size.height
-                        # Check if at least part of the window is on this screen
                         if (merged["x"] < sx + sw and merged["x"] + merged["width"] > sx and
                                 merged["y"] < sy + sh and merged["y"] + merged["height"] > sy):
                             visible = True
@@ -56,7 +57,7 @@ def _load_window_state():
                         merged["x"] = None
                         merged["y"] = None
             except ImportError:
-                pass  # AppKit not available — skip validation
+                pass
             return merged
     except Exception:
         pass
@@ -82,7 +83,6 @@ def _save_window_state(window):
 def send_notification(title, message, sound=True):
     """Send a native macOS notification via osascript."""
     try:
-        # Sanitize inputs to prevent osascript injection
         safe_title = str(title).replace("\\", "\\\\").replace('"', '\\"')
         safe_message = str(message).replace("\\", "\\\\").replace('"', '\\"')
         sound_part = 'sound name "default"' if sound else ""
@@ -95,6 +95,29 @@ def send_notification(title, message, sound=True):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+    except Exception:
+        pass
+
+
+# --- Dock Badge ---
+
+def set_dock_badge(count):
+    """Set the Dock icon badge number (0 to clear)."""
+    try:
+        from AppKit import NSApplication
+        app = NSApplication.sharedApplication()
+        dock_tile = app.dockTile()
+        dock_tile.setBadgeLabel_(str(count) if count > 0 else "")
+    except Exception:
+        pass
+
+
+def bounce_dock():
+    """Bounce the Dock icon to get attention."""
+    try:
+        from AppKit import NSApplication, NSInformationalRequest
+        app = NSApplication.sharedApplication()
+        app.requestUserAttention_(NSInformationalRequest)
     except Exception:
         pass
 
@@ -120,6 +143,7 @@ _SPLASH_HTML = """
   }
   .title { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
   .subtitle { font-size: 14px; color: #888; }
+  .version { font-size: 11px; color: #555; margin-top: 4px; }
   .spinner {
     width: 32px; height: 32px;
     border: 3px solid #333;
@@ -134,6 +158,7 @@ _SPLASH_HTML = """
   <div class="title">Research Taxonomy Library</div>
   <div class="spinner"></div>
   <div class="subtitle">Starting up...</div>
+  <div class="version">v""" + APP_VERSION + """</div>
 </body>
 </html>
 """
@@ -153,6 +178,16 @@ def _menu_export_json():
 def _menu_export_csv():
     if _window_ref:
         _window_ref.evaluate_js("safeFetch('/api/export/csv?project_id=' + currentProjectId).then(r => r.blob()).then(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'taxonomy_export.csv'; a.click(); })")
+
+
+def _menu_backup():
+    if _window_ref:
+        _window_ref.evaluate_js("createBackup()")
+
+
+def _menu_settings():
+    if _window_ref:
+        _window_ref.evaluate_js("openAppSettings()")
 
 
 def _menu_reload():
@@ -175,6 +210,16 @@ def _menu_tour():
         _window_ref.evaluate_js("startProductTour()")
 
 
+def _menu_view_logs():
+    if _window_ref:
+        _window_ref.evaluate_js("openLogViewer()")
+
+
+def _menu_about():
+    if _window_ref:
+        _window_ref.evaluate_js("openAboutDialog()")
+
+
 def _build_menus():
     """Build native macOS menu bar."""
     file_menu = Menu(
@@ -182,6 +227,10 @@ def _build_menus():
         [
             MenuAction("Export JSON", _menu_export_json),
             MenuAction("Export CSV", _menu_export_csv),
+            MenuSeparator(),
+            MenuAction("Backup Database", _menu_backup),
+            MenuSeparator(),
+            MenuAction("Settings...", _menu_settings),
             MenuSeparator(),
             MenuAction("Sync to Git", lambda: sync_to_git("Manual sync")),
         ],
@@ -198,6 +247,9 @@ def _build_menus():
         [
             MenuAction("Keyboard Shortcuts", _menu_shortcuts),
             MenuAction("Product Tour", _menu_tour),
+            MenuSeparator(),
+            MenuAction("View Logs", _menu_view_logs),
+            MenuAction("About", _menu_about),
         ],
     )
     return [file_menu, view_menu, help_menu]
@@ -213,6 +265,15 @@ class DesktopAPI:
 
     def sync_git(self, message="Manual sync"):
         sync_to_git(message)
+
+    def set_badge(self, count):
+        set_dock_badge(count)
+
+    def bounce(self):
+        bounce_dock()
+
+    def get_version(self):
+        return APP_VERSION
 
 
 # --- Server Helpers ---
@@ -244,14 +305,44 @@ def _wait_for_server(host, port, retries=30):
     return False
 
 
+# --- Auto-backup on startup ---
+
+def _auto_backup_if_needed():
+    """Create a daily auto-backup if enabled and none exists for today."""
+    settings = load_app_settings()
+    if not settings.get("auto_backup_enabled", True):
+        return
+    from config import DB_PATH
+    if not DB_PATH.exists():
+        return
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    today = time.strftime("%Y%m%d")
+    existing = list(BACKUP_DIR.glob(f"taxonomy_{today}_*.db"))
+    if existing:
+        return
+    import shutil
+    backup_name = f"taxonomy_{today}_auto.db"
+    try:
+        shutil.copy2(str(DB_PATH), str(BACKUP_DIR / backup_name))
+        logger.info("Auto-backup created: %s", backup_name)
+        # Clean up backups older than 30 days
+        cutoff = time.time() - 30 * 86400
+        for f in BACKUP_DIR.glob("taxonomy_*_auto.db"):
+            if f.stat().st_mtime < cutoff:
+                f.unlink(missing_ok=True)
+    except Exception as e:
+        logger.warning("Auto-backup failed: %s", e)
+
+
 # --- Main ---
 
 def _on_closing():
     """Save window state and git-sync on close (non-blocking)."""
     if _window_ref:
         _save_window_state(_window_ref)
-    # Fire git sync in a daemon thread so the window closes immediately
-    threading.Thread(target=sync_to_git, args=("App closed — auto-save",), daemon=True).start()
+    settings = load_app_settings()
+    if settings.get("git_sync_enabled", True):
+        threading.Thread(target=sync_to_git, args=("App closed — auto-save",), daemon=True).start()
     return True
 
 
@@ -261,6 +352,9 @@ def main():
     port = _find_free_port(WEB_PORT)
     _port_ref = port
     flask_app = create_app()
+
+    # Auto-backup before starting
+    _auto_backup_if_needed()
 
     # Start Flask server in background
     server = threading.Thread(target=_run_flask, args=(flask_app, port), daemon=True)
@@ -284,11 +378,17 @@ def main():
     _window_ref = window
     window.events.closing += _on_closing
 
-    def _navigate_when_ready():
-        """Wait for Flask, then navigate from splash to the app."""
+    _navigated = False
+
+    def _on_loaded():
+        nonlocal _navigated
+        if _navigated:
+            return
         if _wait_for_server(WEB_HOST, port):
+            _navigated = True
             window.load_url(f"http://{WEB_HOST}:{port}")
         else:
+            _navigated = True
             window.load_html(
                 "<html><body style='font-family:system-ui;display:flex;align-items:center;"
                 "justify-content:center;height:100vh;color:#bc6c5a'>"
@@ -296,7 +396,7 @@ def main():
                 "</body></html>"
             )
 
-    window.events.loaded += _navigate_when_ready
+    window.events.loaded += _on_loaded
 
     webview.start(menu=_build_menus())
 

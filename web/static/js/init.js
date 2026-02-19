@@ -19,6 +19,10 @@ window.onload = () => {
     initNotyf();
     initDayjs();
     initHotkeys();
+    initOfflineDetection();
     startHeartbeat();
     loadProjects();
+    checkFirstRun();
+    // Silent update check (non-blocking)
+    checkForUpdates(true);
 };

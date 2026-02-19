@@ -15,7 +15,10 @@ function switchResearchMode(mode) {
     document.getElementById('quickReportModeBtn').classList.toggle('active', mode === 'report');
     document.getElementById('deepDiveModeBtn').classList.toggle('active', mode === 'deepdive');
 
-    if (mode === 'deepdive') loadSavedResearch();
+    if (mode === 'deepdive') {
+        loadSavedResearch();
+        loadResearchTemplates();
+    }
 }
 
 // --- Scope selector ---
@@ -80,30 +83,132 @@ function selectResearchCompany(id, name) {
     document.getElementById('researchCompanyResults').classList.add('hidden');
 }
 
-// --- Templates ---
-const RESEARCH_TEMPLATES = {
-    competitive: 'Map the competitive landscape for {scope}. Identify key players, their positioning, market share estimates, strengths and weaknesses, and recent strategic moves.',
-    pricing: 'Analyze pricing strategies across {scope}. Compare pricing models, tiers, average contract values, and how pricing relates to market positioning.',
-    trends: 'Research current market trends affecting {scope}. Include emerging technologies, regulatory changes, investment patterns, and growth projections for the next 3-5 years.',
-    sentiment: 'Research product reviews and user sentiment for {scope}. Analyze customer feedback from G2, Capterra, app stores, and social media. Identify common praises and complaints.',
-    journey: 'Analyze the customer journey for {scope}. Map how customers discover, evaluate, purchase, and use products in this space. Identify pain points and opportunities.',
-};
+// --- Templates (DB-backed) ---
+let _researchTemplates = [];
 
-function applyResearchTemplate(key) {
+async function loadResearchTemplates() {
+    const res = await safeFetch(`/api/research/templates?project_id=${currentProjectId}`);
+    _researchTemplates = await res.json();
+    renderTemplateButtons();
+}
+
+function renderTemplateButtons() {
+    const container = document.getElementById('researchTemplateButtons');
+    if (!container) return;
+    container.innerHTML = _researchTemplates.map(t =>
+        `<button class="research-template-btn" onclick="applyResearchTemplate(${t.id})">${esc(t.name)}</button>`
+    ).join('') +
+    `<button class="research-template-btn research-template-manage" onclick="openTemplateManager()" title="Manage templates">
+        <span class="material-symbols-outlined" style="font-size:14px">settings</span>
+    </button>`;
+}
+
+function _getScopeLabel() {
     const scopeType = document.getElementById('researchScopeType').value;
-    let scopeLabel = 'this market';
     if (scopeType === 'category') {
         const sel = document.getElementById('researchScopeId');
         const opt = sel.options[sel.selectedIndex];
-        if (opt && opt.value) scopeLabel = opt.text.replace(/\s*\(\d+\)$/, '');
+        if (opt && opt.value) return opt.text.replace(/\s*\(\d+\)$/, '');
     } else if (scopeType === 'company') {
         const name = document.getElementById('researchCompanySearch').value.trim();
-        if (name) scopeLabel = name;
+        if (name) return name;
     }
+    return 'this market';
+}
 
-    const template = RESEARCH_TEMPLATES[key] || '';
-    document.getElementById('researchPrompt').value = template.replace('{scope}', scopeLabel);
+function applyResearchTemplate(idOrKey) {
+    const scopeLabel = _getScopeLabel();
+    // Support both old string keys (for backward compat) and new numeric IDs
+    let template;
+    if (typeof idOrKey === 'number') {
+        template = _researchTemplates.find(t => t.id === idOrKey);
+    }
+    if (!template) return;
+    const prompt = (template.prompt_template || '').replace(/\{scope\}/g, scopeLabel)
+        .replace(/\{company_name\}/g, scopeLabel)
+        .replace(/\{category_name\}/g, scopeLabel)
+        .replace(/\{project_name\}/g, 'the project');
+    document.getElementById('researchPrompt').value = prompt;
     document.getElementById('researchPrompt').focus();
+}
+
+// --- Template Manager ---
+function openTemplateManager() {
+    const modal = document.getElementById('templateManagerModal');
+    modal.classList.remove('hidden');
+    renderTemplateManagerList();
+    trapFocus(modal);
+}
+
+function closeTemplateManager() {
+    document.getElementById('templateManagerModal').classList.add('hidden');
+}
+
+function renderTemplateManagerList() {
+    const list = document.getElementById('templateManagerList');
+    list.innerHTML = _researchTemplates.map(t => `
+        <div class="template-item">
+            <div class="template-item-header">
+                <strong>${esc(t.name)}</strong>
+                ${t.is_default ? '<span class="hint-text">(default)</span>' : ''}
+            </div>
+            <div class="template-item-body hint-text">${esc((t.prompt_template || '').substring(0, 120))}...</div>
+            <div class="template-item-actions">
+                <button class="btn btn-sm" onclick="editTemplate(${t.id})">Edit</button>
+                <button class="btn btn-sm" style="color:var(--accent-danger)" onclick="deleteTemplate(${t.id})">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showAddTemplateForm() {
+    document.getElementById('templateFormTitle').textContent = 'New Template';
+    document.getElementById('templateFormId').value = '';
+    document.getElementById('templateFormName').value = '';
+    document.getElementById('templateFormPrompt').value = '';
+    document.getElementById('templateFormSection').classList.remove('hidden');
+}
+
+function editTemplate(id) {
+    const t = _researchTemplates.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('templateFormTitle').textContent = 'Edit Template';
+    document.getElementById('templateFormId').value = id;
+    document.getElementById('templateFormName').value = t.name;
+    document.getElementById('templateFormPrompt').value = t.prompt_template;
+    document.getElementById('templateFormSection').classList.remove('hidden');
+}
+
+async function saveTemplate() {
+    const id = document.getElementById('templateFormId').value;
+    const name = document.getElementById('templateFormName').value.trim();
+    const prompt_template = document.getElementById('templateFormPrompt').value.trim();
+    if (!name || !prompt_template) { showToast('Name and prompt required'); return; }
+
+    if (id) {
+        await safeFetch(`/api/research/templates/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, prompt_template }),
+        });
+    } else {
+        await safeFetch('/api/research/templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: currentProjectId, name, prompt_template }),
+        });
+    }
+    document.getElementById('templateFormSection').classList.add('hidden');
+    await loadResearchTemplates();
+    renderTemplateManagerList();
+    showToast('Template saved');
+}
+
+async function deleteTemplate(id) {
+    await safeFetch(`/api/research/templates/${id}`, { method: 'DELETE' });
+    await loadResearchTemplates();
+    renderTemplateManagerList();
+    showToast('Template deleted');
 }
 
 // --- Start Deep Dive ---
@@ -231,6 +336,7 @@ async function loadResearchDetail(researchId) {
                 <span class="hint-text">${metaParts}</span>
                 <button class="btn" onclick="exportResearchMd(${researchId})">Export .md</button>
                 <button class="btn" onclick="exportResearchPdf()">Export PDF</button>
+                <button class="btn" onclick="startPresentation('report')"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">slideshow</span> Present</button>
             </div>
         </div>
         <div class="report-body">${html}</div>

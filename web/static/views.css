@@ -1,0 +1,176 @@
+/* Feature: Multiple Company Views — gallery, timeline, matrix */
+
+/* ========== View Toggle ========== */
+.company-view-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+/* ========== Gallery View ========== */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.gallery-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 14px;
+    padding: 14px;
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.gallery-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+.gallery-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.gallery-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.gallery-cat {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.gallery-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin: 0 0 8px;
+}
+
+.gallery-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.gallery-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+/* ========== Timeline View ========== */
+.timeline-container {
+    padding: 20px 0;
+    overflow-x: auto;
+}
+
+.timeline-track {
+    display: flex;
+    gap: 0;
+    min-width: min-content;
+    align-items: flex-end;
+    border-bottom: 2px solid var(--border-default);
+    padding-bottom: 8px;
+}
+
+.timeline-year {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+    padding: 0 6px;
+}
+
+.timeline-year-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+.timeline-year-dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 6px;
+}
+
+.timeline-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.timeline-dot:hover {
+    transform: scale(1.4);
+}
+
+/* ========== Matrix View ========== */
+.matrix-wrapper {
+    overflow-x: auto;
+}
+
+.matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.matrix-table th,
+.matrix-table td {
+    padding: 8px 10px;
+    border: 1px solid var(--border-default);
+    text-align: center;
+}
+
+.matrix-table th {
+    background: var(--bg-surface);
+    font-weight: 600;
+    font-size: 12px;
+    position: sticky;
+    top: 0;
+}
+
+.matrix-table td:first-child,
+.matrix-table th:first-child {
+    text-align: left;
+}
+
+.matrix-cell.matrix-filled {
+    background: var(--accent-primary-light);
+    font-weight: 600;
+}
+
+.matrix-cell.matrix-filled:hover {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.matrix-table tfoot td {
+    background: var(--bg-surface);
+    font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gallery-card:hover { transform: none; }
+    .timeline-dot:hover { transform: none; }
+}

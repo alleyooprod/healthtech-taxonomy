@@ -59,6 +59,22 @@ async function loadTaxonomy() {
                 </div>`;
             }).join('')}</div>`
             : '';
+        const hasMetadata = cat.scope_note || cat.inclusion_criteria || cat.exclusion_criteria;
+        const metaHtml = `<div class="cat-metadata" id="catMeta-${cat.id}">
+            <button class="cat-metadata-toggle" onclick="toggleCatMetadata(${cat.id})">
+                ${hasMetadata ? 'Scope Notes' : 'Add Scope Notes'}
+                <span class="collapse-arrow"><span class="material-symbols-outlined">${hasMetadata ? 'expand_more' : 'add'}</span></span>
+            </button>
+            <div class="cat-metadata-body hidden" id="catMetaBody-${cat.id}">
+                <label>Scope Note</label>
+                <textarea id="catScope-${cat.id}" rows="2" placeholder="What this category covers...">${esc(cat.scope_note || '')}</textarea>
+                <label>Inclusion Criteria</label>
+                <textarea id="catInclude-${cat.id}" rows="2" placeholder="Companies that belong here if...">${esc(cat.inclusion_criteria || '')}</textarea>
+                <label>Exclusion Criteria</label>
+                <textarea id="catExclude-${cat.id}" rows="2" placeholder="Companies that do NOT belong here if...">${esc(cat.exclusion_criteria || '')}</textarea>
+                <button class="btn btn-sm" onclick="saveCategoryMetadata(${cat.id})">Save</button>
+            </div>
+        </div>`;
         return `<div class="category-card" style="border-left: 4px solid ${color}">
             <div class="cat-header">
                 <input type="color" class="cat-color-picker" value="${color}" title="Category color"
@@ -66,6 +82,7 @@ async function loadTaxonomy() {
                 ${esc(cat.name)} <span class="count">(${cat.company_count})</span>
             </div>
             ${childHtml}
+            ${metaHtml}
         </div>`;
     }).join('');
 
@@ -93,6 +110,26 @@ async function loadTaxonomy() {
         : '<p>No taxonomy changes yet.</p>';
 }
 
+// --- Category Scope Notes ---
+function toggleCatMetadata(catId) {
+    const body = document.getElementById(`catMetaBody-${catId}`);
+    body.classList.toggle('hidden');
+    const arrow = body.previousElementSibling.querySelector('.material-symbols-outlined');
+    if (arrow) arrow.textContent = body.classList.contains('hidden') ? 'expand_more' : 'expand_less';
+}
+
+async function saveCategoryMetadata(catId) {
+    const scope_note = document.getElementById(`catScope-${catId}`).value.trim();
+    const inclusion_criteria = document.getElementById(`catInclude-${catId}`).value.trim();
+    const exclusion_criteria = document.getElementById(`catExclude-${catId}`).value.trim();
+    await safeFetch(`/api/categories/${catId}/metadata`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope_note, inclusion_criteria, exclusion_criteria }),
+    });
+    showToast('Scope notes saved');
+}
+
 // --- Category Detail View ---
 async function showCategoryDetail(categoryId) {
     const res = await safeFetch(`/api/categories/${categoryId}`);
@@ -112,6 +149,9 @@ async function showCategoryDetail(categoryId) {
             <span class="detail-cat-name">${esc(cat.name)}</span>
         </div>
         ${cat.description ? `<div class="detail-field"><label>Description</label><p>${esc(cat.description)}</p></div>` : ''}
+        ${cat.scope_note ? `<div class="detail-field"><label>Scope Note</label><p>${esc(cat.scope_note)}</p></div>` : ''}
+        ${cat.inclusion_criteria ? `<div class="detail-field"><label>Includes</label><p>${esc(cat.inclusion_criteria)}</p></div>` : ''}
+        ${cat.exclusion_criteria ? `<div class="detail-field"><label>Excludes</label><p>${esc(cat.exclusion_criteria)}</p></div>` : ''}
         <div class="detail-field"><label>Companies (${companies.length})</label></div>
         <div class="category-company-list">
             ${companies.length ? companies.map(c => `
@@ -448,19 +488,187 @@ function renderTaxonomyGraph(categories, companies) {
     });
 }
 
+let kgInstance = null;
+let kgNodeTypes = { category: true, company: true, tag: true, geography: true };
+
 function switchTaxonomyView(view) {
+    document.getElementById('taxonomyTree').classList.add('hidden');
+    document.getElementById('taxonomyGraph').classList.add('hidden');
+    const kgContainer = document.getElementById('knowledgeGraph');
+    if (kgContainer) kgContainer.classList.add('hidden');
+    document.querySelectorAll('.taxonomy-view-toggle .view-toggle-btn').forEach(b => b.classList.remove('active'));
+
     if (view === 'tree') {
         document.getElementById('taxonomyTree').classList.remove('hidden');
-        document.getElementById('taxonomyGraph').classList.add('hidden');
         document.getElementById('treeViewBtn').classList.add('active');
-        document.getElementById('graphViewBtn').classList.remove('active');
-    } else {
-        document.getElementById('taxonomyTree').classList.add('hidden');
+    } else if (view === 'graph') {
         document.getElementById('taxonomyGraph').classList.remove('hidden');
-        document.getElementById('treeViewBtn').classList.remove('active');
         document.getElementById('graphViewBtn').classList.add('active');
         safeFetch(`/api/taxonomy?project_id=${currentProjectId}`)
             .then(r => r.json())
             .then(cats => renderTaxonomyGraph(cats, []));
+    } else if (view === 'knowledge') {
+        if (kgContainer) kgContainer.classList.remove('hidden');
+        document.getElementById('kgViewBtn').classList.add('active');
+        renderKnowledgeGraph();
     }
+}
+
+// --- Knowledge Graph ---
+async function renderKnowledgeGraph() {
+    if (!window.cytoscape) return;
+    const container = document.getElementById('kgCanvas');
+    if (!container) return;
+
+    const [catsRes, companiesRes] = await Promise.all([
+        safeFetch(`/api/taxonomy?project_id=${currentProjectId}`),
+        safeFetch(`/api/companies?project_id=${currentProjectId}&limit=200`),
+    ]);
+    const cats = await catsRes.json();
+    const companies = await companiesRes.json();
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const elements = [];
+
+    // Category nodes
+    if (kgNodeTypes.category) {
+        cats.forEach(cat => {
+            elements.push({
+                data: {
+                    id: `cat-${cat.id}`, label: cat.name, type: 'category',
+                    catColor: categoryColorMap[cat.id] || '#6b8fa3',
+                },
+            });
+            if (cat.parent_id) {
+                elements.push({ data: { source: `cat-${cat.parent_id}`, target: `cat-${cat.id}`, edgeType: 'has_subcategory' } });
+            }
+        });
+    }
+
+    // Company nodes + edges
+    const allTags = new Set();
+    const allGeos = new Set();
+
+    if (kgNodeTypes.company) {
+        companies.forEach(c => {
+            elements.push({
+                data: { id: `co-${c.id}`, label: c.name, type: 'company', companyId: c.id },
+            });
+            if (c.category_id && kgNodeTypes.category) {
+                elements.push({ data: { source: `co-${c.id}`, target: `cat-${c.category_id}`, edgeType: 'belongs_to' } });
+            }
+            (c.tags || []).forEach(t => {
+                allTags.add(t);
+                if (kgNodeTypes.tag) {
+                    elements.push({ data: { source: `co-${c.id}`, target: `tag-${t}`, edgeType: 'tagged_with' } });
+                }
+            });
+            if (c.geography && kgNodeTypes.geography) {
+                const geo = c.geography.split(',')[0].trim();
+                allGeos.add(geo);
+                elements.push({ data: { source: `co-${c.id}`, target: `geo-${geo}`, edgeType: 'located_in' } });
+            }
+        });
+    }
+
+    // Tag nodes
+    if (kgNodeTypes.tag) {
+        allTags.forEach(t => {
+            elements.push({ data: { id: `tag-${t}`, label: t, type: 'tag' } });
+        });
+    }
+
+    // Geography nodes
+    if (kgNodeTypes.geography) {
+        allGeos.forEach(g => {
+            elements.push({ data: { id: `geo-${g}`, label: g, type: 'geography' } });
+        });
+    }
+
+    if (kgInstance) kgInstance.destroy();
+    kgInstance = cytoscape({
+        container,
+        elements,
+        style: [
+            {
+                selector: 'node[type="category"]',
+                style: {
+                    'background-color': 'data(catColor)',
+                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 4,
+                    'font-size': '10px', color: isDark ? '#e8e0d4' : '#3D4035',
+                    width: 30, height: 30, shape: 'round-rectangle',
+                },
+            },
+            {
+                selector: 'node[type="company"]',
+                style: {
+                    'background-color': '#5a7c5a',
+                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 4,
+                    'font-size': '9px', color: isDark ? '#c8d0c4' : '#3D4035',
+                    width: 18, height: 18,
+                },
+            },
+            {
+                selector: 'node[type="tag"]',
+                style: {
+                    'background-color': '#d4a853',
+                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 3,
+                    'font-size': '8px', color: isDark ? '#d4a853' : '#8a6d2b',
+                    width: 12, height: 12, shape: 'diamond',
+                },
+            },
+            {
+                selector: 'node[type="geography"]',
+                style: {
+                    'background-color': '#8b6f8b',
+                    label: 'data(label)', 'text-valign': 'bottom', 'text-margin-y': 3,
+                    'font-size': '8px', color: isDark ? '#b89fb8' : '#5a4a5a',
+                    width: 14, height: 14, shape: 'hexagon',
+                },
+            },
+            {
+                selector: 'edge',
+                style: {
+                    width: 1, 'line-color': isDark ? '#444' : '#ddd',
+                    'curve-style': 'bezier', opacity: 0.6,
+                },
+            },
+            {
+                selector: '.kg-dimmed',
+                style: { opacity: 0.15 },
+            },
+            {
+                selector: '.kg-highlighted',
+                style: { opacity: 1, 'border-width': 2, 'border-color': '#bc6c5a' },
+            },
+        ],
+        layout: { name: 'cose', animate: false, nodeDimensionsIncludeLabels: true, nodeRepulsion: () => 8000 },
+        wheelSensitivity: 0.3,
+    });
+
+    // Click to highlight connections
+    kgInstance.on('tap', 'node', (evt) => {
+        const node = evt.target;
+        kgInstance.elements().removeClass('kg-highlighted kg-dimmed').addClass('kg-dimmed');
+        node.removeClass('kg-dimmed').addClass('kg-highlighted');
+        node.connectedEdges().removeClass('kg-dimmed').addClass('kg-highlighted');
+        node.neighborhood('node').removeClass('kg-dimmed').addClass('kg-highlighted');
+    });
+
+    kgInstance.on('tap', (evt) => {
+        if (evt.target === kgInstance) {
+            kgInstance.elements().removeClass('kg-highlighted kg-dimmed');
+        }
+    });
+
+    // Double-click company to navigate
+    kgInstance.on('dbltap', 'node[type="company"]', (evt) => {
+        const id = evt.target.data('companyId');
+        if (id) showDetail(id);
+    });
+}
+
+function toggleKgNodeType(type) {
+    kgNodeTypes[type] = !kgNodeTypes[type];
+    renderKnowledgeGraph();
 }

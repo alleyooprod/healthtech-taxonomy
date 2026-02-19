@@ -1,14 +1,29 @@
 """Shared configuration for the Olly market taxonomy builder."""
+import json
 import os
 import secrets
+import sys
 from pathlib import Path
+
+# App version (checked by auto-update)
+APP_VERSION = "1.1.0"
 
 # Paths
 BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / "data"
+
+# Data directory: use ~/Library/Application Support for bundled .app, else project-relative
+_is_bundled = getattr(sys, "frozen", False)
+if _is_bundled:
+    _app_support = Path.home() / "Library" / "Application Support" / "Research Taxonomy Library"
+    DATA_DIR = _app_support
+else:
+    DATA_DIR = BASE_DIR / "data"
+
 PROMPTS_DIR = BASE_DIR / "prompts"
-LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR = DATA_DIR / "logs"
+BACKUP_DIR = DATA_DIR / "backups"
 DB_PATH = DATA_DIR / "taxonomy.db"
+APP_SETTINGS_FILE = DATA_DIR / ".app_settings.json"
 
 # Processing
 DEFAULT_WORKERS = 5
@@ -107,3 +122,97 @@ SEED_CATEGORIES = [
     "Insurance Technology",
     "Physical Health Services",
 ]
+
+
+# --- App Settings (persisted JSON) ---
+
+_DEFAULT_APP_SETTINGS = {
+    "llm_backend": "cli",        # "cli" or "sdk"
+    "anthropic_api_key": "",
+    "default_model": "claude-haiku-4-5-20251001",
+    "research_model": "claude-sonnet-4-5-20250929",
+    "git_sync_enabled": True,
+    "git_remote_url": "",
+    "auto_backup_enabled": True,
+    "update_check_enabled": True,
+    "last_update_check": None,
+}
+
+
+def load_app_settings():
+    """Load app settings from JSON file, merging with defaults."""
+    settings = _DEFAULT_APP_SETTINGS.copy()
+    try:
+        if APP_SETTINGS_FILE.exists():
+            saved = json.loads(APP_SETTINGS_FILE.read_text())
+            settings.update(saved)
+    except Exception:
+        pass
+    return settings
+
+
+def save_app_settings(settings):
+    """Save app settings to JSON file."""
+    APP_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    APP_SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
+
+
+def check_prerequisites():
+    """Check system prerequisites and return status dict."""
+    import shutil
+    import subprocess
+
+    results = {}
+
+    # Claude CLI
+    claude_path = shutil.which("claude")
+    results["claude_cli"] = {
+        "installed": claude_path is not None,
+        "path": claude_path or "",
+    }
+
+    # Git
+    git_path = shutil.which("git")
+    git_remote = ""
+    if git_path:
+        try:
+            r = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                cwd=BASE_DIR, capture_output=True, text=True, timeout=5,
+            )
+            if r.returncode == 0:
+                git_remote = r.stdout.strip()
+        except Exception:
+            pass
+    results["git"] = {
+        "installed": git_path is not None,
+        "path": git_path or "",
+        "remote_url": git_remote,
+    }
+
+    # Anthropic API key
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    settings = load_app_settings()
+    if not api_key:
+        api_key = settings.get("anthropic_api_key", "")
+    results["anthropic_api_key"] = {
+        "configured": bool(api_key),
+    }
+
+    # Node.js (for Gemini CLI)
+    node_path = shutil.which("node")
+    results["node"] = {
+        "installed": node_path is not None,
+        "path": node_path or "",
+    }
+
+    # Data directory
+    results["data_dir"] = {
+        "path": str(DATA_DIR),
+        "exists": DATA_DIR.exists(),
+        "is_bundled": _is_bundled,
+    }
+
+    results["app_version"] = APP_VERSION
+
+    return results

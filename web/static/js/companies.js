@@ -3,6 +3,8 @@
  */
 
 let currentSort = { by: 'name', dir: 'asc' };
+let currentCompanyView = 'table';
+let _lastCompanies = [];
 
 // --- Bulk Selection ---
 let bulkSelection = new Set();
@@ -128,6 +130,13 @@ async function loadCompanies() {
 
     const res = await safeFetch(url);
     const companies = await res.json();
+    _lastCompanies = companies;
+
+    // If not in table view, render the alternate view
+    if (currentCompanyView !== 'table') {
+        renderAlternateView(companies);
+        return;
+    }
 
     document.querySelectorAll('.sort-header').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
@@ -254,6 +263,7 @@ async function showDetail(id) {
         <div class="detail-actions">
             <button class="btn" onclick="openEditModal(${c.id})">Edit</button>
             <button class="btn" onclick="openReResearch(${c.id})">Re-research</button>
+            <button class="btn" onclick="startEnrichment(${c.id})">Enrich</button>
             <button class="btn" onclick="startCompanyResearch(${c.id}, '${escAttr(c.name)}')">Deep Dive</button>
             <button class="btn" onclick="findSimilar(${c.id})">Find Similar</button>
             <button class="btn" onclick="showVersionHistory(${c.id})">History</button>
@@ -634,6 +644,208 @@ document.addEventListener('keydown', (e) => {
         clearBulkSelection();
     }
 });
+
+// --- Enrichment ---
+async function startEnrichment(companyId) {
+    showToast('Starting enrichment...');
+    const res = await safeFetch(`/api/companies/${companyId}/enrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: document.getElementById('modelSelect')?.value || 'sonnet' }),
+    });
+    const data = await res.json();
+    if (data.error) { showToast(data.error); return; }
+    pollEnrichment(data.job_id, companyId);
+}
+
+let _enrichPollCount = 0;
+const _MAX_ENRICH_RETRIES = 120;
+
+async function pollEnrichment(jobId, companyId) {
+    const res = await safeFetch(`/api/enrich/${jobId}`);
+    const data = await res.json();
+    if (data.status === 'pending') {
+        if (++_enrichPollCount > _MAX_ENRICH_RETRIES) {
+            showToast('Enrichment timed out');
+            return;
+        }
+        setTimeout(() => pollEnrichment(jobId, companyId), 3000);
+        return;
+    }
+    _enrichPollCount = 0;
+    if (data.status === 'error') {
+        showToast('Enrichment failed: ' + (data.error || ''));
+    } else {
+        const fields = data.enriched_fields || [];
+        showToast(`Enriched ${fields.length} fields (${data.steps_run} steps)`);
+        if (companyId) showDetail(companyId);
+        loadCompanies();
+    }
+}
+
+async function startBatchEnrichment() {
+    const ids = bulkSelection.size > 0 ? Array.from(bulkSelection) : null;
+    showToast('Starting batch enrichment...');
+    const res = await safeFetch('/api/companies/enrich-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            project_id: currentProjectId,
+            company_ids: ids,
+            model: document.getElementById('modelSelect')?.value || 'sonnet',
+        }),
+    });
+    const data = await res.json();
+    if (data.error) { showToast(data.error); return; }
+    showToast(`Enriching ${data.count} companies...`);
+    _enrichPollCount = 0;
+    pollEnrichment(data.job_id, null);
+}
+
+// --- Company View Switching ---
+function switchCompanyView(view) {
+    currentCompanyView = view;
+    const table = document.getElementById('companyTable');
+    const container = document.getElementById('companyViewContainer');
+    document.querySelectorAll('.company-view-toggle .view-toggle-btn').forEach(b => b.classList.remove('active'));
+
+    if (view === 'table') {
+        table.classList.remove('hidden');
+        container.classList.add('hidden');
+        document.getElementById('viewTableBtn').classList.add('active');
+        loadCompanies();
+    } else {
+        table.classList.add('hidden');
+        container.classList.remove('hidden');
+        document.getElementById(`view${view.charAt(0).toUpperCase() + view.slice(1)}Btn`).classList.add('active');
+        renderAlternateView(_lastCompanies);
+    }
+}
+
+function renderAlternateView(companies) {
+    const container = document.getElementById('companyViewContainer');
+    if (currentCompanyView === 'gallery') renderGalleryView(companies, container);
+    else if (currentCompanyView === 'timeline') renderTimelineView(companies, container);
+    else if (currentCompanyView === 'matrix') renderMatrixView(companies, container);
+}
+
+function renderGalleryView(companies, container) {
+    if (!companies.length) {
+        container.innerHTML = '<p class="hint-text" style="padding:20px">No companies to display.</p>';
+        return;
+    }
+    container.innerHTML = `<div class="gallery-grid">${companies.map(c => {
+        const color = getCategoryColor(c.category_id) || 'var(--border-default)';
+        const logoUrl = c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`;
+        return `<div class="gallery-card" onclick="showDetail(${c.id})" style="border-top:3px solid ${color}">
+            <div class="gallery-card-header">
+                <img class="gallery-logo" src="${logoUrl}" alt="" onerror="this.style.display='none'">
+                <div>
+                    <strong>${esc(c.name)}</strong>
+                    ${c.category_name ? `<div class="gallery-cat"><span class="cat-color-dot" style="background:${color}"></span> ${esc(c.category_name)}</div>` : ''}
+                </div>
+                ${c.is_starred ? '<span class="material-symbols-outlined" style="color:var(--wheat);font-size:16px;margin-left:auto">star</span>' : ''}
+            </div>
+            <p class="gallery-desc">${esc((c.what || '').substring(0, 120))}</p>
+            <div class="gallery-meta">
+                ${c.geography ? `<span>${esc(c.geography)}</span>` : ''}
+                ${c.funding_stage ? `<span>${esc(c.funding_stage)}</span>` : ''}
+                ${c.founded_year ? `<span>${c.founded_year}</span>` : ''}
+            </div>
+            <div class="gallery-tags">${(c.tags || []).slice(0, 3).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+        </div>`;
+    }).join('')}</div>`;
+}
+
+function renderTimelineView(companies, container) {
+    const withYear = companies.filter(c => c.founded_year);
+    if (!withYear.length) {
+        container.innerHTML = '<p class="hint-text" style="padding:20px">No companies with founding year data for timeline view.</p>';
+        return;
+    }
+    const byYear = {};
+    withYear.forEach(c => {
+        const y = c.founded_year;
+        if (!byYear[y]) byYear[y] = [];
+        byYear[y].push(c);
+    });
+    const years = Object.keys(byYear).sort((a, b) => a - b);
+
+    container.innerHTML = `<div class="timeline-container">
+        <div class="timeline-track">
+            ${years.map(y => `<div class="timeline-year">
+                <div class="timeline-year-label">${y}</div>
+                <div class="timeline-year-dots">
+                    ${byYear[y].map(c => {
+                        const color = getCategoryColor(c.category_id) || '#888';
+                        return `<div class="timeline-dot" style="background:${color}" onclick="showDetail(${c.id})" title="${esc(c.name)} — ${esc(c.category_name || '')}"></div>`;
+                    }).join('')}
+                </div>
+            </div>`).join('')}
+        </div>
+    </div>`;
+}
+
+function renderMatrixView(companies, container) {
+    if (!companies.length) {
+        container.innerHTML = '<p class="hint-text" style="padding:20px">No companies for matrix view.</p>';
+        return;
+    }
+    // Rows: categories, Columns: geographies
+    const cats = {};
+    const geos = new Set();
+    companies.forEach(c => {
+        const catName = c.category_name || 'Uncategorized';
+        const geo = c.geography || 'Unknown';
+        if (!cats[catName]) cats[catName] = {};
+        const geoKey = geo.split(',')[0].trim(); // use first geo segment
+        geos.add(geoKey);
+        if (!cats[catName][geoKey]) cats[catName][geoKey] = [];
+        cats[catName][geoKey].push(c);
+    });
+    const geoList = Array.from(geos).sort();
+    const catNames = Object.keys(cats).sort();
+
+    container.innerHTML = `<div class="matrix-wrapper"><table class="matrix-table">
+        <thead><tr><th>Category</th>${geoList.map(g => `<th>${esc(g)}</th>`).join('')}<th>Total</th></tr></thead>
+        <tbody>${catNames.map(cat => {
+            const total = geoList.reduce((s, g) => s + (cats[cat][g] ? cats[cat][g].length : 0), 0);
+            return `<tr><td><strong>${esc(cat)}</strong></td>
+                ${geoList.map(g => {
+                    const count = cats[cat][g] ? cats[cat][g].length : 0;
+                    return `<td class="matrix-cell ${count ? 'matrix-filled' : ''}" ${count ? `onclick="showMatrixDetail('${escAttr(cat)}','${escAttr(g)}')" style="cursor:pointer"` : ''}>${count || ''}</td>`;
+                }).join('')}
+                <td><strong>${total}</strong></td>
+            </tr>`;
+        }).join('')}</tbody>
+        <tfoot><tr><td><strong>Total</strong></td>${geoList.map(g => {
+            const total = catNames.reduce((s, cat) => s + (cats[cat][g] ? cats[cat][g].length : 0), 0);
+            return `<td><strong>${total}</strong></td>`;
+        }).join('')}<td><strong>${companies.length}</strong></td></tr></tfoot>
+    </table></div>`;
+}
+
+function showMatrixDetail(catName, geoKey) {
+    const matches = _lastCompanies.filter(c =>
+        (c.category_name || 'Uncategorized') === catName &&
+        (c.geography || 'Unknown').split(',')[0].trim() === geoKey
+    );
+    const panel = document.getElementById('detailPanel');
+    document.getElementById('detailName').textContent = `${catName} × ${geoKey}`;
+    document.getElementById('detailContent').innerHTML = `
+        <p>${matches.length} companies</p>
+        <div class="category-company-list">
+            ${matches.map(c => `
+                <div class="cat-company-item" onclick="showDetail(${c.id})">
+                    <strong>${esc(c.name)}</strong>
+                    <span class="text-muted" style="font-size:11px;margin-left:auto">${esc(c.what || '').substring(0, 60)}</span>
+                </div>
+            `).join('')}
+        </div>
+        <button class="btn" onclick="closeDetail()" style="margin-top:12px">Close</button>
+    `;
+    panel.classList.remove('hidden');
+}
 
 // --- Sort Headers ---
 document.addEventListener('click', (e) => {

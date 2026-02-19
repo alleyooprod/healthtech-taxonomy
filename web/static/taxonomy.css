@@ -62,6 +62,65 @@
     color: var(--text-secondary);
 }
 
+/* ========== Category Scope Notes ========== */
+.cat-metadata {
+    margin-top: 10px;
+    border-top: 1px solid var(--border-default);
+    padding-top: 8px;
+}
+
+.cat-metadata-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+}
+
+.cat-metadata-toggle:hover {
+    color: var(--text-primary);
+}
+
+.cat-metadata-body {
+    margin-top: 8px;
+}
+
+.cat-metadata-body label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin: 8px 0 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.cat-metadata-body label:first-child {
+    margin-top: 0;
+}
+
+.cat-metadata-body textarea {
+    width: 100%;
+    font-size: 13px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    background: var(--bg-container);
+    color: var(--text-primary);
+    resize: vertical;
+    font-family: inherit;
+}
+
+.cat-metadata-body .btn-sm {
+    margin-top: 8px;
+    font-size: 12px;
+    padding: 4px 12px;
+}
+
 /* ========== History ========== */
 .history-entry {
     padding: 8px 0;
@@ -231,4 +290,28 @@
 
 [data-theme="dark"] .quality-warn {
     background: var(--accent-warning-bg);
+}
+
+/* ========== Knowledge Graph ========== */
+.kg-container {
+    width: 100%;
+    height: 500px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--bg-container);
+}
+
+.kg-filter-panel {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.kg-filter-panel label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
 }
