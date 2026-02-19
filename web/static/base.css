@@ -259,8 +259,11 @@ h1, h2, h3, h4, h5, h6 {
 .chart-card-wide { grid-column: 1 / -1; }
 
 .matrix-container {
-    overflow-x: auto;
+    overflow: auto;
     margin-top: 12px;
+    max-height: 500px;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
 }
 
 .matrix-table {
@@ -285,6 +288,17 @@ h1, h2, h3, h4, h5, h6 {
     letter-spacing: 0.3px;
     background: var(--bg-surface);
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* Top-left corner sticky both ways */
+.matrix-table thead th.matrix-corner {
+    z-index: 3;
+    position: sticky;
+    left: 0;
+    top: 0;
 }
 
 .matrix-corner {
@@ -295,15 +309,15 @@ h1, h2, h3, h4, h5, h6 {
     text-align: left !important;
     font-weight: 500;
     color: var(--text-primary);
-    white-space: nowrap;
-    min-width: 180px;
-    max-width: 280px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    min-width: 200px;
+    max-width: 320px;
     background: var(--bg-surface);
     position: sticky;
     left: 0;
     z-index: 1;
+    line-height: 1.3;
+    font-size: 12px;
 }
 
 .matrix-cell {

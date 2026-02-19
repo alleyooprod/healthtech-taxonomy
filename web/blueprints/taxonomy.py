@@ -85,10 +85,17 @@ def get_category(category_id):
     if not cat:
         return jsonify({"error": "Not found"}), 404
     # Include companies in this category
-    companies = current_app.db.get_companies(
-        category_id=category_id,
-        project_id=cat.get("project_id"),
-    )
+    # For subcategories (has parent_id), companies link via subcategory_id
+    if cat.get("parent_id"):
+        companies = current_app.db.get_companies_by_subcategory(
+            subcategory_id=category_id,
+            project_id=cat.get("project_id"),
+        )
+    else:
+        companies = current_app.db.get_companies(
+            category_id=category_id,
+            project_id=cat.get("project_id"),
+        )
     cat["companies"] = companies
     return jsonify(cat)
 

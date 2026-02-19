@@ -195,7 +195,7 @@ function showTab(name) {
     });
     document.getElementById('tab-' + name).classList.add('active');
 
-    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'export'];
+    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'export', 'settings'];
     const idx = tabNames.indexOf(name);
     if (idx >= 0) {
         const tabBtn = document.querySelectorAll('.tab')[idx];
@@ -217,8 +217,9 @@ function showTab(name) {
     if (name === 'reports') { loadSavedReports(); resumeActiveReport(); if (typeof loadSavedResearch === 'function') loadSavedResearch(); }
     if (name === 'canvas') { if (typeof loadCanvasList === 'function') loadCanvasList(); }
     if (name === 'discovery') { if (typeof loadDiscoveryTab === 'function') loadDiscoveryTab(); }
-    if (name === 'process') { loadBatches(); if (typeof loadAiSetupStatus === 'function') loadAiSetupStatus(); }
+    if (name === 'process') { loadBatches(); }
     if (name === 'export') { loadShareTokens(); loadNotifPrefs(); }
+    if (name === 'settings') { if (typeof loadAiSetupStatus === 'function') loadAiSetupStatus(); if (typeof loadDefaultModel === 'function') loadDefaultModel(); }
 }
 
 // Restore tab from URL on load

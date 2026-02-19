@@ -140,7 +140,7 @@ def create_app():
     # --- Pages ---
     @app.route("/")
     def index():
-        return render_template("index.html", csrf_token=generate_csrf_token())
+        return render_template("index.html", csrf_token=generate_csrf_token(), app_version=APP_VERSION)
 
     # --- Projects API (small enough to keep in app.py) ---
     @app.route("/api/projects")

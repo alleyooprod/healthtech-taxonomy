@@ -545,3 +545,156 @@
 @media (prefers-reduced-motion: reduce) {
     .ai-setup-arrow { transition: none; }
 }
+
+/* ========== Settings Tab ========== */
+.settings-section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.settings-section .section-heading {
+    margin-top: 0;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.settings-row label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.settings-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.settings-info-item {
+    background: var(--bg-container);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.settings-info-label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.settings-info-value {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* --- Fix Sections in AI Setup Cards --- */
+.ai-setup-fix-section {
+    margin-top: 12px;
+    border-top: 1px solid var(--border-default);
+    padding-top: 10px;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+}
+
+.ai-setup-fix-section.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+}
+
+.fix-header {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.fix-steps {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.fix-steps a {
+    color: var(--accent-primary);
+}
+
+.fix-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 6px 0 4px;
+}
+
+.fix-command {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.fix-command:hover {
+    background: var(--border-default);
+}
+
+.fix-command code {
+    flex: 1;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    background: none;
+    padding: 0;
+}
+
+.fix-copy-icon {
+    font-size: 16px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.fix-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.ai-setup-card.configured {
+    border-color: rgba(90, 124, 90, 0.3);
+}
+
+/* Expand fix section on card hover when collapsed */
+.ai-setup-card .ai-setup-fix-section.collapsed .fix-header::after {
+    content: ' (click to expand)';
+    font-weight: 400;
+    font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-setup-fix-section { transition: none; }
+}

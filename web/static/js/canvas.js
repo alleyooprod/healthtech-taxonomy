@@ -103,8 +103,10 @@ async function loadCanvas(canvasId) {
     document.getElementById('canvasDrawToolbar').classList.remove('hidden');
     setCanvasButtonsEnabled(true);
 
-    // Defer init until after browser reflow (wrapper just became visible)
-    requestAnimationFrame(() => initFabricCanvas(canvasData.data || {}));
+    // Double-RAF to ensure browser reflow completes before measuring
+    requestAnimationFrame(() => { requestAnimationFrame(() => {
+        initFabricCanvas(canvasData.data || {});
+    }); });
 }
 
 function setCanvasButtonsEnabled(enabled) {
@@ -185,8 +187,14 @@ function initFabricCanvas(data) {
     } else if (data.objects) {
         _fabricCanvas.loadFromJSON(data, () => {
             _fabricCanvas.renderAll();
+            // Setup events and state AFTER loading
+            _setupFabricEvents();
             _pushUndoState();
+            setCanvasTool('select');
         });
+        // Setup drop zone (must be outside callback too)
+        wrapper.addEventListener('dragover', (e) => e.preventDefault());
+        wrapper.addEventListener('drop', onCanvasDrop);
         return;
     }
 
@@ -968,6 +976,22 @@ function exportCanvasSvg() {
     link.href = URL.createObjectURL(blob);
     link.download = 'canvas.svg';
     link.click();
+}
+
+function exportCanvasPdf() {
+    if (!_fabricCanvas) return;
+    // Export SVG, then convert to PDF via print
+    const wasGrid = _canvasGridVisible;
+    if (wasGrid) { _canvasGridLines.forEach(l => l.set({ visible: false })); _fabricCanvas.renderAll(); }
+    const svg = _fabricCanvas.toSVG();
+    if (wasGrid) { _canvasGridLines.forEach(l => l.set({ visible: true })); _fabricCanvas.renderAll(); }
+    const win = window.open('', '_blank');
+    if (win) {
+        win.document.write(`<!DOCTYPE html><html><head><title>Canvas Export</title><style>@media print { @page { margin: 0; } body { margin: 0; } }</style></head><body>${svg}</body></html>`);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { win.print(); }, 300);
+    }
 }
 
 // === Window Resize ===

@@ -77,10 +77,11 @@ async function loadTaxonomy() {
             </div>
         </div>`;
         return `<div class="category-card" style="border-left: 4px solid ${color}">
-            <div class="cat-header">
+            <div class="cat-header" onclick="toggleCategoryCompanies(${cat.id}, this)" style="cursor:pointer">
                 <input type="color" class="cat-color-picker" value="${color}" title="Category color"
                     onchange="updateCategoryColor(${cat.id}, this.value)" onclick="event.stopPropagation()">
-                <span class="cat-name-link" onclick="toggleCategoryCompanies(${cat.id}, this)">${esc(cat.name)} <span class="count">(${cat.company_count})</span></span>
+                <span class="cat-name-link">${esc(cat.name)} <span class="count">(${cat.company_count})</span></span>
+                <span class="material-symbols-outlined cat-expand-arrow" style="font-size:16px;margin-left:auto;color:var(--text-muted);transition:transform 0.2s">chevron_right</span>
             </div>
             ${childHtml}
             ${metaHtml}
@@ -491,11 +492,14 @@ function renderTaxonomyGraph(categories, companies) {
 
     if (cyInstance) cyInstance.destroy();
 
-    // Use requestAnimationFrame to ensure container has layout dimensions after unhiding
-    requestAnimationFrame(() => {
-        // Force container dimensions before Cytoscape reads them
-        container.style.display = 'block';
-        container.style.width = '100%';
+    // Double-RAF ensures the container has actual layout dimensions after unhiding
+    requestAnimationFrame(() => { requestAnimationFrame(() => {
+        const rect = container.getBoundingClientRect();
+        // If container still has no dimensions, force them
+        if (rect.width < 10 || rect.height < 10) {
+            container.style.width = '100%';
+            container.style.minHeight = '500px';
+        }
 
         cyInstance = cytoscape({
             container,
@@ -553,11 +557,18 @@ function renderTaxonomyGraph(categories, companies) {
             layout: { name: 'cose', animate: false, nodeDimensionsIncludeLabels: true },
         });
 
-        // Fit after layout completes
+        // Fit after layout completes + fallback timeout
         cyInstance.one('layoutstop', () => {
             cyInstance.resize();
             cyInstance.fit(undefined, 40);
         });
+        // Fallback: resize and fit after 500ms in case layoutstop never fires
+        setTimeout(() => {
+            if (cyInstance) {
+                cyInstance.resize();
+                cyInstance.fit(undefined, 40);
+            }
+        }, 500);
 
         cyInstance.on('tap', 'node[type="category"]', (evt) => {
             const catId = evt.target.id().replace('cat-', '');
@@ -568,7 +579,7 @@ function renderTaxonomyGraph(categories, companies) {
             showTab('companies');
             loadCompanies();
         });
-    });
+    }); });
 }
 
 let kgInstance = null;
@@ -673,10 +684,18 @@ async function renderKnowledgeGraph() {
 
     if (kgInstance) kgInstance.destroy();
 
-    // Use requestAnimationFrame to ensure container has layout dimensions after unhiding
-    requestAnimationFrame(() => {
-        container.style.display = 'block';
-        container.style.width = '100%';
+    if (!elements.length) {
+        container.innerHTML = '<div class="graph-loading"><p>No data to display. Add companies and categories first.</p></div>';
+        return;
+    }
+
+    // Double-RAF ensures the container has actual layout dimensions after unhiding
+    requestAnimationFrame(() => { requestAnimationFrame(() => {
+        const rect = container.getBoundingClientRect();
+        if (rect.width < 10 || rect.height < 10) {
+            container.style.width = '100%';
+            container.style.minHeight = '500px';
+        }
 
         kgInstance = cytoscape({
             container,
@@ -738,11 +757,17 @@ async function renderKnowledgeGraph() {
             wheelSensitivity: 0.3,
         });
 
-        // Fit after layout completes
+        // Fit after layout completes + fallback timeout
         kgInstance.one('layoutstop', () => {
             kgInstance.resize();
             kgInstance.fit(undefined, 30);
         });
+        setTimeout(() => {
+            if (kgInstance) {
+                kgInstance.resize();
+                kgInstance.fit(undefined, 30);
+            }
+        }, 500);
 
         // Click to highlight connections
         kgInstance.on('tap', 'node', (evt) => {
@@ -764,7 +789,7 @@ async function renderKnowledgeGraph() {
             const id = evt.target.data('companyId');
             if (id) showDetail(id);
         });
-    });
+    }); });
 }
 
 function toggleKgNodeType(type) {

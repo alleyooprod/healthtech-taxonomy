@@ -483,6 +483,7 @@ const _cmdActions = [
     { title: 'Go to Canvas', section: 'Navigation', handler: () => showTab('canvas') },
     { title: 'Go to Export', section: 'Navigation', handler: () => showTab('export') },
     { title: 'Go to Process', section: 'Navigation', handler: () => showTab('process') },
+    { title: 'Go to Settings', section: 'Navigation', handler: () => showTab('settings') },
     { title: 'Focus Search', section: 'Actions', handler: () => document.getElementById('searchInput')?.focus() },
     { title: 'Export as Excel', section: 'Export', handler: () => { if (typeof exportXlsx === 'function') exportXlsx(); } },
     { title: 'Export as CSV', section: 'Export', handler: () => { if (typeof exportCsv === 'function') exportCsv(); } },

@@ -26,40 +26,67 @@ function renderCategoryMatrix(companies, categories) {
     else categories = _matrixCategories;
 
     const container = document.getElementById('matrixContainer');
-    if (!container || !companies.length || !categories.length) {
+    if (!container || !companies.length) {
         if (container) container.innerHTML = '<p class="hint-text" style="padding:20px;text-align:center">No data available</p>';
         return;
     }
 
-    const dim = (document.getElementById('matrixDimension') || {}).value || 'funding_stage';
-    const topCats = categories.filter(c => !c.parent_id);
+    const colDim = (document.getElementById('matrixDimension') || {}).value || 'funding_stage';
+    const rowDim = (document.getElementById('matrixRowDimension') || {}).value || 'category';
 
-    // Build parent lookup for subcategory companies
+    // Build parent lookup for category-based rows
     const parentLookup = {};
-    categories.forEach(c => { if (c.parent_id) parentLookup[c.id] = c.parent_id; });
+    if (categories) categories.forEach(c => { if (c.parent_id) parentLookup[c.id] = c.parent_id; });
+    const topCats = categories ? categories.filter(c => !c.parent_id) : [];
 
-    // Get unique column values, sorted by frequency (top 10)
+    // Helper to get row key for a company
+    function getRowKey(c) {
+        if (rowDim === 'category') {
+            const topCatId = parentLookup[c.category_id] || c.category_id;
+            const cat = topCats.find(tc => tc.id === topCatId);
+            return cat ? cat.name : 'Uncategorized';
+        }
+        if (rowDim === 'tags') {
+            return (c.tags && c.tags.length) ? c.tags : ['Untagged'];
+        }
+        return c[rowDim] || 'Unknown';
+    }
+
+    // Get unique column values, sorted by frequency (top 12)
     const colCount = {};
     companies.forEach(c => {
-        const val = c[dim] || 'Unknown';
+        const val = c[colDim] || 'Unknown';
         colCount[val] = (colCount[val] || 0) + 1;
     });
     const colValues = Object.entries(colCount)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
+        .slice(0, 12)
         .map(([name]) => name);
 
-    // Build matrix: map each company to its top-level category
+    // Build row keys
+    const rowCount = {};
+    companies.forEach(c => {
+        const keys = rowDim === 'tags' ? getRowKey(c) : [getRowKey(c)];
+        (Array.isArray(keys) ? keys : [keys]).forEach(k => {
+            rowCount[k] = (rowCount[k] || 0) + 1;
+        });
+    });
+    const rowKeys = Object.entries(rowCount)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name);
+
+    // Build matrix
     const matrix = {};
-    topCats.forEach(cat => {
-        matrix[cat.id] = {};
-        colValues.forEach(v => { matrix[cat.id][v] = 0; });
+    rowKeys.forEach(rk => {
+        matrix[rk] = {};
+        colValues.forEach(v => { matrix[rk][v] = 0; });
     });
     companies.forEach(c => {
-        const topCatId = parentLookup[c.category_id] || c.category_id;
-        if (!matrix[topCatId]) return;
-        const val = c[dim] || 'Unknown';
-        if (matrix[topCatId][val] !== undefined) matrix[topCatId][val]++;
+        const rKeys = rowDim === 'tags' ? getRowKey(c) : [getRowKey(c)];
+        const colVal = c[colDim] || 'Unknown';
+        (Array.isArray(rKeys) ? rKeys : [rKeys]).forEach(rk => {
+            if (matrix[rk] && matrix[rk][colVal] !== undefined) matrix[rk][colVal]++;
+        });
     });
 
     // Find max for heat intensity
@@ -71,16 +98,14 @@ function renderCategoryMatrix(companies, categories) {
     // Render HTML table
     let html = '<table class="matrix-table"><thead><tr><th class="matrix-corner"></th>';
     colValues.forEach(v => {
-        const label = v.length > 24 ? v.substring(0, 23) + '\u2026' : v;
-        html += `<th title="${esc(v)}">${esc(label)}</th>`;
+        html += `<th title="${esc(v)}">${esc(v)}</th>`;
     });
     html += '</tr></thead><tbody>';
 
-    topCats.forEach(cat => {
-        const catName = cat.name.length > 36 ? cat.name.substring(0, 35) + '\u2026' : cat.name;
-        html += `<tr><td class="matrix-row-label" title="${esc(cat.name)}">${esc(catName)}</td>`;
+    rowKeys.forEach(rk => {
+        html += `<tr><td class="matrix-row-label" title="${esc(rk)}">${esc(rk)}</td>`;
         colValues.forEach(v => {
-            const count = matrix[cat.id]?.[v] || 0;
+            const count = matrix[rk]?.[v] || 0;
             const intensity = count ? Math.min(0.12 + (count / maxVal) * 0.45, 0.6) : 0;
             const bg = count ? `rgba(188, 108, 90, ${intensity.toFixed(2)})` : 'transparent';
             const textColor = intensity > 0.35 ? '#fff' : 'var(--text-primary)';

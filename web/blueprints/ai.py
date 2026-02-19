@@ -180,6 +180,24 @@ def ai_test_backend():
         return jsonify({"ok": False, "error": str(e)[:200]})
 
 
+# --- Default Model ---
+
+@ai_bp.route("/api/ai/default-model")
+def get_default_model():
+    settings = load_app_settings()
+    return jsonify({"model": settings.get("default_model", DEFAULT_MODEL)})
+
+
+@ai_bp.route("/api/ai/default-model", methods=["POST"])
+def set_default_model():
+    data = request.json
+    model = data.get("model", DEFAULT_MODEL)
+    settings = load_app_settings()
+    settings["default_model"] = model
+    save_app_settings(settings)
+    return jsonify({"ok": True})
+
+
 # --- Discover ---
 
 def _run_discover(job_id, query, model):

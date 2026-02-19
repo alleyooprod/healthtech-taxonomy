@@ -192,6 +192,29 @@ class CompanyMixin:
 
             return results
 
+    def get_companies_by_subcategory(self, subcategory_id, project_id=None):
+        """Get companies assigned to a specific subcategory."""
+        with self._get_conn() as conn:
+            query = """
+                SELECT co.*, c.name as category_name, sc.name as subcategory_name
+                FROM companies co
+                LEFT JOIN categories c ON co.category_id = c.id
+                LEFT JOIN categories sc ON co.subcategory_id = sc.id
+                WHERE co.is_deleted = 0 AND co.subcategory_id = ?
+            """
+            params = [subcategory_id]
+            if project_id:
+                query += " AND co.project_id = ?"
+                params.append(project_id)
+            query += " ORDER BY co.name ASC"
+            rows = conn.execute(query, params).fetchall()
+            results = []
+            for r in rows:
+                d = dict(r)
+                d["tags"] = json.loads(d["tags"]) if d["tags"] else []
+                results.append(d)
+            return results
+
     def get_company(self, company_id, include_deleted=False):
         with self._get_conn() as conn:
             query = """SELECT co.*, c.name as category_name, sc.name as subcategory_name

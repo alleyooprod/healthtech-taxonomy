@@ -1,10 +1,18 @@
 /**
- * AI discovery, find similar, chat widget, and AI setup panel.
+ * AI discovery, find similar, chat widget, and AI setup/settings panel.
  */
 
 let chatOpen = false;
 
 // --- AI Setup Panel ---
+
+function copyCommand(el) {
+    const code = el.querySelector('code');
+    if (!code) return;
+    navigator.clipboard.writeText(code.textContent).then(() => {
+        showToast('Copied to clipboard');
+    });
+}
 
 async function loadAiSetupStatus() {
     const res = await safeFetch('/api/ai/setup-status');
@@ -20,33 +28,93 @@ async function loadAiSetupStatus() {
     const geminiPathStatus = document.getElementById('geminiPathStatus');
 
     // Claude SDK
+    const sdkCard = document.getElementById('sdkCard');
+    const sdkFix = document.getElementById('sdkFixSection');
     if (s.claude_sdk?.api_key_set) {
         sdkStatus.className = 'ai-setup-status ok';
         apiKeyStatus.innerHTML = `Key: <strong>${esc(s.claude_sdk.api_key_masked)}</strong>`;
+        if (sdkCard) sdkCard.classList.add('configured');
+        if (sdkFix) sdkFix.classList.add('collapsed');
     } else {
         sdkStatus.className = 'ai-setup-status warn';
         apiKeyStatus.textContent = 'No API key configured';
+        if (sdkCard) sdkCard.classList.remove('configured');
+        if (sdkFix) sdkFix.classList.remove('collapsed');
     }
 
     // Claude CLI
+    const cliCard = document.getElementById('cliCard');
+    const cliFix = document.getElementById('cliFixSection');
+    const cliFixHeader = document.getElementById('cliFixHeader');
+    const cliFixContent = document.getElementById('cliFixContent');
     if (s.claude_cli?.installed) {
         cliStatus.className = 'ai-setup-status ok';
-        cliPathStatus.textContent = `Found: ${s.claude_cli.path}`;
+        cliPathStatus.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px;color:#5a7c5a">check_circle</span> Found: <code>${esc(s.claude_cli.path)}</code>`;
+        if (cliCard) cliCard.classList.add('configured');
+        if (cliFix) cliFix.classList.add('collapsed');
+        if (cliFixHeader) cliFixHeader.textContent = 'Troubleshooting';
+        if (cliFixContent) cliFixContent.innerHTML = `
+            <p class="fix-subtitle">If tests fail, try re-authenticating:</p>
+            <div class="fix-command" onclick="copyCommand(this)">
+                <code>claude login</code>
+                <span class="material-symbols-outlined fix-copy-icon">content_copy</span>
+            </div>
+            <p class="fix-subtitle">Check subscription status:</p>
+            <div class="fix-command" onclick="copyCommand(this)">
+                <code>claude --version</code>
+                <span class="material-symbols-outlined fix-copy-icon">content_copy</span>
+            </div>
+        `;
     } else {
         cliStatus.className = 'ai-setup-status error';
-        cliPathStatus.innerHTML = 'Not found in PATH. Install from <a href="https://docs.anthropic.com/en/docs/claude-cli" target="_blank" rel="noopener">docs.anthropic.com</a>';
+        cliPathStatus.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px;color:#b04a3a">error</span> Not found in PATH';
+        if (cliCard) cliCard.classList.remove('configured');
+        if (cliFix) cliFix.classList.remove('collapsed');
+        if (cliFixHeader) cliFixHeader.textContent = 'Installation';
     }
 
     // Gemini
+    const geminiCard = document.getElementById('geminiCard');
+    const geminiFix = document.getElementById('geminiFixSection');
+    const geminiFixHeader = document.getElementById('geminiFixHeader');
+    const geminiFixContent = document.getElementById('geminiFixContent');
     if (s.gemini?.npx_installed) {
         geminiStatus.className = 'ai-setup-status ok';
-        geminiPathStatus.textContent = `Node.js: ${s.gemini.node_path}`;
+        geminiPathStatus.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px;color:#5a7c5a">check_circle</span> Node.js: <code>${esc(s.gemini.node_path)}</code>`;
+        if (geminiCard) geminiCard.classList.add('configured');
+        if (geminiFix) geminiFix.classList.add('collapsed');
+        if (geminiFixHeader) geminiFixHeader.textContent = 'Troubleshooting';
+        if (geminiFixContent) geminiFixContent.innerHTML = `
+            <p class="fix-subtitle">If tests fail, re-authenticate:</p>
+            <div class="fix-command" onclick="copyCommand(this)">
+                <code>npx @google/gemini-cli</code>
+                <span class="material-symbols-outlined fix-copy-icon">content_copy</span>
+            </div>
+            <p class="fix-note">Follow the Google sign-in prompts in the browser window that opens.</p>
+        `;
     } else if (s.gemini?.node_installed) {
         geminiStatus.className = 'ai-setup-status warn';
-        geminiPathStatus.textContent = 'Node.js found but npx missing';
+        geminiPathStatus.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px;color:#c4883c">warning</span> Node.js found but npx missing';
+        if (geminiCard) geminiCard.classList.remove('configured');
+        if (geminiFix) geminiFix.classList.remove('collapsed');
+        if (geminiFixHeader) geminiFixHeader.textContent = 'Fix npx';
+        if (geminiFixContent) geminiFixContent.innerHTML = `
+            <p class="fix-subtitle">npx should come with Node.js. Try reinstalling:</p>
+            <div class="fix-command" onclick="copyCommand(this)">
+                <code>brew reinstall node</code>
+                <span class="material-symbols-outlined fix-copy-icon">content_copy</span>
+            </div>
+            <p class="fix-subtitle">Or install npm separately:</p>
+            <div class="fix-command" onclick="copyCommand(this)">
+                <code>brew install npm</code>
+                <span class="material-symbols-outlined fix-copy-icon">content_copy</span>
+            </div>
+        `;
     } else {
         geminiStatus.className = 'ai-setup-status error';
-        geminiPathStatus.innerHTML = 'Node.js not found. Install from <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a>';
+        geminiPathStatus.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px;color:#b04a3a">error</span> Node.js not found';
+        if (geminiCard) geminiCard.classList.remove('configured');
+        if (geminiFix) geminiFix.classList.remove('collapsed');
     }
 
     // Summary line
@@ -54,16 +122,60 @@ async function loadAiSetupStatus() {
     if (s.claude_sdk?.api_key_set) parts.push('API Key');
     if (s.claude_cli?.installed) parts.push('Claude CLI');
     if (s.gemini?.npx_installed) parts.push('Gemini');
-    summary.textContent = parts.length ? parts.join(' + ') + ' ready' : 'No AI backends configured';
+    if (summary) {
+        if (parts.length) {
+            summary.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px;color:#5a7c5a">check_circle</span> ${parts.join(' + ')} ready`;
+        } else {
+            summary.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px;color:#b04a3a">error</span> No AI backends configured. Set up at least one below.';
+        }
+    }
+
+    // LLM backend display
+    const backendDisplay = document.getElementById('llmBackendDisplay');
+    if (backendDisplay) {
+        backendDisplay.textContent = s.claude_sdk?.backend || 'cli';
+    }
 }
 
-function toggleAiSetup() {
-    const body = document.getElementById('aiSetupBody');
-    const arrow = document.getElementById('aiSetupArrow');
-    body.classList.toggle('hidden');
-    arrow.classList.toggle('expanded');
-    if (!body.classList.contains('hidden')) loadAiSetupStatus();
+async function loadDefaultModel() {
+    const res = await safeFetch('/api/ai/default-model');
+    const data = await res.json();
+    const sel = document.getElementById('defaultModelSetting');
+    if (sel && data.model) sel.value = data.model;
 }
+
+async function saveDefaultModel() {
+    const sel = document.getElementById('defaultModelSetting');
+    if (!sel) return;
+    const res = await safeFetch('/api/ai/default-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: sel.value }),
+    });
+    const data = await res.json();
+    const status = document.getElementById('defaultModelStatus');
+    if (data.ok) {
+        if (status) status.textContent = 'Saved';
+        showToast('Default model updated');
+        setTimeout(() => { if (status) status.textContent = ''; }, 3000);
+    }
+}
+
+function toggleFixSection(el) {
+    const section = el.closest('.ai-setup-fix-section');
+    if (section) section.classList.toggle('collapsed');
+}
+
+// Attach click handlers for fix section headers
+document.addEventListener('click', (e) => {
+    const header = e.target.closest('.fix-header');
+    if (header) {
+        const section = header.closest('.ai-setup-fix-section');
+        if (section && section.classList.contains('collapsed')) {
+            section.classList.remove('collapsed');
+        }
+    }
+});
 
 async function saveAiApiKey() {
     const input = document.getElementById('aiSetupApiKey');
