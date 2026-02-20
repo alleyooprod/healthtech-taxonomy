@@ -197,7 +197,7 @@ function relationshipLabel(status) {
 
 // --- Tab Navigation with URL State ---
 function showTab(name) {
-    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'review', 'analysis', 'export', 'settings'];
+    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'review', 'analysis', 'intelligence', 'export', 'settings'];
 
     // Support numeric index as well as string name
     if (typeof name === 'number') {
@@ -241,6 +241,7 @@ function showTab(name) {
     if (name === 'process') { loadBatches(); if (typeof initCaptureUI === 'function') initCaptureUI(); }
     if (name === 'review') { if (typeof initReviewQueue === 'function') initReviewQueue(); if (typeof initFeatures === 'function') initFeatures(); }
     if (name === 'analysis') { if (typeof initLenses === 'function') initLenses(); }
+    if (name === 'intelligence') { if (typeof initMonitoring === 'function') initMonitoring(); }
     if (name === 'export') { loadShareTokens(); loadNotifPrefs(); if (typeof initReports === 'function') initReports(); }
     if (name === 'settings') { if (typeof loadAiSetupStatus === 'function') loadAiSetupStatus(); if (typeof loadDefaultModel === 'function') loadDefaultModel(); }
 

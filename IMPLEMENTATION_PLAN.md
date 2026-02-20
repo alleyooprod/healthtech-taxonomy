@@ -1,8 +1,8 @@
 # Research Workbench — Implementation Plan
 
-> **Status:** Phase 2 + Phase 3 + Phase 4 (core) Complete — capture, extraction, review, features, analysis lenses done
+> **Status:** Phase 2 + Phase 3 + Phase 4 + Phase 5 (core) Complete — capture, extraction, review, features, analysis lenses, reporting done
 > **Created:** 2026-02-20 (Session 10)
-> **Last Updated:** 2026-02-20 (Session 17)
+> **Last Updated:** 2026-02-20 (Session 18)
 > **Vision Doc:** `docs/RESEARCH_WORKBENCH_VISION.md`
 > **Conversation Reference:** `docs/RESEARCH_WORKBENCH_CONVERSATION.md`
 
@@ -413,24 +413,26 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 **Depends on:** Phase 1 (data), Phase 4 (analysis views to pull from)
 
 #### 5.1 Standard Report Templates
-- [ ] Market Overview: taxonomy breakdown, entity counts, key players
-- [ ] Competitive Landscape: feature matrix, positioning, gaps
-- [ ] Product Teardown: single-entity deep dive with all evidence
-- [ ] Design Pattern Library: observed principles with evidence
-- [ ] Change Report: temporal diffs and trends
-- [ ] Available/unavailable based on data completeness
+- [x] Market Overview: taxonomy breakdown, entity counts, key players
+- [x] Competitive Landscape: feature matrix, positioning, gaps
+- [x] Product Teardown: single-entity deep dive with all evidence
+- [x] Design Pattern Library: observed principles with evidence
+- [x] Change Report: temporal diffs and trends
+- [x] Available/unavailable based on data completeness
 
 #### 5.2 Custom Report Generator
-- [ ] Input: audience, questions to answer, tone/format preferences
-- [ ] AI drafts narrative from project's structured data + evidence
-- [ ] Every claim cites source evidence (provenance chain)
-- [ ] Draft review + edit before export
-- [ ] AI writes from YOUR data, not general knowledge — flags gaps
+- [x] Input: audience, questions to answer, tone/format preferences
+- [x] AI drafts narrative from project's structured data + evidence
+- [x] Every claim cites source evidence (provenance chain)
+- [x] Draft review + edit before export
+- [x] AI writes from YOUR data, not general knowledge — flags gaps
 
 #### 5.3 Export Formats
-- [ ] Interactive HTML microsite (stakeholders can click through, explore)
-- [ ] PDF (traditional, formatted, printable)
-- [ ] Canvas composition (report as Excalidraw workspace)
+- [x] Interactive HTML (standalone with inline CSS)
+- [x] Markdown export
+- [x] JSON export
+- [ ] PDF (traditional, formatted, printable) — deferred
+- [ ] Canvas composition (report as Excalidraw workspace) — deferred
 
 #### 5.4 Evidence Provenance
 - [ ] Every data point in reports links to source evidence
@@ -554,7 +556,8 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 | 15 | 2026-02-20 | Phase 3.4/3.5: Human review interface + feature standardisation — grouped review queue, accept/reject/edit per attribute, confidence filtering, needs-evidence flagging, bulk review, canonical vocabulary CRUD, merge, resolve, unmapped detection, AI suggest, frontend for both (103 new tests, 852 total) | ✅ Complete |
 | 16 | 2026-02-20 | Phase 2.6/2.7/2.2: Bulk capture + capture UI + 8 UI gallery scrapers (Dribbble, Scrnshts, CollectUI, Godly, Siteinspire, OnePageLove, SaaSPages, Httpster) — generic gallery API, 42 new tests, 894 total | ✅ Complete |
 | 17 | 2026-02-20 | Phase 4.1-4.5: Analysis Lenses — lens framework, competitive (matrix/gaps/positioning), product (pricing), design (gallery/journey), temporal (timeline/compare), Analysis tab + full wiring, 41 new tests, 935 total | ✅ Complete |
-| 18 | TBD | Phase 4.6-4.7: Signals lens, existing lens enhancements + Phase 5: Reporting | ⬜ Not started |
+| 18 | 2026-02-20 | Phase 5.1-5.3: Reporting & Synthesis — 5 report templates (market overview, competitive landscape, product teardown, design patterns, change report), AI-enhanced generation (mocked LLM), template availability detection, report CRUD, export (HTML/Markdown/JSON), `/api/synthesis` routes, frontend in Export tab, 33 new tests, 968 total | ✅ Complete |
+| 19 | TBD | Phase 5.4 + Phase 6: Evidence provenance in reports + Intelligence & Monitoring | ⬜ Not started |
 
 ---
 
