@@ -481,6 +481,7 @@ function renderTaxonomyGraph(categories, companies) {
     });
 
     const elements = [];
+    const catIdSet = new Set(categories.map(c => c.id));
     const topLevel = categories.filter(c => !c.parent_id);
     const subs = categories.filter(c => c.parent_id);
 
@@ -509,7 +510,9 @@ function renderTaxonomyGraph(categories, companies) {
                 catColor: graphColorMap[sub.id],
             },
         });
-        elements.push({ data: { source: `cat-${sub.parent_id}`, target: `cat-${sub.id}` } });
+        // Only create edge if parent node exists (parent may be inactive/filtered)
+        const parentTarget = catIdSet.has(sub.parent_id) ? `cat-${sub.parent_id}` : 'root';
+        elements.push({ data: { source: parentTarget, target: `cat-${sub.id}` } });
     });
 
     if (cyInstance) cyInstance.destroy();
@@ -702,6 +705,7 @@ async function renderKnowledgeGraph() {
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const elements = [];
+    const kgCatIdSet = new Set(cats.map(c => c.id));
 
     // Category nodes
     if (kgNodeTypes.category) {
@@ -712,7 +716,7 @@ async function renderKnowledgeGraph() {
                     catColor: categoryColorMap[cat.id] || '#6b8fa3',
                 },
             });
-            if (cat.parent_id) {
+            if (cat.parent_id && kgCatIdSet.has(cat.parent_id)) {
                 elements.push({ data: { source: `cat-${cat.parent_id}`, target: `cat-${cat.id}`, edgeType: 'has_subcategory' } });
             }
         });
@@ -727,7 +731,7 @@ async function renderKnowledgeGraph() {
             elements.push({
                 data: { id: `co-${c.id}`, label: c.name, type: 'company', companyId: c.id },
             });
-            if (c.category_id && kgNodeTypes.category) {
+            if (c.category_id && kgNodeTypes.category && kgCatIdSet.has(c.category_id)) {
                 elements.push({ data: { source: `co-${c.id}`, target: `cat-${c.category_id}`, edgeType: 'belongs_to' } });
             }
             (c.tags || []).forEach(t => {

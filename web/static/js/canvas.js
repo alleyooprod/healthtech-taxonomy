@@ -489,13 +489,13 @@ function initFabricCanvas(data) {
     if (data.elements && !data.objects) {
         _convertCytoscapeData(data.elements);
     } else if (data.objects) {
-        _fabricCanvas.loadFromJSON(data, () => {
+        // Fabric 6: loadFromJSON returns a Promise (callback API removed)
+        _fabricCanvas.loadFromJSON(data).then(() => {
             _fabricCanvas.renderAll();
-            // Setup events and state INSIDE callback (after load completes)
+            // Setup events and state AFTER load completes
             _setupFabricEvents();
             _pushUndoState();
             setCanvasTool('select');
-            // Drop zone MUST be inside callback per Fabric.js 6 requirements
             wrapper.addEventListener('dragover', _canvasDragOverHandler);
             wrapper.addEventListener('drop', onCanvasDrop);
         });
@@ -608,8 +608,8 @@ function _setupFabricEvents() {
 
 function _onMouseDown(opt) {
     if (opt.e.button === 2) return; // ignore right-click
-    const pointer = _fabricCanvas.getViewportPoint(opt.e);
-    const scenePoint = _fabricCanvas.restorePointerVpt(pointer);
+    // Fabric 6: use scenePoint from event (restorePointerVpt removed)
+    const scenePoint = opt.scenePoint || _fabricCanvas.getScenePoint(opt.e);
 
     if (_canvasTool === 'pan') {
         _isPanning = true;
@@ -697,8 +697,7 @@ function _onMouseMove(opt) {
     }
 
     if (_shapeDrawStart && _shapeDrawObj) {
-        const pointer = _fabricCanvas.getViewportPoint(opt.e);
-        const p = _fabricCanvas.restorePointerVpt(pointer);
+        const p = opt.scenePoint || _fabricCanvas.getScenePoint(opt.e);
 
         if (_handDrawnMode && window.rough) {
             // Update the placeholder guide rect
@@ -744,8 +743,7 @@ function _onMouseUp(opt) {
         return;
     }
 
-    const pointer = _fabricCanvas.getViewportPoint(opt.e);
-    const scenePoint = _fabricCanvas.restorePointerVpt(pointer);
+    const scenePoint = opt.scenePoint || _fabricCanvas.getScenePoint(opt.e);
 
     // Line tool -- draw on second click
     if (_canvasTool === 'line' && _lineDrawStart) {
@@ -1056,7 +1054,8 @@ function showCanvasContextMenu(clientX, clientY, target) {
         }});
     }
     items.push({ label: 'Duplicate', icon: 'content_copy', action: () => {
-        target.clone((cloned) => {
+        // Fabric 6: clone() returns a Promise
+        target.clone().then((cloned) => {
             cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
             cloned._customType = target._customType;
             cloned._companyId = target._companyId;
@@ -1113,7 +1112,7 @@ function canvasUndo() {
     _isUndoRedo = true;
     _canvasRedoStack.push(_canvasUndoStack.pop());
     const json = _canvasUndoStack[_canvasUndoStack.length - 1];
-    _fabricCanvas.loadFromJSON(json, () => {
+    _fabricCanvas.loadFromJSON(json).then(() => {
         _fabricCanvas.renderAll();
         _isUndoRedo = false;
         scheduleCanvasSave();
@@ -1125,7 +1124,7 @@ function canvasRedo() {
     _isUndoRedo = true;
     const json = _canvasRedoStack.pop();
     _canvasUndoStack.push(json);
-    _fabricCanvas.loadFromJSON(json, () => {
+    _fabricCanvas.loadFromJSON(json).then(() => {
         _fabricCanvas.renderAll();
         _isUndoRedo = false;
         scheduleCanvasSave();

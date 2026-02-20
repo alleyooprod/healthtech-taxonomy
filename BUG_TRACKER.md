@@ -145,6 +145,59 @@
 | #6 | CSP Images | **FIXED** — added CartoDB + Clearbit |
 | #7 | Canvas Sidebar | **FIXED** — Array.isArray guard |
 | #8 | CDN Scripts | **FIXED** — fcose removed, docx IIFE, ninja-keys ESM, print.css created |
+| #9 | Graph/KG orphan edges | **FIXED** — catIdSet guard for inactive parents (Session 4) |
+| #10 | Host validation port mismatch | **FIXED** — dynamic port from request.server (Session 4) |
+| #11 | Canvas Fabric.js 6 API | **FIXED** — restorePointerVpt, loadFromJSON, clone (Session 4) |
+
+---
+
+## Bug #9: Graph View & Knowledge Graph — ORPHAN EDGE CRASH
+- **Status**: **FIXED** (Session 4, 2026-02-20) — needs screenshot verification
+- **First reported**: 2026-02-20 (Session 4)
+- **Symptom**: "Graph rendering failed: Can not create edge `...` with nonexistant source `cat-1`" and "Knowledge graph failed: Can not create edge `...` with nonexistant source `cat-1`"
+- **Root cause**: Category id=1 ("Diagnostics & Testing") was deactivated (`is_active=0`), but its child category id=26 ("At-Home Blood Testing") is still active with `parent_id=1`. The API `get_category_stats` filters by `is_active=1`, so cat-1 is excluded from the response. When the JS builds Cytoscape edges, `source: 'cat-1'` references a node that doesn't exist.
+- **Attempted fixes**:
+  | # | Date | Fix description | Result |
+  |---|------|-----------------|--------|
+  | 1 | 2026-02-20 | Added `catIdSet` (Set of all returned category IDs) in both Graph View and Knowledge Graph. Before creating parent→child edges, checks `catIdSet.has(parent_id)`. Graph View falls back to `root` node; KG skips the edge. Also guards company→category edges in KG with same check. | **49/49 tests pass.** Needs visual verification. |
+- **Code changes**: `web/static/js/taxonomy.js` — lines ~484 (catIdSet), ~513 (graph edge guard), ~707 (kgCatIdSet), ~718 (KG parent edge guard), ~733 (KG company edge guard)
+
+---
+
+## Bug #10: Host Validation Port Mismatch — "Session Expired" on All API Calls
+- **Status**: **FIXED** (Session 4, 2026-02-20)
+- **First reported**: 2026-02-20 (Session 4)
+- **Symptom**: Multiple "Session expired — please refresh the page" toasts. Project grid empty. All API calls return 403.
+- **Root cause**: `desktop.py:_find_free_port()` picks a different port when 5001 is busy (stale processes). But `app.py:_validate_host()` hardcoded allowed hosts to port 5001 only. The browser's `Host` header reads `127.0.0.1:<new_port>`, which gets 403-rejected.
+- **Attempted fixes**:
+  | # | Date | Fix description | Result |
+  |---|------|-----------------|--------|
+  | 1 | 2026-02-20 | Changed `_validate_host()` to use `request.server[1]` (actual server port) instead of hardcoded 5001. | **49/49 tests pass.** User confirmed projects visible after killing stale processes. |
+- **Code changes**: `web/app.py` — `_validate_host()` now builds `allowed_hosts` dynamically from `request.server[1]`
+
+---
+
+## Bug #11: Canvas — Fabric.js 6 API Incompatibility (ALL DRAWING TOOLS BROKEN)
+- **Status**: **FIXED** (Session 4, 2026-02-20) — needs screenshot verification
+- **First reported**: 2026-02-20 (Session 4)
+- **Symptom**: Canvas loads but no drawing tools work. Shapes, lines, text, notes all fail silently. Undo/redo broken. Duplicate broken.
+- **Root cause**: App uses Fabric.js 6.5.1 (CDN) but canvas.js used Fabric.js 5 APIs:
+  1. `restorePointerVpt(pointer)` — **removed in Fabric 6**. Called in _onMouseDown, _onMouseMove, _onMouseUp. Every mouse event threw `TypeError: _fabricCanvas.restorePointerVpt is not a function`, breaking ALL drawing/interaction.
+  2. `loadFromJSON(json, callback)` — **callback API removed in Fabric 6** (now Promise-based). Saved canvases never got event handlers set up after loading. Undo/redo left `_isUndoRedo=true` forever, blocking all state recording and auto-save.
+  3. `clone(callback)` — **callback API removed in Fabric 6** (now Promise-based). Context menu "Duplicate" action silently failed.
+- **Attempted fixes**:
+  | # | Date | Fix description | Result |
+  |---|------|-----------------|--------|
+  | 1 | 2026-02-20 | Replaced all 3 `restorePointerVpt` calls with `opt.scenePoint \|\| _fabricCanvas.getScenePoint(opt.e)` (Fabric 6 API). Converted all 3 `loadFromJSON(json, callback)` to `loadFromJSON(json).then(callback)`. Converted `clone(callback)` to `clone().then(callback)`. | **49/49 tests pass.** Needs visual verification. |
+- **Code changes**: `web/static/js/canvas.js` — lines 611, 700, 746 (scenePoint), lines 492, 1114, 1126 (loadFromJSON Promise), line 1057 (clone Promise)
+
+---
+
+## Bug Fix Summary — Test Project Cleanup (Session 4)
+- **22 test projects** deleted from database (created during Sessions 1-3 E2E testing)
+- Only "Olly Market Taxonomy" (id=1) retained
+- Cleaned: 61 categories, 61 companies, 9 canvases, 5 research templates across test projects
+- Database backed up to `data/taxonomy_backup_pre_cleanup.db`
 
 ---
 
@@ -165,9 +218,15 @@
 - **Fix pattern**: Never reference CDN globals (cytoscape, fabric, L, etc.) at file load time. Always wrap in lazy init or `_waitForLib()` guard.
 - **Future consideration**: Add `defer` to local scripts too, OR use a DOMContentLoaded/load event wrapper
 
-### Host Validation
-- `web/app.py:148` — allowed hosts hardcoded to `127.0.0.1:5001`, `localhost:5001`, etc.
-- Playwright tests must run on port 5001 or the host list must be expanded
+### Fabric.js 6 Migration (ROOT CAUSE of Bug #11)
+- App uses Fabric.js 6.5.1 but canvas.js was written for Fabric.js 5 API
+- **Key changes**: `restorePointerVpt` → `getScenePoint` / `opt.scenePoint`, all callbacks → Promises (`loadFromJSON`, `clone`, `enlivenObjects`)
+- Reference: https://fabricjs.com/docs/upgrading/upgrading-to-fabric-60/
+
+### Host Validation (ROOT CAUSE of Bug #10)
+- `web/app.py` — `_validate_host()` now uses `request.server[1]` for actual port
+- `desktop.py:_find_free_port()` can choose a different port if 5001 is busy
+- Playwright tests should still work on port 5001
 
 ### Driver.js Onboarding Tour
 - App has a driver.js guided tour that creates an SVG overlay blocking all clicks
