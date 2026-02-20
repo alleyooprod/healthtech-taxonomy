@@ -97,6 +97,7 @@ def create_app():
     )
 
     app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB (evidence uploads)
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # No static file caching (dev mode)
 
     # --- Content Security Policy via Flask-Talisman ---
     csp = {
