@@ -178,7 +178,7 @@ Rules:
         })
 
     except Exception as e:
-        logger.warning("AI schema suggestion failed, using rule-based: {}", e)
+        logger.warning("AI schema suggestion failed, using rule-based: %s", e)
         return _rule_based_schema_suggestion(description, base_template)
 
 
