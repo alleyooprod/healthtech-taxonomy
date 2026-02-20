@@ -482,6 +482,18 @@ class EntityMixin:
                 result.append(d)
             return result
 
+    def get_evidence_by_id(self, evidence_id):
+        """Get a single evidence record by ID. Returns dict or None."""
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM evidence WHERE id = ?", (evidence_id,)
+            ).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["metadata"] = json.loads(d.pop("metadata_json", "{}"))
+            return d
+
     def delete_evidence(self, evidence_id):
         """Delete an evidence record (does not delete the file)."""
         with self._get_conn() as conn:

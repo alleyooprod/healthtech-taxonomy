@@ -96,7 +96,7 @@ def create_app():
         static_folder="static",
     )
 
-    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
+    app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB (evidence uploads)
 
     # --- Content Security Policy via Flask-Talisman ---
     csp = {
@@ -297,6 +297,7 @@ def create_app():
     from web.blueprints.dimensions import dimensions_bp
     from web.blueprints.discovery import discovery_bp
     from web.blueprints.entities import entities_bp
+    from web.blueprints.capture import capture_bp
 
     app.register_blueprint(companies_bp)
     app.register_blueprint(taxonomy_bp)
@@ -309,6 +310,7 @@ def create_app():
     app.register_blueprint(dimensions_bp)
     app.register_blueprint(discovery_bp)
     app.register_blueprint(entities_bp)
+    app.register_blueprint(capture_bp)
 
     return app
 
