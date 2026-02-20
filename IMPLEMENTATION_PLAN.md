@@ -1,8 +1,8 @@
 # Research Workbench — Implementation Plan
 
-> **Status:** Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7.1-7.2 Complete — capture, extraction, review, features, analysis lenses, reporting, monitoring, insights + hypotheses done
+> **Status:** Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7 Complete — capture, extraction, review, features, analysis lenses, reporting, monitoring, insights + hypotheses, playbooks, cross-project intelligence done
 > **Created:** 2026-02-20 (Session 10)
-> **Last Updated:** 2026-02-20 (Session 19)
+> **Last Updated:** 2026-02-20 (Session 20)
 > **Vision Doc:** `docs/RESEARCH_WORKBENCH_VISION.md`
 > **Conversation Reference:** `docs/RESEARCH_WORKBENCH_CONVERSATION.md`
 
@@ -487,14 +487,14 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 - [x] Hypothesis dashboard with evidence weight
 
 #### 7.3 Research Playbooks
-- [ ] Save reusable research methodologies
-- [ ] Apply playbook to new project → guided workflow
-- [ ] Improve playbooks based on experience
+- [x] Save reusable research methodologies
+- [x] Apply playbook to new project → guided workflow
+- [x] Improve playbooks based on experience
 
 #### 7.4 Cross-Project Intelligence
-- [ ] Detect overlapping entities across projects
-- [ ] Carry forward/link entity data between projects
-- [ ] Cross-project pattern analysis
+- [x] Detect overlapping entities across projects
+- [x] Carry forward/link entity data between projects
+- [x] Cross-project pattern analysis
 
 ---
 
@@ -562,7 +562,7 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 | 18 | 2026-02-20 | Phase 5.1-5.3: Reporting & Synthesis — 5 report templates (market overview, competitive landscape, product teardown, design patterns, change report), AI-enhanced generation (mocked LLM), template availability detection, report CRUD, export (HTML/Markdown/JSON), `/api/synthesis` routes, frontend in Export tab, 33 new tests, 968 total | ✅ Complete |
 | 18b | 2026-02-20 | Phase 6.1-6.4: Intelligence & Monitoring — monitors CRUD, 4 check types (website/appstore/playstore/RSS), change feed with severity scoring, auto-setup from entity URLs, dashboard stats, Intelligence tab, 33 new tests, 1001 total | ✅ Complete |
 | 19 | 2026-02-20 | Phase 7.1-7.2: Insights & Hypothesis Tracking — 7 rule-based detectors (feature gaps, pricing outliers, sparse coverage, stale entities, feature clusters, duplicates, attribute coverage), AI-enhanced generation (mocked LLM), hypothesis CRUD with evidence tracking, directional weighted confidence scoring, 16 API endpoints at `/api/insights/*`, 3 DB tables (insights, hypotheses, hypothesis_evidence), Intelligence tab sub-navigation (Monitoring/Insights/Hypotheses), 1301-line JS + 1340-line CSS frontend, 50 new tests, 1051 total | ✅ Complete |
-| 20 | TBD | Phase 7.3-7.4: Research Playbooks + Cross-Project Intelligence | ⬜ Not started |
+| 20 | 2026-02-20 | Phase 7.3-7.4: Research Playbooks + Cross-Project Intelligence — playbook CRUD with 4 built-in templates (Market Mapping, Product Teardown, Design Research, Competitive Intelligence), run lifecycle with step-by-step progress tracking, auto-complete, AI improvement suggestions, template seeding/protection; entity overlap detection (Dice coefficient + URL domain matching), manual/auto entity linking, attribute sync between linked entities, attribute diff comparison, 3 cross-project detectors (multi-project overlap, attribute divergence, coverage gaps), cross-project insights + stats; Intelligence tab sub-nav extended to 5 views (Monitoring/Insights/Hypotheses/Playbooks/Cross-Project), 1188-line + 696-line JS, 954-line + 693-line CSS frontends, 117 new tests, 1168 total | ✅ Complete |
 
 ---
 

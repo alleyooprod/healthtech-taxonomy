@@ -306,6 +306,7 @@ def create_app():
     from web.blueprints.insights import insights_bp
     from web.blueprints.playbooks import playbooks_bp
     from web.blueprints.crossproject import crossproject_bp
+    from web.blueprints.provenance import provenance_bp
 
     app.register_blueprint(companies_bp)
     app.register_blueprint(taxonomy_bp)
@@ -327,6 +328,7 @@ def create_app():
     app.register_blueprint(insights_bp)
     app.register_blueprint(playbooks_bp)
     app.register_blueprint(crossproject_bp)
+    app.register_blueprint(provenance_bp)
 
     return app
 

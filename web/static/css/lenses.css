@@ -1391,4 +1391,364 @@
     .matrix-table {
         font-size: var(--font-size-xs);
     }
+
+    .sig-activity-header {
+        display: none;
+    }
+
+    .sig-activity-row {
+        flex-wrap: wrap;
+    }
+
+    .sig-trends-cols {
+        overflow-x: auto;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Signals Lens — timeline, activity, trends, heatmap
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Timeline ────────────────────────────────────────────────── */
+
+.sig-timeline-meta {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-3);
+}
+
+.sig-timeline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.sig-timeline-row {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.sig-timeline-row:hover {
+    background: var(--bg-surface-hover);
+}
+
+.sig-timeline-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    border: 1px solid var(--border-default);
+}
+
+.sig-sev-critical { border-color: var(--text-primary); background: var(--text-primary); color: var(--bg-primary); }
+.sig-sev-high     { border-color: var(--text-primary); background: var(--bg-surface-hover); }
+.sig-sev-medium   { border-color: var(--text-secondary); }
+.sig-sev-low      { border-color: var(--border-default); color: var(--text-tertiary); }
+.sig-sev-info     { border-color: var(--border-subtle); color: var(--text-tertiary); }
+
+.sig-timeline-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.sig-timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: 2px;
+}
+
+.sig-timeline-entity {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sig-timeline-ts {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+.sig-timeline-title {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.sig-timeline-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Activity Summary ────────────────────────────────────────── */
+
+.sig-activity-header {
+    display: grid;
+    grid-template-columns: 180px 1fr 120px 90px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.sig-activity-legend {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.sig-legend-item {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.sig-legend-item::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+}
+
+.sig-legend-changes::before  { background: var(--text-primary); }
+.sig-legend-evidence::before { background: var(--text-secondary); }
+.sig-legend-attrs::before    { background: var(--border-default); }
+
+.sig-activity-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.sig-activity-row {
+    display: grid;
+    grid-template-columns: 180px 1fr 120px 90px;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.sig-activity-row:hover {
+    background: var(--bg-surface-hover);
+}
+
+.sig-activity-name {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sig-activity-bar-wrap {
+    height: 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    position: relative;
+    overflow: hidden;
+}
+
+.sig-activity-bar {
+    height: 100%;
+    display: flex;
+    transition: width var(--duration-normal) var(--ease-standard);
+}
+
+.sig-activity-changes  { background: var(--text-primary); }
+.sig-activity-evidence { background: var(--text-secondary); }
+.sig-activity-attrs    { background: var(--border-default); }
+
+.sig-activity-stats {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.sig-activity-last {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-align: right;
+}
+
+/* ── Trends Chart ────────────────────────────────────────────── */
+
+.sig-trends-chart {
+    padding: var(--space-4) 0;
+}
+
+.sig-trends-cols {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 200px;
+    border-bottom: 1px solid var(--border-default);
+    border-left: 1px solid var(--border-default);
+    padding: 0 var(--space-1);
+}
+
+.sig-trends-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 24px;
+    max-width: 60px;
+}
+
+.sig-trends-bar-area {
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.sig-trends-bar {
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    transition: height var(--duration-normal) var(--ease-standard);
+    position: relative;
+}
+
+.sig-trends-seg {
+    display: block;
+    width: 100%;
+}
+
+.sig-trends-seg-change { background: var(--text-primary); }
+.sig-trends-seg-attr   { background: var(--text-secondary); }
+.sig-trends-seg-ev     { background: var(--border-default); }
+
+.sig-trends-label {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    margin-top: var(--space-1);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.sig-trends-count {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.sig-trends-legend {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    padding: var(--space-3) 0;
+}
+
+.sig-trends-meta {
+    text-align: center;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+/* ── Heatmap ─────────────────────────────────────────────────── */
+
+.sig-hm-scroll-wrap {
+    overflow-x: auto;
+    margin-bottom: var(--space-3);
+}
+
+.sig-hm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+
+.sig-hm-table th,
+.sig-hm-table td {
+    padding: var(--space-2) var(--space-3);
+    text-align: center;
+}
+
+.sig-hm-origin {
+    width: 160px;
+}
+
+.sig-hm-col-header {
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.sig-hm-row-header {
+    text-align: left;
+    font-weight: 500;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-right: 1px solid var(--border-default);
+}
+
+.sig-hm-cell {
+    font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--text-primary) calc(var(--hm-intensity, 0%) * 0.5), var(--bg-primary));
+    border: 1px solid var(--border-subtle);
+    transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.sig-hm-cell:hover {
+    outline: 1px solid var(--text-primary);
+    outline-offset: -1px;
+}
+
+.sig-hm-legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    justify-content: center;
+    padding: var(--space-2) 0;
+}
+
+.sig-hm-legend-low,
+.sig-hm-legend-high {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.sig-hm-legend-gradient {
+    width: 120px;
+    height: 12px;
+    background: linear-gradient(to right,
+        var(--bg-primary),
+        color-mix(in srgb, var(--text-primary) 50%, var(--bg-primary))
+    );
+    border: 1px solid var(--border-default);
+}
+
+.sig-hm-meta {
+    text-align: center;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    margin-top: var(--space-2);
 }

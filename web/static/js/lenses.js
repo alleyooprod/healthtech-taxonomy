@@ -109,6 +109,7 @@ function _selectLens(lensId) {
         case 'design':      _loadDesignLens();      break;
         case 'temporal':    _loadTemporalLens();     break;
         case 'product':     _loadProductLens();      break;
+        case 'signals':     _loadSignalsLens();      break;
         default:
             _renderLensError(`Unknown lens: ${lensId}`);
     }
@@ -1050,6 +1051,319 @@ function _renderPlanComparison(data) {
     `;
 }
 
+// ── Signals Lens ──────────────────────────────────────────────
+
+/**
+ * Load the Signals lens — four sub-views: Timeline, Activity, Trends, Heatmap.
+ */
+async function _loadSignalsLens() {
+    const content = document.getElementById('lensContent');
+    if (!content) return;
+
+    content.innerHTML = `
+        <div class="lens-subview-bar" id="signalsSubBar">
+            <button class="lens-subview-btn lens-subview-btn-active"
+                    onclick="_switchSignalsSubView('timeline')">Timeline</button>
+            <button class="lens-subview-btn"
+                    onclick="_switchSignalsSubView('activity')">Activity</button>
+            <button class="lens-subview-btn"
+                    onclick="_switchSignalsSubView('trends')">Trends</button>
+            <button class="lens-subview-btn"
+                    onclick="_switchSignalsSubView('heatmap')">Heatmap</button>
+        </div>
+        <div id="signalsSubContent" class="lens-sub-content">
+            <div class="lens-loading">Loading timeline&hellip;</div>
+        </div>
+    `;
+
+    _lensSubView = 'timeline';
+    await _loadSignalsTimelineData();
+}
+
+function _switchSignalsSubView(view) {
+    _lensSubView = view;
+    const bar = document.getElementById('signalsSubBar');
+    if (bar) {
+        const viewMap = { timeline: 0, activity: 1, trends: 2, heatmap: 3 };
+        bar.querySelectorAll('.lens-subview-btn').forEach((btn, i) => {
+            btn.classList.toggle('lens-subview-btn-active', i === viewMap[view]);
+        });
+    }
+    switch (view) {
+        case 'timeline': _loadSignalsTimelineData(); break;
+        case 'activity': _loadSignalsActivityData(); break;
+        case 'trends':   _loadSignalsTrendsData();   break;
+        case 'heatmap':  _loadSignalsHeatmapData();  break;
+    }
+}
+
+async function _loadSignalsTimelineData() {
+    const sub = document.getElementById('signalsSubContent');
+    if (!sub) return;
+    sub.innerHTML = '<div class="lens-loading">Loading timeline&hellip;</div>';
+
+    try {
+        const resp = await safeFetch(`/api/lenses/signals/timeline?project_id=${currentProjectId}&limit=100`);
+        if (!resp.ok) { sub.innerHTML = _lensEmptyState('No Timeline Data', 'No events recorded yet.'); return; }
+        const data = await resp.json();
+        sub.innerHTML = _renderSignalsTimeline(data);
+    } catch (e) {
+        console.warn('Signals timeline load failed:', e);
+        sub.innerHTML = _lensEmptyState('Load Failed', 'Could not load timeline.');
+    }
+}
+
+function _renderSignalsTimeline(data) {
+    const events = data.events || [];
+    if (!events.length) {
+        return _lensEmptyState('No Events', 'No signals events recorded for this project.');
+    }
+
+    const typeIcons = {
+        change_detected: '\u0394',   // delta
+        attribute_updated: '\u270E', // pencil
+        evidence_captured: '\u2609', // sun/dot
+    };
+
+    const severityClass = {
+        critical: 'sig-sev-critical',
+        high: 'sig-sev-high',
+        medium: 'sig-sev-medium',
+        low: 'sig-sev-low',
+        info: 'sig-sev-info',
+    };
+
+    const rows = events.map(ev => {
+        const icon = typeIcons[ev.type] || '\u2022';
+        const sevCls = severityClass[ev.severity] || 'sig-sev-info';
+        const ts = ev.timestamp ? ev.timestamp.substring(0, 16).replace('T', ' ') : '';
+
+        return `
+            <div class="sig-timeline-row">
+                <div class="sig-timeline-icon ${sevCls}" title="${esc(ev.severity || 'info')}">${icon}</div>
+                <div class="sig-timeline-body">
+                    <div class="sig-timeline-header">
+                        <span class="sig-timeline-entity">${esc(ev.entity_name || '')}</span>
+                        <span class="sig-timeline-ts">${esc(ts)}</span>
+                    </div>
+                    <div class="sig-timeline-title">${esc(ev.title || '')}</div>
+                    <div class="sig-timeline-desc">${esc(ev.description || '')}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="sig-timeline-meta">${data.total || events.length} events total</div>
+        <div class="sig-timeline-list">${rows}</div>
+    `;
+}
+
+async function _loadSignalsActivityData() {
+    const sub = document.getElementById('signalsSubContent');
+    if (!sub) return;
+    sub.innerHTML = '<div class="lens-loading">Loading activity summary&hellip;</div>';
+
+    try {
+        const resp = await safeFetch(`/api/lenses/signals/activity?project_id=${currentProjectId}`);
+        if (!resp.ok) { sub.innerHTML = _lensEmptyState('No Activity Data', 'No entity activity recorded.'); return; }
+        const data = await resp.json();
+        sub.innerHTML = _renderSignalsActivity(data);
+    } catch (e) {
+        console.warn('Signals activity load failed:', e);
+        sub.innerHTML = _lensEmptyState('Load Failed', 'Could not load activity data.');
+    }
+}
+
+function _renderSignalsActivity(data) {
+    const entities = data.entities || [];
+    if (!entities.length) {
+        return _lensEmptyState('No Activity', 'No entities found in this project.');
+    }
+
+    // Sort by total activity descending
+    const sorted = entities.slice().sort((a, b) => {
+        const totalA = (a.change_count || 0) + (a.evidence_count || 0) + (a.attribute_updates || 0);
+        const totalB = (b.change_count || 0) + (b.evidence_count || 0) + (b.attribute_updates || 0);
+        return totalB - totalA;
+    });
+
+    const maxTotal = Math.max(...sorted.map(e =>
+        (e.change_count || 0) + (e.evidence_count || 0) + (e.attribute_updates || 0)
+    ), 1);
+
+    const rows = sorted.map(e => {
+        const total = (e.change_count || 0) + (e.evidence_count || 0) + (e.attribute_updates || 0);
+        const pct = Math.round((total / maxTotal) * 100);
+        const lastChange = e.last_change ? e.last_change.substring(0, 10) : '—';
+
+        return `
+            <div class="sig-activity-row">
+                <div class="sig-activity-name" title="${escAttr(e.entity_name)}">${esc(_truncateLabel(e.entity_name, 24))}</div>
+                <div class="sig-activity-bar-wrap">
+                    <div class="sig-activity-bar" style="width: ${pct}%">
+                        <span class="sig-activity-changes" style="width: ${total ? Math.round(((e.change_count || 0) / total) * 100) : 0}%"></span>
+                        <span class="sig-activity-evidence" style="width: ${total ? Math.round(((e.evidence_count || 0) / total) * 100) : 0}%"></span>
+                        <span class="sig-activity-attrs" style="width: ${total ? Math.round(((e.attribute_updates || 0) / total) * 100) : 0}%"></span>
+                    </div>
+                </div>
+                <div class="sig-activity-stats">
+                    <span title="Changes">${e.change_count || 0}</span> /
+                    <span title="Evidence">${e.evidence_count || 0}</span> /
+                    <span title="Attributes">${e.attribute_updates || 0}</span>
+                </div>
+                <div class="sig-activity-last">${esc(lastChange)}</div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="sig-activity-header">
+            <span class="sig-activity-h-name">Entity</span>
+            <span class="sig-activity-h-bar">Activity</span>
+            <span class="sig-activity-h-stats">Ch / Ev / At</span>
+            <span class="sig-activity-h-last">Last Change</span>
+        </div>
+        <div class="sig-activity-legend">
+            <span class="sig-legend-item sig-legend-changes">Changes</span>
+            <span class="sig-legend-item sig-legend-evidence">Evidence</span>
+            <span class="sig-legend-item sig-legend-attrs">Attributes</span>
+        </div>
+        <div class="sig-activity-list">${rows}</div>
+    `;
+}
+
+async function _loadSignalsTrendsData() {
+    const sub = document.getElementById('signalsSubContent');
+    if (!sub) return;
+    sub.innerHTML = '<div class="lens-loading">Loading trends&hellip;</div>';
+
+    try {
+        const resp = await safeFetch(`/api/lenses/signals/trends?project_id=${currentProjectId}`);
+        if (!resp.ok) { sub.innerHTML = _lensEmptyState('No Trend Data', 'No temporal data available.'); return; }
+        const data = await resp.json();
+        sub.innerHTML = _renderSignalsTrends(data);
+    } catch (e) {
+        console.warn('Signals trends load failed:', e);
+        sub.innerHTML = _lensEmptyState('Load Failed', 'Could not load trends.');
+    }
+}
+
+function _renderSignalsTrends(data) {
+    const periods = data.periods || [];
+    if (!periods.length) {
+        return _lensEmptyState('No Trends', 'No weekly activity data available.');
+    }
+
+    const maxTotal = Math.max(...periods.map(p => p.total || 0), 1);
+
+    const bars = periods.map(p => {
+        const pct = Math.round(((p.total || 0) / maxTotal) * 100);
+        const label = p.period_start ? p.period_start.substring(5) : '';
+
+        return `
+            <div class="sig-trends-col">
+                <div class="sig-trends-bar-area">
+                    <div class="sig-trends-bar" style="height: ${pct}%" title="${p.total} events">
+                        <span class="sig-trends-seg sig-trends-seg-change" style="height: ${p.total ? Math.round(((p.change_count || 0) / p.total) * 100) : 0}%"></span>
+                        <span class="sig-trends-seg sig-trends-seg-attr" style="height: ${p.total ? Math.round(((p.attribute_count || 0) / p.total) * 100) : 0}%"></span>
+                        <span class="sig-trends-seg sig-trends-seg-ev" style="height: ${p.total ? Math.round(((p.evidence_count || 0) / p.total) * 100) : 0}%"></span>
+                    </div>
+                </div>
+                <div class="sig-trends-label">${esc(label)}</div>
+                <div class="sig-trends-count">${p.total || 0}</div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="sig-trends-chart">
+            <div class="sig-trends-cols">${bars}</div>
+        </div>
+        <div class="sig-trends-legend">
+            <span class="sig-legend-item sig-legend-changes">Changes</span>
+            <span class="sig-legend-item sig-legend-evidence">Evidence</span>
+            <span class="sig-legend-item sig-legend-attrs">Attributes</span>
+        </div>
+        <div class="sig-trends-meta">${periods.length} weeks</div>
+    `;
+}
+
+async function _loadSignalsHeatmapData() {
+    const sub = document.getElementById('signalsSubContent');
+    if (!sub) return;
+    sub.innerHTML = '<div class="lens-loading">Loading heatmap&hellip;</div>';
+
+    try {
+        const resp = await safeFetch(`/api/lenses/signals/heatmap?project_id=${currentProjectId}`);
+        if (!resp.ok) { sub.innerHTML = _lensEmptyState('No Heatmap Data', 'No data for heatmap.'); return; }
+        const data = await resp.json();
+        sub.innerHTML = _renderSignalsHeatmap(data);
+    } catch (e) {
+        console.warn('Signals heatmap load failed:', e);
+        sub.innerHTML = _lensEmptyState('Load Failed', 'Could not load heatmap.');
+    }
+}
+
+function _renderSignalsHeatmap(data) {
+    const entities = data.entities || [];
+    const eventTypes = data.event_types || [];
+    const matrix = data.matrix || [];
+
+    if (!entities.length || !eventTypes.length) {
+        return _lensEmptyState('No Heatmap Data', 'No entity event data to display.');
+    }
+
+    const typeLabels = {
+        change_detected: 'Changes',
+        attribute_updated: 'Attributes',
+        evidence_captured: 'Evidence',
+    };
+
+    // Find max value for color intensity
+    const allVals = matrix.flat();
+    const maxVal = Math.max(...allVals, 1);
+
+    const headerCells = eventTypes.map(t =>
+        `<th class="sig-hm-col-header">${esc(typeLabels[t] || t)}</th>`
+    ).join('');
+
+    const rows = entities.map((name, rowIdx) => {
+        const cells = eventTypes.map((_, colIdx) => {
+            const val = matrix[rowIdx] ? (matrix[rowIdx][colIdx] || 0) : 0;
+            const intensity = Math.round((val / maxVal) * 100);
+            return `<td class="sig-hm-cell" style="--hm-intensity: ${intensity}%" title="${val}">${val || ''}</td>`;
+        }).join('');
+
+        return `
+            <tr>
+                <th class="sig-hm-row-header" title="${escAttr(name)}">${esc(_truncateLabel(name, 20))}</th>
+                ${cells}
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <div class="sig-hm-scroll-wrap">
+            <table class="sig-hm-table">
+                <thead>
+                    <tr>
+                        <th class="sig-hm-origin"></th>
+                        ${headerCells}
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        <div class="sig-hm-legend">
+            <span class="sig-hm-legend-low">Low</span>
+            <span class="sig-hm-legend-gradient"></span>
+            <span class="sig-hm-legend-high">High</span>
+        </div>
+        <div class="sig-hm-meta">${entities.length} entities &times; ${eventTypes.length} event types</div>
+    `;
+}
+
 // ── Utilities ─────────────────────────────────────────────────
 
 function _lensEmptyState(title, desc) {
@@ -1086,6 +1400,7 @@ window._switchCompetitiveSubView = _switchCompetitiveSubView;
 window._switchDesignSubView      = _switchDesignSubView;
 window._switchTemporalSubView    = _switchTemporalSubView;
 window._switchProductSubView     = _switchProductSubView;
+window._switchSignalsSubView     = _switchSignalsSubView;
 window._onDesignEntityChange     = _onDesignEntityChange;
 window._onTemporalEntityChange   = _onTemporalEntityChange;
 window._expandGalleryItem        = _expandGalleryItem;

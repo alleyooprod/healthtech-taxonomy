@@ -71,6 +71,8 @@ function _ensureIntelligenceSubNav() {
                 onclick="_switchIntelligenceView('playbooks')">Playbooks</button>
         <button class="intel-sub-btn" data-view="crossproject"
                 onclick="_switchIntelligenceView('crossproject')">Cross-Project</button>
+        <button class="intel-sub-btn" data-view="provenance"
+                onclick="_switchIntelligenceView('provenance')">Provenance</button>
     `;
     tab.insertBefore(nav, tab.firstChild);
 
@@ -138,6 +140,9 @@ function _switchIntelligenceView(view) {
     if (view === 'crossproject' && typeof _ensureCrossProjectDashboard === 'function') {
         _ensureCrossProjectDashboard();
     }
+    if (view === 'provenance' && typeof _ensureProvenanceDashboard === 'function') {
+        _ensureProvenanceDashboard();
+    }
 
     // Toggle containers
     const monitoringEl = document.getElementById('monitoringDashboard');
@@ -145,12 +150,14 @@ function _switchIntelligenceView(view) {
     const hypothesesEl = document.getElementById('hypothesesDashboard');
     const playbooksEl = document.getElementById('playbooksDashboard');
     const crossprojectEl = document.getElementById('crossProjectDashboard');
+    const provenanceEl = document.getElementById('provenanceDashboard');
 
     if (monitoringEl) monitoringEl.classList.toggle('hidden', view !== 'monitoring');
     if (insightsEl) insightsEl.classList.toggle('hidden', view !== 'insights');
     if (hypothesesEl) hypothesesEl.classList.toggle('hidden', view !== 'hypotheses');
     if (playbooksEl) playbooksEl.classList.toggle('hidden', view !== 'playbooks');
     if (crossprojectEl) crossprojectEl.classList.toggle('hidden', view !== 'crossproject');
+    if (provenanceEl) provenanceEl.classList.toggle('hidden', view !== 'provenance');
 
     // Load data for the selected view
     if (view === 'monitoring') {
@@ -163,6 +170,8 @@ function _switchIntelligenceView(view) {
         if (typeof initPlaybooks === 'function') initPlaybooks();
     } else if (view === 'crossproject') {
         if (typeof initCrossProject === 'function') initCrossProject();
+    } else if (view === 'provenance') {
+        if (typeof initProvenance === 'function') initProvenance();
     }
 }
 
