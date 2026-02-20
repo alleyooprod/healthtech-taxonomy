@@ -771,14 +771,13 @@ window.showAboutDialog = function() {
   const versionEl = document.getElementById('aboutVersion');
   const pythonEl = document.getElementById('aboutPython');
   if (versionEl) {
-    // Try to get version from the settings tab or a global
     const version = window.APP_VERSION || document.querySelector('[data-app-version]')?.dataset?.appVersion || '1.1.0';
     versionEl.textContent = 'Version ' + version;
   }
   if (pythonEl) {
     pythonEl.textContent = '3.14';
   }
-  openModal('aboutModal');
+  document.getElementById('aboutModal')?.classList.remove('hidden');
 };
 
 // --- Dark Mode System Sync ---
@@ -1051,11 +1050,9 @@ function startOnboardingTour() {
     });
     window.driverObj.drive();
 }
-// Show on first visit
-if (!localStorage.getItem('onboarding_done')) {
-    setTimeout(startOnboardingTour, 1000);
-    localStorage.setItem('onboarding_done', '1');
-}
+// Tour is manual-only: triggered via command palette ("Start Product Tour") or ? button.
+// Auto-start removed — pywebview uses a dynamic port each launch so localStorage
+// is never persisted, causing the tour to show on every single launch.
 
 // ========== Choices.js Enhanced Dropdowns ==========
 function initChoicesDropdowns() {

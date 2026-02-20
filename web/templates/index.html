@@ -1822,7 +1822,7 @@
     </div>
 
     <!-- About dialog -->
-    <div id="aboutModal" class="modal" role="dialog" aria-labelledby="aboutTitle" aria-modal="true">
+    <div id="aboutModal" class="modal hidden" role="dialog" aria-labelledby="aboutTitle" aria-modal="true">
       <div class="modal-content about-modal-content">
         <div class="about-dialog">
           <div class="app-icon about-icon">RT</div>
@@ -1835,7 +1835,7 @@
           </div>
           <div class="app-copyright">&copy; 2024-2026</div>
           <div class="mt-4">
-            <button class="btn btn-secondary about-ok" onclick="closeModal('aboutModal')">OK</button>
+            <button class="btn btn-secondary about-ok" onclick="closeAboutDialog()">OK</button>
           </div>
         </div>
       </div>

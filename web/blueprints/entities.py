@@ -152,28 +152,24 @@ Rules:
         result = run_cli(
             prompt=prompt,
             model="sonnet",
-            timeout=60,
+            timeout=90,
             json_schema=schema_spec,
         )
 
         if result.get("is_error"):
-            return jsonify({"error": "AI suggestion failed", "detail": result.get("result", "")}), 500
+            # Fall back to rule-based suggestion
+            return _rule_based_schema_suggestion(description, base_template)
 
         structured = result.get("structured_output")
         if not structured or "schema" not in structured:
-            return jsonify({"error": "AI did not return a valid schema"}), 500
+            return _rule_based_schema_suggestion(description, base_template)
 
         suggested = structured["schema"]
         suggested = normalize_schema(suggested)
         valid, errors = validate_schema(suggested)
 
         if not valid:
-            return jsonify({
-                "error": "AI-generated schema has validation errors",
-                "details": errors,
-                "schema": suggested,
-                "explanation": structured.get("explanation", ""),
-            }), 422
+            return _rule_based_schema_suggestion(description, base_template)
 
         return jsonify({
             "schema": suggested,
@@ -182,8 +178,59 @@ Rules:
         })
 
     except Exception as e:
-        logger.exception("Schema suggestion failed")
-        return jsonify({"error": f"Schema suggestion failed: {str(e)}"}), 500
+        logger.warning("AI schema suggestion failed, using rule-based: {}", e)
+        return _rule_based_schema_suggestion(description, base_template)
+
+
+def _rule_based_schema_suggestion(description: str, base_template: str):
+    """Generate a reasonable schema from the template + keyword analysis when AI is unavailable."""
+    import re
+
+    desc_lower = description.lower()
+    tmpl = SCHEMA_TEMPLATES.get(base_template, SCHEMA_TEMPLATES["blank"])
+
+    # Start with template schema
+    schema = {
+        "version": 1,
+        "entity_types": [dict(et) for et in tmpl.get("entity_types", [])],
+        "relationships": list(tmpl.get("relationships", [])),
+    }
+
+    # Add extra attributes based on keywords in description
+    extra_attrs = []
+    if any(w in desc_lower for w in ["price", "pricing", "cost", "plan", "tier"]):
+        extra_attrs.append({"name": "Pricing Model", "slug": "pricing_model", "data_type": "text"})
+        extra_attrs.append({"name": "Price Range", "slug": "price_range", "data_type": "text"})
+    if any(w in desc_lower for w in ["region", "country", "geography", "uk", "eu", "us", "global"]):
+        extra_attrs.append({"name": "Region", "slug": "region", "data_type": "text"})
+        extra_attrs.append({"name": "Countries", "slug": "countries", "data_type": "tags"})
+    if any(w in desc_lower for w in ["competitor", "competitive", "market share"]):
+        extra_attrs.append({"name": "Market Position", "slug": "market_position", "data_type": "text"})
+    if any(w in desc_lower for w in ["product", "service", "feature"]):
+        extra_attrs.append({"name": "Key Features", "slug": "key_features", "data_type": "tags"})
+        extra_attrs.append({"name": "Target Audience", "slug": "target_audience", "data_type": "text"})
+
+    # Merge extra attrs into the first entity type
+    if schema["entity_types"] and extra_attrs:
+        existing_slugs = {a["slug"] for a in schema["entity_types"][0].get("attributes", [])}
+        for attr in extra_attrs:
+            if attr["slug"] not in existing_slugs:
+                schema["entity_types"][0].setdefault("attributes", []).append(attr)
+
+    # Try to extract a domain name from the description for the explanation
+    words = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', description)
+    domain = words[0] if words else "your research"
+
+    schema = normalize_schema(schema)
+
+    return jsonify({
+        "schema": schema,
+        "explanation": f"Rule-based suggestion for {domain} research (AI was unavailable). "
+                       f"Based on the '{tmpl['name']}' template with extra attributes detected from your description. "
+                       f"You can refine this schema after creating the project.",
+        "cost_usd": 0,
+        "fallback": True,
+    })
 
 
 @entities_bp.route("/api/schema/refine", methods=["POST"])

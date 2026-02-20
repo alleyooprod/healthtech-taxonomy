@@ -370,3 +370,23 @@ Complete replacement of the Canvas tab engine. Fabric.js 6.5.1 (source of Bugs #
 - Bound-text company cards with visible text
 - 5 diagram template buttons present
 - Template pre-fills prompt and layout correctly
+
+---
+
+## Bug #14: Desktop App — Empty Project Grid + 52s Load Delay
+- **Status**: **FIXED** (log evidence)
+- **First reported**: 2026-02-20 (Session 24)
+- **Symptom**: Project grid shows empty (no project cards, no "New Project" button). About dialog shows "Version loading...". App takes 52+ seconds before any API call.
+- **Root cause (compound)**:
+  1. `window.onload` in init.js waits for ALL CDN resources (~40 deferred scripts + CSS + ESM module). If any CDN is slow, the entire app init is blocked for 52+ seconds.
+  2. `<script type="module">` for ninja-keys blocks `DOMContentLoaded` — the ESM module fetch from esm.sh must complete first.
+  3. Excalidraw CSS `<link>` from esm.sh is render-blocking.
+  4. `loadSavedReports()` and `resumeActiveReport()` referenced in core.js:238 don't exist — throws `ReferenceError` when "Reports" tab is shown via menu, crashing JS execution.
+  5. `loadProjects()` defensive error handling was missing (fixed in earlier attempt but couldn't help because init never ran).
+- **Fix**:
+  1. **init.js** — Split into immediate core init (loadProjects, initTheme, heartbeat — no CDN deps) + deferred CDN init (notyf, tippy, etc. — runs on `window.addEventListener('load')`). Core functions run instantly.
+  2. **index.html** — Changed ninja-keys from blocking `<script type="module">` to non-blocking `import()` dynamic import. Changed Excalidraw CSS to `media="print" onload="this.media='all'"` (non-blocking).
+  3. **core.js:238** — Removed non-existent `loadSavedReports()` and `resumeActiveReport()` calls.
+  4. **lenses.py** — Fixed loguru format strings (`%d` → `{}`).
+- **Evidence**: Desktop log shows `/api/projects` 200 in 5ms, same second as page load (vs 52s delay before). Zero 404 errors, zero JS exceptions.
+- **Tests**: 1517/1517 pass

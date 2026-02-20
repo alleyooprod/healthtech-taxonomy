@@ -965,7 +965,7 @@ def design_journey():
             confidence = classification.journey_confidence
             ui_patterns = classification.ui_patterns
         except Exception:
-            logger.exception("Screenshot classification failed for evidence %s", row["id"])
+            logger.exception("Screenshot classification failed for evidence {}", row["id"])
             stage = "other"
             confidence = 0.0
             ui_patterns = []
@@ -1143,7 +1143,7 @@ def design_patterns():
                             description=f"UI pattern detected in screenshot",
                         )
                 except Exception:
-                    logger.debug("Screenshot classification failed for evidence %s", row["id"])
+                    logger.debug("Screenshot classification failed for evidence {}", row["id"])
 
         except Exception:
             logger.debug("evidence table not available for design patterns")
@@ -1354,7 +1354,7 @@ def design_scoring():
                 for pattern in (classification.ui_patterns or []):
                     entity_ui_patterns[eid].add(pattern)
             except Exception:
-                logger.debug("Screenshot classification failed for evidence %s", row["id"])
+                logger.debug("Screenshot classification failed for evidence {}", row["id"])
 
         # Fetch design-related attributes per entity
         design_attr_counts = {}  # entity_id → count of filled design attrs
@@ -1810,7 +1810,7 @@ def signals_timeline():
     total = len(events)
     paged = events[offset:offset + limit]
 
-    logger.info("Signals timeline: %d total events (returning %d) for project %d",
+    logger.info("Signals timeline: {} total events (returning {}) for project {}",
                 total, len(paged), project_id)
 
     return jsonify({
