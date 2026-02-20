@@ -220,7 +220,8 @@
     flex-direction: column;
 }
 
-.canvas-container {
+/* Use ID selector to avoid collision with Fabric.js internal .canvas-container wrapper */
+#canvasWrapper {
     flex: 1;
     position: relative;
     background: var(--bg-surface);

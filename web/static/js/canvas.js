@@ -311,11 +311,17 @@ async function createNewCanvas() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: currentProjectId, title: title.trim() }),
     });
+    if (!res.ok) {
+        showToast('Failed to create canvas');
+        return;
+    }
     const data = await res.json();
     if (data.id) {
         await loadCanvasList();
         document.getElementById('canvasSelect').value = data.id;
         loadCanvasFromSelect();
+    } else {
+        showToast('Canvas creation failed — no ID returned');
     }
 }
 
@@ -444,20 +450,24 @@ function initFabricCanvas(data) {
     _shapeDrawStart = null;
     _shapeDrawObj = null;
 
+    // Remove old drop listeners to prevent duplicates across canvas loads
+    wrapper.removeEventListener('dragover', _canvasDragOverHandler);
+    wrapper.removeEventListener('drop', onCanvasDrop);
+
     // Load data -- detect old Cytoscape format vs new Fabric format
     if (data.elements && !data.objects) {
         _convertCytoscapeData(data.elements);
     } else if (data.objects) {
         _fabricCanvas.loadFromJSON(data, () => {
             _fabricCanvas.renderAll();
-            // Setup events and state AFTER loading
+            // Setup events and state INSIDE callback (after load completes)
             _setupFabricEvents();
             _pushUndoState();
             setCanvasTool('select');
+            // Drop zone MUST be inside callback per Fabric.js 6 requirements
+            wrapper.addEventListener('dragover', _canvasDragOverHandler);
+            wrapper.addEventListener('drop', onCanvasDrop);
         });
-        // Setup drop zone (must be outside callback too)
-        wrapper.addEventListener('dragover', (e) => e.preventDefault());
-        wrapper.addEventListener('drop', onCanvasDrop);
         return;
     }
 
@@ -466,7 +476,7 @@ function initFabricCanvas(data) {
     _fabricCanvas.renderAll();
 
     // Drop zone for companies
-    wrapper.addEventListener('dragover', (e) => e.preventDefault());
+    wrapper.addEventListener('dragover', _canvasDragOverHandler);
     wrapper.addEventListener('drop', onCanvasDrop);
 
     // Initial undo state
@@ -957,6 +967,8 @@ function _addArrowLine(x1, y1, x2, y2) {
 }
 
 // === Drag & Drop from sidebar ===
+
+function _canvasDragOverHandler(e) { e.preventDefault(); }
 
 function onCanvasDragStart(event, companyId, name, categoryName, color) {
     event.dataTransfer.setData('application/json', JSON.stringify({

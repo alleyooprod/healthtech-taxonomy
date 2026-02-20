@@ -500,9 +500,10 @@ function renderTaxonomyGraph(categories, companies) {
     // Double-RAF ensures the container has actual layout dimensions after unhiding
     requestAnimationFrame(() => { requestAnimationFrame(() => {
         const rect = container.getBoundingClientRect();
-        // If container still has no dimensions, force them
+        // If container still has no dimensions, force explicit height
         if (rect.width < 10 || rect.height < 10) {
             container.style.width = '100%';
+            container.style.height = '500px';
             container.style.minHeight = '500px';
         }
 
@@ -623,13 +624,20 @@ function switchTaxonomyView(view) {
         document.getElementById('taxonomyTree').classList.remove('hidden');
         document.getElementById('treeViewBtn').classList.add('active');
     } else if (view === 'graph') {
-        document.getElementById('taxonomyGraph').classList.remove('hidden');
+        const graphEl = document.getElementById('taxonomyGraph');
+        graphEl.classList.remove('hidden');
+        // Force synchronous reflow so container has dimensions before rendering
+        void graphEl.offsetHeight;
         document.getElementById('graphViewBtn').classList.add('active');
         safeFetch(`/api/taxonomy?project_id=${currentProjectId}`)
             .then(r => r.json())
             .then(cats => renderTaxonomyGraph(cats, []));
     } else if (view === 'knowledge') {
-        if (kgContainer) kgContainer.classList.remove('hidden');
+        if (kgContainer) {
+            kgContainer.classList.remove('hidden');
+            // Force synchronous reflow so container has dimensions before rendering
+            void kgContainer.offsetHeight;
+        }
         document.getElementById('kgViewBtn').classList.add('active');
         renderKnowledgeGraph();
     }
@@ -721,6 +729,7 @@ async function renderKnowledgeGraph() {
         const rect = container.getBoundingClientRect();
         if (rect.width < 10 || rect.height < 10) {
             container.style.width = '100%';
+            container.style.height = '500px';
             container.style.minHeight = '500px';
         }
 
