@@ -608,3 +608,143 @@ class TestUploadServDeleteCycle:
 
         r7 = c.get(f"/api/evidence/stats?project_id={pid}")
         assert r7.get_json()["total_count"] == 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# Bulk Capture API
+# ═══════════════════════════════════════════════════════════════
+
+class TestBulkCaptureAPI:
+    """CAP-BULK: Bulk capture endpoint tests."""
+
+    def test_bulk_capture_validation_missing_project(self, capture_project):
+        c = capture_project["client"]
+        r = c.post("/api/capture/bulk", json={
+            "items": [{"url": "https://example.com", "entity_id": 1}],
+        })
+        assert r.status_code == 400
+        assert "project_id" in r.get_json()["error"]
+
+    def test_bulk_capture_validation_missing_items(self, capture_project):
+        c = capture_project["client"]
+        r = c.post("/api/capture/bulk", json={
+            "project_id": capture_project["project_id"],
+        })
+        assert r.status_code == 400
+        assert "items" in r.get_json()["error"]
+
+    def test_bulk_capture_validation_empty_items(self, capture_project):
+        c = capture_project["client"]
+        r = c.post("/api/capture/bulk", json={
+            "project_id": capture_project["project_id"],
+            "items": [],
+        })
+        assert r.status_code == 400
+
+    def test_bulk_capture_validation_item_missing_url(self, capture_project):
+        c = capture_project["client"]
+        pid = capture_project["project_id"]
+        eid = capture_project["entity_id"]
+        r = c.post("/api/capture/bulk", json={
+            "project_id": pid,
+            "items": [{"entity_id": eid}],
+        })
+        assert r.status_code == 400
+        assert "url" in r.get_json()["error"]
+
+    def test_bulk_capture_validation_item_missing_entity(self, capture_project):
+        c = capture_project["client"]
+        pid = capture_project["project_id"]
+        r = c.post("/api/capture/bulk", json={
+            "project_id": pid,
+            "items": [{"url": "https://example.com"}],
+        })
+        assert r.status_code == 400
+        assert "entity_id" in r.get_json()["error"]
+
+    def test_bulk_capture_validation_bad_capture_type(self, capture_project):
+        c = capture_project["client"]
+        pid = capture_project["project_id"]
+        eid = capture_project["entity_id"]
+        r = c.post("/api/capture/bulk", json={
+            "project_id": pid,
+            "items": [{"url": "https://example.com", "entity_id": eid, "capture_type": "invalid"}],
+        })
+        assert r.status_code == 400
+        assert "capture_type" in r.get_json()["error"]
+
+    def test_bulk_capture_starts_job(self, capture_project):
+        """Bulk capture starts a background job and returns 202."""
+        c = capture_project["client"]
+        pid = capture_project["project_id"]
+        eid = capture_project["entity_id"]
+
+        with patch("web.async_jobs.start_async_job", return_value="abc123") as mock_start:
+            r = c.post("/api/capture/bulk", json={
+                "project_id": pid,
+                "items": [
+                    {"url": "https://example.com", "entity_id": eid},
+                    {"url": "https://test.com", "entity_id": eid, "capture_type": "document"},
+                ],
+            })
+            mock_start.assert_called_once()
+            # Verify prefix
+            call_args = mock_start.call_args
+            assert call_args[0][0] == "bulk_capture"
+
+        assert r.status_code == 202
+        data = r.get_json()
+        assert data["job_id"] == "abc123"
+        assert data["total"] == 2
+        assert data["status"] == "running"
+
+    def test_bulk_capture_poll_pending(self, capture_project):
+        """Polling a non-existent job returns pending."""
+        c = capture_project["client"]
+        with patch("web.async_jobs.poll_result", return_value={"status": "pending"}):
+            r = c.get("/api/capture/bulk/abc123def456")
+        assert r.status_code == 200
+        assert r.get_json()["status"] == "pending"
+
+    def test_bulk_capture_poll_complete(self, capture_project):
+        """Polling a completed job returns results."""
+        c = capture_project["client"]
+        result = {
+            "status": "complete",
+            "total": 2,
+            "completed": 2,
+            "succeeded": 1,
+            "failed": 1,
+            "results": [
+                {"url": "https://example.com", "success": True, "evidence_ids": [1, 2]},
+                {"url": "https://bad.com", "success": False, "error": "Timeout"},
+            ],
+        }
+        with patch("web.async_jobs.poll_result", return_value=result):
+            r = c.get("/api/capture/bulk/abc123def456")
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data["status"] == "complete"
+        assert data["succeeded"] == 1
+        assert data["failed"] == 1
+        assert len(data["results"]) == 2
+
+    def test_bulk_capture_default_website_type(self, capture_project):
+        """Items without capture_type default to 'website'."""
+        c = capture_project["client"]
+        pid = capture_project["project_id"]
+        eid = capture_project["entity_id"]
+
+        with patch("web.async_jobs.start_async_job", return_value="def456") as mock_start:
+            r = c.post("/api/capture/bulk", json={
+                "project_id": pid,
+                "items": [{"url": "https://example.com", "entity_id": eid}],
+            })
+            # Check the validated items passed to the worker
+            call_args = mock_start.call_args
+            # Third positional arg after prefix and work_fn is app, then project_id, then items
+            # start_async_job("bulk_capture", _run_bulk_capture, app, project_id, validated)
+            items = call_args[0][4]  # 5th arg (0-indexed: prefix, fn, app, pid, items)
+            assert items[0]["capture_type"] == "website"
+
+        assert r.status_code == 202

@@ -1,8 +1,8 @@
 # Research Workbench — Implementation Plan
 
-> **Status:** Phase 3 In Progress — Extraction Pipeline + Extractors + Screenshot Classification Done
+> **Status:** Phase 3 Complete — All sub-phases 3.1-3.5 done (extraction + review + features)
 > **Created:** 2026-02-20 (Session 10)
-> **Last Updated:** 2026-02-20 (Session 14)
+> **Last Updated:** 2026-02-20 (Session 15)
 > **Vision Doc:** `docs/RESEARCH_WORKBENCH_VISION.md`
 > **Conversation Reference:** `docs/RESEARCH_WORKBENCH_CONVERSATION.md`
 
@@ -46,7 +46,7 @@ Evolving the Research Taxonomy Library from a flat company taxonomy tool into a 
 | Design System (The Instrument) | ✅ Working | `base.css` + 12 CSS files |
 | Tippy.js Tooltips | ✅ Working | `core.js` |
 | Custom Prompt/Select Dialogs | ✅ Working | `core.js` |
-| 401 pytest tests | ✅ Passing | 16 test files |
+| 852 pytest tests | ✅ Passing | 28 test files |
 | 132 Playwright specs | ✅ Written | 24 spec files |
 | Entity schema system | ✅ Working | `core/schema.py` |
 | Entity CRUD + temporal attrs | ✅ Working | `storage/repos/entities.py` |
@@ -321,19 +321,28 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 - [x] **Tests:** 42 tests in `tests/test_screenshot_classifier.py` (URL, filename, context, LLM, sequences, constants, API)
 
 #### 3.4 Human Review Interface
-- [ ] Queue of AI-extracted data pending review
-- [ ] Per-entity review: see extracted attributes, source evidence side-by-side
-- [ ] Accept / edit / reject per attribute
-- [ ] Confidence indicators (AI certainty + source reliability)
-- [ ] "Needs more evidence" flag → directs further capture
-- [ ] **Files affected:** New frontend component, new blueprint endpoint
+- [x] Queue of AI-extracted data pending review — `GET /api/extract/queue/grouped` groups by entity
+- [x] Per-entity review: expandable entity cards with results, confidence indicators, source info
+- [x] Accept / edit / reject per attribute — `POST /api/extract/results/<id>/review`
+- [x] Confidence indicators — high/medium/low with visual bars, distribution in stats
+- [x] "Needs more evidence" flag — `POST /api/extract/results/<id>/flag`, query flagged results
+- [x] Bulk review per-entity and bulk all — `POST /api/extract/results/bulk-review`
+- [x] Enhanced extraction stats — confidence distribution, entities pending, needs evidence count
+- [x] **Files:** `web/static/js/review.js` (~420 lines), `web/static/css/review.css` (~380 lines), `web/blueprints/extraction.py` (4 new endpoints), `storage/repos/extraction.py` (3 new methods + enhanced stats)
+- [x] **Tests:** 21 DB tests in `tests/test_review.py` (grouped queue, needs evidence, enhanced stats), 24 API tests in `tests/test_api_review.py` (endpoints + full workflow)
 
 #### 3.5 Feature Standardisation
-- [ ] Per-project canonical feature vocabulary
-- [ ] AI proposes standard names when extracting (maps "mental health cover" and "mental health support" to same canonical feature)
-- [ ] User confirms or creates new canonical features
-- [ ] Enables cross-company comparison on the same feature dimension
-- [ ] **Files affected:** Schema extension for canonical vocabularies
+- [x] Per-project canonical feature vocabulary — `canonical_features` + `feature_mappings` tables
+- [x] AI proposes standard names — `POST /api/features/suggest` with Claude CLI structured output
+- [x] User confirms or creates new canonical features — full CRUD API (14 endpoints)
+- [x] Resolve raw values to canonical (exact match, case-insensitive, canonical name fallback)
+- [x] Unmapped values detection — finds extracted values without mappings
+- [x] Merge features — moves all mappings from source to target, deletes sources
+- [x] Categories — distinct category listing + filtering
+- [x] Vocabulary statistics per attr_slug
+- [x] Frontend UI — feature cards with expand/collapse, mapping management, unmapped values, AI suggest, search, category filter
+- [x] **Files:** `storage/repos/features.py` (~300 lines), `web/blueprints/features.py` (~355 lines), `web/static/js/features.js` (~540 lines), `web/static/css/features.css` (~380 lines), index.html (feature section in Review tab)
+- [x] **Tests:** 30 DB tests in `tests/test_features.py` (CRUD, mappings, merge, resolve, unmapped, stats, categories), 28 API tests in `tests/test_api_features.py` (all endpoints + validation)
 
 ---
 
@@ -531,7 +540,7 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 | 12 | 2026-02-20 | Phase 1.6-1.8: Project setup + entity browser + view compat (46 new tests, 447 total) | ✅ Complete |
 | 13 | 2026-02-20 | Phase 2.1/2.4/2.5/2.5a/2.3: Capture engine + scrapers — file storage, website capture, document download, manual upload, App Store + Play Store scrapers (137 new tests, 584 total) | ✅ Complete |
 | 14 | 2026-02-20 | Phase 3.1/3.2/3.3: Extraction pipeline + document extractors + screenshot classification — extraction jobs/results DB, review workflow, product/pricing/generic extractors with auto-routing classifier, URL/filename/context/LLM screenshot classification, journey sequence grouping (165 new tests, 749 total) | ✅ Complete |
-| 15 | TBD | Phase 3.4/3.5: Human review UI + feature standardisation | ⬜ Not started |
+| 15 | 2026-02-20 | Phase 3.4/3.5: Human review interface + feature standardisation — grouped review queue, accept/reject/edit per attribute, confidence filtering, needs-evidence flagging, bulk review, canonical vocabulary CRUD, merge, resolve, unmapped detection, AI suggest, frontend for both (103 new tests, 852 total) | ✅ Complete |
 | 16 | TBD | Phase 2.2: UI gallery scrapers (Mobbin, Screenlane, Refero) | ⬜ Not started |
 | 17 | TBD | Phase 2.6/2.7: Bulk capture + Capture UI | ⬜ Not started |
 

@@ -3,6 +3,8 @@
 Endpoints:
     POST /api/capture/website       — Capture URL screenshot + HTML archive
     POST /api/capture/document      — Download document from URL
+    POST /api/capture/bulk          — Bulk capture multiple URLs (background job)
+    GET  /api/capture/bulk/<id>     — Poll bulk capture job status
     POST /api/evidence/upload       — Manual file upload
     GET  /api/evidence/<id>/file    — Serve evidence file
     DELETE /api/evidence/<id>/file  — Delete evidence file + record
@@ -397,6 +399,157 @@ def list_capture_jobs():
     for jid, jdata in sorted(jobs.items(), reverse=True):
         result.append({"id": jid, **jdata})
     return jsonify(result)
+
+
+# ── Bulk Capture ──────────────────────────────────────────────
+
+@capture_bp.route("/api/capture/bulk", methods=["POST"])
+def api_bulk_capture():
+    """Bulk capture multiple URLs for entities.
+
+    Request JSON:
+        project_id (required): Project ID
+        items (required): List of {url, entity_id, [capture_type]}
+            capture_type: "website" (default) or "document"
+
+    Returns:
+        {job_id, status: "running", total: N}
+    """
+    data = request.json or {}
+    project_id = data.get("project_id")
+    items = data.get("items", [])
+
+    if not project_id:
+        return jsonify({"error": "project_id is required"}), 400
+    if not items:
+        return jsonify({"error": "items is required (list of {url, entity_id})"}), 400
+
+    # Validate items
+    validated = []
+    for i, item in enumerate(items):
+        url = (item.get("url") or "").strip()
+        entity_id = item.get("entity_id")
+        capture_type = item.get("capture_type", "website")
+
+        if not url:
+            return jsonify({"error": f"Item {i}: url is required"}), 400
+        if not entity_id:
+            return jsonify({"error": f"Item {i}: entity_id is required"}), 400
+        if capture_type not in ("website", "document"):
+            return jsonify({"error": f"Item {i}: capture_type must be 'website' or 'document'"}), 400
+
+        validated.append({
+            "url": url,
+            "entity_id": int(entity_id),
+            "capture_type": capture_type,
+        })
+
+    from web.async_jobs import start_async_job
+
+    app = current_app._get_current_object()
+    job_id = start_async_job(
+        "bulk_capture",
+        _run_bulk_capture,
+        app, project_id, validated,
+    )
+
+    return jsonify({
+        "job_id": job_id,
+        "status": "running",
+        "total": len(validated),
+    }), 202
+
+
+def _run_bulk_capture(job_id, app, project_id, items):
+    """Background worker for bulk capture.
+
+    Iterates over items, captures each URL, writes progress updates.
+    """
+    from web.async_jobs import write_result
+
+    total = len(items)
+    results = []
+    completed = 0
+    succeeded = 0
+    failed = 0
+
+    with app.app_context():
+        for item in items:
+            url = item["url"]
+            entity_id = item["entity_id"]
+            capture_type = item["capture_type"]
+
+            try:
+                if capture_type == "website":
+                    result = capture_website(
+                        url=url, project_id=project_id,
+                        entity_id=entity_id, db=app.db,
+                    )
+                else:
+                    result = capture_document(
+                        url=url, project_id=project_id,
+                        entity_id=entity_id, db=app.db,
+                    )
+
+                completed += 1
+                if result.success:
+                    succeeded += 1
+                    results.append({
+                        "url": url,
+                        "entity_id": entity_id,
+                        "success": True,
+                        "evidence_ids": result.evidence_ids,
+                        "duration_ms": result.duration_ms,
+                    })
+                else:
+                    failed += 1
+                    results.append({
+                        "url": url,
+                        "entity_id": entity_id,
+                        "success": False,
+                        "error": result.error,
+                        "duration_ms": result.duration_ms,
+                    })
+            except Exception as e:
+                completed += 1
+                failed += 1
+                results.append({
+                    "url": url,
+                    "entity_id": entity_id,
+                    "success": False,
+                    "error": str(e)[:200],
+                })
+                logger.error("Bulk capture failed for %s: %s", url, e)
+
+            # Write progress update after each item
+            write_result("bulk_capture", job_id, {
+                "status": "running" if completed < total else "complete",
+                "total": total,
+                "completed": completed,
+                "succeeded": succeeded,
+                "failed": failed,
+                "results": results,
+            })
+
+    # Final write (in case the loop-end write had status "running")
+    write_result("bulk_capture", job_id, {
+        "status": "complete",
+        "total": total,
+        "completed": completed,
+        "succeeded": succeeded,
+        "failed": failed,
+        "results": results,
+    })
+
+
+@capture_bp.route("/api/capture/bulk/<job_id>")
+def get_bulk_capture_status(job_id):
+    """Poll bulk capture job status.
+
+    Returns progress: {status, total, completed, succeeded, failed, results}
+    """
+    from web.async_jobs import poll_result
+    return jsonify(poll_result("bulk_capture", job_id))
 
 
 # ── App Store Scrapers ────────────────────────────────────────

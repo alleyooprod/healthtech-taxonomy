@@ -70,6 +70,7 @@
     <!-- Review Queue -->
     <link rel="stylesheet" href="/static/css/review.css">
     <link rel="stylesheet" href="/static/css/features.css">
+    <link rel="stylesheet" href="/static/css/capture.css">
 
     <!-- Print styles -->
     <link rel="stylesheet" href="/static/css/print.css" media="print">
@@ -1029,6 +1030,30 @@
                 <p class="hint-text">Click a batch to see full details.</p>
                 <div id="batchList"></div>
                 <div id="batchDetailView" class="hidden"></div>
+
+                <!-- ═══ Evidence Capture Sub-Section ═══ -->
+                <div class="cap-section">
+                    <div class="cap-section-header">
+                        <h3>Evidence Capture</h3>
+                    </div>
+                    <p class="hint-text">Capture website screenshots, download documents, or upload files as evidence for entities.</p>
+
+                    <!-- Stats -->
+                    <div id="captureStats"></div>
+
+                    <!-- Action Bar -->
+                    <div class="cap-action-bar">
+                        <button class="primary-btn btn-sm" onclick="captureEntityUrl()">Capture URL</button>
+                        <button class="btn btn-sm" onclick="bulkCaptureStart()">Bulk Capture</button>
+                        <button class="btn btn-sm" onclick="uploadEvidence()">Upload File</button>
+                    </div>
+
+                    <!-- Bulk Progress -->
+                    <div id="captureBulkProgress"></div>
+
+                    <!-- Recent Jobs -->
+                    <div id="captureJobsList"></div>
+                </div>
             </section>
 
             <!-- Review Tab -->
@@ -1782,6 +1807,7 @@
     <script src="{{ url_for('static', filename='js/discovery.js') }}"></script>
     <script src="{{ url_for('static', filename='js/review.js') }}"></script>
     <script src="{{ url_for('static', filename='js/features.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/capture.js') }}"></script>
     <script src="{{ url_for('static', filename='js/init.js') }}"></script>
 
     <script>
