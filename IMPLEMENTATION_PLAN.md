@@ -1,8 +1,8 @@
 # Research Workbench — Implementation Plan
 
-> **Status:** Phase 2-7 Complete + all deferred items batch — compat layer, changelog extractor, re-capture triggers, migration, signals, provenance done. 1356 tests.
+> **Status:** Phase 2-7 Complete + all deferred items batch + schema refinement. 1480 tests.
 > **Created:** 2026-02-20 (Session 10)
-> **Last Updated:** 2026-02-20 (Session 22)
+> **Last Updated:** 2026-02-20 (Session 23)
 > **Vision Doc:** `docs/RESEARCH_WORKBENCH_VISION.md`
 > **Conversation Reference:** `docs/RESEARCH_WORKBENCH_CONVERSATION.md`
 
@@ -135,7 +135,7 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 #### 1.6 Project Setup Flow (AI-Guided Interview)
 - [x] New project creation flow with template selection
 - [x] AI proposes schema based on research question description (`POST /api/schema/suggest`)
-- [ ] Back-and-forth refinement (AI challenges user choices) — deferred to Phase 2+
+- [x] Back-and-forth refinement (AI challenges user choices) — `POST /api/schema/refine`, rule-based fallback, completeness scoring, apply suggestions via sync, iterate with feedback
 - [x] Template selection as starting point (or blank) — 4 templates: blank, market_analysis, product_analysis, design_research
 - [x] Schema preview panel in project creation form
 - [x] "Quick create" option bypasses interview (blank Company schema, same as current)
@@ -571,6 +571,7 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 | 20 | 2026-02-20 | Phase 7.3-7.4: Research Playbooks + Cross-Project Intelligence — playbook CRUD with 4 built-in templates (Market Mapping, Product Teardown, Design Research, Competitive Intelligence), run lifecycle with step-by-step progress tracking, auto-complete, AI improvement suggestions, template seeding/protection; entity overlap detection (Dice coefficient + URL domain matching), manual/auto entity linking, attribute sync between linked entities, attribute diff comparison, 3 cross-project detectors (multi-project overlap, attribute divergence, coverage gaps), cross-project insights + stats; Intelligence tab sub-nav extended to 5 views (Monitoring/Insights/Hypotheses/Playbooks/Cross-Project), 1188-line + 696-line JS, 954-line + 693-line CSS frontends, 117 new tests, 1168 total | ✅ Complete |
 | 21 | 2026-02-20 | Phase 4.6 + 5.4: Signals Lens + Evidence Provenance — signals lens with 4 views (timeline, activity, trends, heatmap) combining change_feed + entity_attributes + evidence data; provenance blueprint with 8 read-only endpoints (attribute trace, entity summary, evidence map, project coverage, project sources, search, report claims, stats), full chain tracing attribute→extraction→evidence→URL; signals integrated into Analysis tab lens system, provenance integrated as 6th Intelligence sub-view with Coverage/Sources/Search; 101 new tests (44 signals + 57 provenance), 1269 total | ✅ Complete |
 | 22 | 2026-02-20 | Deferred items batch: Company→Entity migration (`core/migration.py`, 28-column field map, idempotent, dry-run, `POST /api/migrate/companies`); backwards-compatible company API wrapper (`core/compat.py` + companies.py delegates to entities for migrated projects); changelog extractor (`core/extractors/changelog.py`, classify + extract version/frequency/features/maturity); re-capture trigger on major/critical changes (`_trigger_recapture` in monitoring.py); taxonomy matrix + AI Discovery entity integration via compat layer; E2E Playwright tests (project setup + entity browser, 17 test groups); market-level change summary (5th signals sub-view); 87 new tests (17 migration + 48 compat + 22 changelog), 1356 total | ✅ Complete |
+| 23 | 2026-02-20 | Phase 1.6 deferred: AI schema refinement — `POST /api/schema/refine` endpoint with LLM-powered analysis (3-6 ranked suggestions with schema_change dicts, challenges, 4-dimension completeness scoring) + deterministic rule-based fallback (detects sparse types, missing URLs, text→enum candidates, missing relationships); frontend `refineSchema()` flow with prompt dialog, completeness bars, suggestion cards with Apply buttons, iterate-with-feedback; CSS refinement panel (score bars, sub-scores, challenge list, suggestion cards with type badges); 23 new tests in `test_schema_refine.py` (AI mock, rule-based fallback, scoring, validation), 1480 total | ✅ Complete |
 
 ---
 
