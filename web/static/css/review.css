@@ -1,0 +1,377 @@
+/* ═══════════════════════════════════════════════════════════
+   Review Queue — Human Review Interface (Phase 3.4)
+   Design: The Instrument — monochrome, zero ornament
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Stats Row ──────────────────────────────────────────── */
+
+.review-stat-row {
+    display: flex;
+    gap: var(--space-6);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.review-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.review-stat-value {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    line-height: var(--line-height-tight);
+}
+
+.review-stat-label {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.review-stat-warn .review-stat-value {
+    color: var(--accent-danger);
+}
+
+/* ── Confidence Filter Bar ──────────────────────────────── */
+
+.review-confidence-bar {
+    display: flex;
+    gap: var(--space-1);
+    margin-bottom: var(--space-4);
+}
+
+.review-conf-btn {
+    padding: 4px 12px;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    font-family: var(--font-mono);
+    border: 1px solid var(--border-default);
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-standard),
+                color var(--duration-fast) var(--ease-standard);
+}
+
+.review-conf-btn:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+.review-conf-btn-active {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+    background: var(--bg-surface-hover);
+}
+
+/* ── Bulk Action Bar ────────────────────────────────────── */
+
+.review-bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+/* ── Entity Cards ───────────────────────────────────────── */
+
+.review-entity-card {
+    border: 1px solid var(--border-default);
+    border-left: 2px solid var(--border-default);
+    margin-bottom: var(--space-2);
+    background: transparent;
+    transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.review-entity-card:hover {
+    border-color: var(--text-secondary);
+}
+
+.review-entity-expanded {
+    border-left-color: var(--text-primary);
+}
+
+.review-entity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.review-entity-header:hover {
+    background: var(--bg-surface-hover);
+}
+
+.review-entity-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.review-entity-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    padding: 2px 6px;
+    border: 1px solid var(--border-default);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.review-entity-name {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.review-entity-count {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.review-entity-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* ── Results List ───────────────────────────────────────── */
+
+.review-results-list {
+    border-top: 1px solid var(--border-default);
+}
+
+.review-result-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 160px;
+    grid-template-rows: auto auto auto;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-default);
+    transition: opacity var(--duration-normal) var(--ease-standard),
+                transform var(--duration-normal) var(--ease-standard);
+}
+
+.review-result-row:last-child {
+    border-bottom: none;
+}
+
+.review-result-row:hover {
+    background: var(--bg-surface-hover);
+}
+
+.review-result-flagged {
+    border-left: 2px solid var(--accent-danger);
+}
+
+/* Row 1: attr | value | confidence */
+.review-result-attr {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.review-result-slug {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.review-result-source-type {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.review-result-value {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.review-result-extracted {
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.review-result-meta {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.review-result-source {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Row 2: reasoning (spans full width) */
+.review-result-reasoning {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-left: var(--space-2);
+    border-left: 1px solid var(--border-default);
+}
+
+.review-reasoning-text {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: var(--line-height-normal);
+}
+
+/* Row 3: action buttons (spans full width) */
+.review-result-actions {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+}
+
+/* ── Confidence Indicator ───────────────────────────────── */
+
+.review-confidence {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    min-width: 60px;
+}
+
+.review-confidence-bar {
+    display: inline-block;
+    height: 2px;
+    background: var(--text-muted);
+    transition: width var(--duration-normal) var(--ease-standard);
+}
+
+.review-confidence-high .review-confidence-bar {
+    background: var(--text-primary);
+}
+
+.review-confidence-medium .review-confidence-bar {
+    background: var(--text-secondary);
+}
+
+.review-confidence-low .review-confidence-bar {
+    background: var(--text-muted);
+}
+
+.review-confidence-text {
+    color: var(--text-muted);
+}
+
+.review-confidence-high .review-confidence-text {
+    color: var(--text-primary);
+}
+
+/* ── Action Button Variants ─────────────────────────────── */
+
+.review-btn-accept:hover {
+    background: var(--text-primary);
+    color: var(--bg-page);
+}
+
+.review-btn-reject:hover {
+    background: var(--accent-danger);
+    color: var(--bg-page);
+    border-color: var(--accent-danger);
+}
+
+.review-btn-flag {
+    border-style: dashed;
+}
+
+.review-btn-flag-active {
+    color: var(--accent-danger);
+    border-color: var(--accent-danger);
+    border-style: solid;
+}
+
+/* ── Empty State ────────────────────────────────────────── */
+
+.review-empty-state {
+    text-align: center;
+    padding: var(--space-12) var(--space-4);
+    color: var(--text-muted);
+}
+
+.review-empty-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.review-empty-desc {
+    font-size: var(--font-size-base);
+    color: var(--text-muted);
+}
+
+/* ── No Results in Entity ───────────────────────────────── */
+
+.review-no-results {
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .review-result-row {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+
+    .review-result-attr,
+    .review-result-value,
+    .review-result-meta,
+    .review-result-reasoning,
+    .review-result-actions {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .review-result-meta {
+        align-items: flex-start;
+    }
+
+    .review-entity-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-2);
+    }
+
+    .review-stat-row {
+        flex-wrap: wrap;
+    }
+}

@@ -1,8 +1,8 @@
 # Research Workbench — Implementation Plan
 
-> **Status:** Phase 1 Complete — Full Entity System + Browser + View Compatibility
+> **Status:** Phase 3 In Progress — Extraction Pipeline + Extractors + Screenshot Classification Done
 > **Created:** 2026-02-20 (Session 10)
-> **Last Updated:** 2026-02-20 (Session 12)
+> **Last Updated:** 2026-02-20 (Session 14)
 > **Vision Doc:** `docs/RESEARCH_WORKBENCH_VISION.md`
 > **Conversation Reference:** `docs/RESEARCH_WORKBENCH_CONVERSATION.md`
 
@@ -282,26 +282,43 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 **Depends on:** Phase 1 (schema, entities), Phase 2 (evidence library populated)
 
 #### 3.1 Feature Extraction Pipeline
-- [ ] AI analyses captured evidence (web pages, documents, screenshots) against project schema
-- [ ] Extracts structured attribute values for entities
-- [ ] Cross-references multiple sources for the same entity
-- [ ] Flags contradictions between sources
-- [ ] Confidence scoring: high / medium / needs-review
-- [ ] **Files affected:** New `core/extraction.py`, `core/llm.py` (extended)
+- [x] AI analyses captured evidence (web pages, documents, screenshots) against project schema
+- [x] Extracts structured attribute values for entities
+- [x] Cross-references multiple sources for the same entity
+- [x] Flags contradictions between sources (case-insensitive value comparison)
+- [x] Confidence scoring: 0-1 scale, clamped and validated
+- [x] DB tables: `extraction_jobs` (status tracking, cost/duration), `extraction_results` (per-attribute values with confidence/reasoning)
+- [x] Review workflow: accept (writes to entity_attributes), reject, edit — per result or bulk
+- [x] Review queue endpoint with joins across results/jobs/entities
+- [x] Extraction stats endpoint (counts by status)
+- [x] Background async extraction jobs with threading + Flask app context
+- [x] Extract from evidence (reads HTML/text files), from URL (fetches + extracts), from raw content
+- [x] Screenshot evidence returns (None, "image") — classified but not text-extracted
+- [x] **Files:** `core/extraction.py` (350+ lines), `storage/repos/extraction.py` (ExtractionMixin, 300+ lines), `web/blueprints/extraction.py` (15+ API endpoints), `storage/schema.sql` (2 tables, 7 indexes)
+- [x] **Tests:** 58 DB tests in `tests/test_extraction.py` + 38 API tests in `tests/test_api_extraction.py` = 96 tests
 
 #### 3.2 Document-Specific Extractors
-- [ ] IPID parser (standardised EU/UK insurance document format)
-- [ ] Generic product page extractor (features, pricing, plans)
-- [ ] Help documentation extractor (feature lists, capabilities)
-- [ ] Changelog parser (new features, changes, dates)
-- [ ] Extensible: add new document type extractors as needed
-- [ ] **Files affected:** New `core/extractors/` directory
+- [x] Product page extractor: heuristic classification (marketing keywords) + LLM extraction (company_name, tagline, features, social_proof, etc.)
+- [x] Pricing page extractor: heuristic classification (pricing keywords, $, /month) + LLM extraction (plans, pricing_model, free tier/trial)
+- [x] Generic fallback extractor: document_type, title, summary, key_facts, entities_mentioned
+- [x] Auto-routing classifier: scores content against all extractors, routes to best match above threshold (0.4)
+- [x] `extract_with_classification()` — classifies then extracts, supports forced extractor override
+- [x] API endpoints: `POST /api/extract/classify` (classify + extract), `GET /api/extract/extractors` (list available)
+- [ ] IPID parser (standardised EU/UK insurance document format) — deferred
+- [ ] Changelog parser (new features, changes, dates) — deferred
+- [x] **Files:** `core/extractors/__init__.py`, `core/extractors/product_page.py`, `core/extractors/pricing_page.py`, `core/extractors/generic.py`, `core/extractors/classifier.py`
+- [x] **Tests:** 27 tests in `tests/test_extractors.py` (classification, prompts, extraction with mocked LLM, API endpoints)
 
 #### 3.3 Screenshot Classification
-- [ ] AI classifies captured screenshots by journey stage (onboarding, dashboard, settings, checkout, etc.)
-- [ ] Identifies UI patterns and design principles present
-- [ ] Groups screens into likely sequences
-- [ ] **Files affected:** `core/extraction.py`, `core/llm.py`
+- [x] URL-based classification: regex patterns map URL paths to 16 journey stages (landing, onboarding, login, dashboard, listing, detail, settings, checkout, pricing, help, search, profile, notification, error, empty, other)
+- [x] Filename-based classification: stage keyword matching in evidence filenames
+- [x] Context-based classification: combines URL, filename, and page title metadata — highest confidence wins
+- [x] LLM-based classification: structured output with journey_stage, confidence, ui_patterns, description
+- [x] 12 UI patterns: form, table, chart, map, modal, navigation, card-grid, list, hero, empty-state, wizard, timeline
+- [x] Journey sequence grouping: sorts by typical UX journey order, groups into named sequences
+- [x] API endpoints: `POST /api/extract/classify-screenshot`, `GET /api/extract/screenshot-sequences`
+- [x] **Files:** `core/extractors/screenshot.py` (336 lines)
+- [x] **Tests:** 42 tests in `tests/test_screenshot_classifier.py` (URL, filename, context, LLM, sequences, constants, API)
 
 #### 3.4 Human Review Interface
 - [ ] Queue of AI-extracted data pending review
@@ -496,7 +513,7 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 1. All 266 original tests continue to pass unchanged
 2. Company API remains fully functional — entity system runs alongside, not replacing
 3. New test suites added with every implementation step — test count grows in lockstep
-4. **Current total: 584 tests** (266 original + 62 entity DB + 119 entity API + 64 capture DB + 31 capture API + 27 scraper DB + 15 scraper API)
+4. **Current total: 749 tests** (266 original + 62 entity DB + 119 entity API + 64 capture DB + 31 capture API + 27 scraper DB + 15 scraper API + 58 extraction DB + 38 extraction API + 27 extractor + 42 screenshot classifier)
 
 ---
 
@@ -513,8 +530,10 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 | 11 | 2026-02-20 | Phase 1.1-1.5 + 1.9: Schema, entities, temporal, evidence, API, tests | ✅ Complete |
 | 12 | 2026-02-20 | Phase 1.6-1.8: Project setup + entity browser + view compat (46 new tests, 447 total) | ✅ Complete |
 | 13 | 2026-02-20 | Phase 2.1/2.4/2.5/2.5a/2.3: Capture engine + scrapers — file storage, website capture, document download, manual upload, App Store + Play Store scrapers (137 new tests, 584 total) | ✅ Complete |
-| 14 | TBD | Phase 2.2: UI gallery scrapers (Mobbin, Screenlane, Refero) | ⬜ Not started |
-| 15 | TBD | Phase 2.6/2.7: Bulk capture + Capture UI | ⬜ Not started |
+| 14 | 2026-02-20 | Phase 3.1/3.2/3.3: Extraction pipeline + document extractors + screenshot classification — extraction jobs/results DB, review workflow, product/pricing/generic extractors with auto-routing classifier, URL/filename/context/LLM screenshot classification, journey sequence grouping (165 new tests, 749 total) | ✅ Complete |
+| 15 | TBD | Phase 3.4/3.5: Human review UI + feature standardisation | ⬜ Not started |
+| 16 | TBD | Phase 2.2: UI gallery scrapers (Mobbin, Screenlane, Refero) | ⬜ Not started |
+| 17 | TBD | Phase 2.6/2.7: Bulk capture + Capture UI | ⬜ Not started |
 
 ---
 

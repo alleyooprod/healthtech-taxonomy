@@ -345,6 +345,63 @@ def get_review_queue():
     return jsonify(queue)
 
 
+@extraction_bp.route("/api/extract/queue/grouped", methods=["GET"])
+def get_review_queue_grouped():
+    """Get pending results grouped by entity for review UI.
+
+    Query: ?project_id=X&min_confidence=0.5&max_confidence=1.0&entity_id=Y
+    """
+    project_id = request.args.get("project_id", type=int)
+    if not project_id:
+        return jsonify({"error": "project_id is required"}), 400
+
+    min_confidence = request.args.get("min_confidence", type=float)
+    max_confidence = request.args.get("max_confidence", type=float)
+    entity_id = request.args.get("entity_id", type=int)
+    limit = request.args.get("limit", 200, type=int)
+    offset = request.args.get("offset", 0, type=int)
+
+    db = current_app.db
+    groups = db.get_review_queue_grouped(
+        project_id, min_confidence=min_confidence,
+        max_confidence=max_confidence, entity_id=entity_id,
+        limit=limit, offset=offset,
+    )
+    return jsonify(groups)
+
+
+@extraction_bp.route("/api/extract/results/<int:result_id>/flag", methods=["POST"])
+def flag_needs_evidence(result_id):
+    """Flag an extraction result as needing more evidence.
+
+    Body: {needs_evidence: true|false}
+    """
+    data = request.json or {}
+    needs = data.get("needs_evidence", True)
+
+    db = current_app.db
+    result = db.get_extraction_result(result_id)
+    if not result:
+        return jsonify({"error": "Result not found"}), 404
+
+    success = db.flag_needs_evidence(result_id, needs=needs)
+    if success:
+        return jsonify({"status": "flagged" if needs else "unflagged", "result_id": result_id})
+    return jsonify({"error": "Failed to flag result"}), 422
+
+
+@extraction_bp.route("/api/extract/needs-evidence", methods=["GET"])
+def get_needs_evidence():
+    """Get results flagged as needing more evidence. Query: ?project_id=X"""
+    project_id = request.args.get("project_id", type=int)
+    if not project_id:
+        return jsonify({"error": "project_id is required"}), 400
+
+    db = current_app.db
+    results = db.get_needs_evidence_results(project_id)
+    return jsonify(results)
+
+
 @extraction_bp.route("/api/extract/results/<int:result_id>/review", methods=["POST"])
 def review_result(result_id):
     """Review an extraction result.

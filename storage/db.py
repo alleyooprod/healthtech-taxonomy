@@ -16,11 +16,12 @@ from storage.repos import (
     ResearchMixin, CanvasMixin, TemplateMixin, DimensionsMixin, DiscoveryMixin,
     EntityMixin, ExtractionMixin,
 )
+from storage.repos.features import FeaturesMixin
 
 
 class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin,
                ResearchMixin, CanvasMixin, TemplateMixin, DimensionsMixin, DiscoveryMixin,
-               EntityMixin, ExtractionMixin):
+               EntityMixin, ExtractionMixin, FeaturesMixin):
     def __init__(self, db_path=None):
         self.db_path = db_path or DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,6 +65,8 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
                 triage_cols = {r[1] for r in conn.execute("PRAGMA table_info(triage_results)").fetchall()}
                 if "user_comment" not in triage_cols:
                     conn.execute("ALTER TABLE triage_results ADD COLUMN user_comment TEXT")
+
+            self._migrate_phase8_review(conn)
 
             conn.commit()
 
@@ -297,6 +300,19 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
         project_cols = {r[1] for r in conn.execute("PRAGMA table_info(projects)").fetchall()}
         if "entity_schema" not in project_cols:
             conn.execute("ALTER TABLE projects ADD COLUMN entity_schema TEXT")
+
+    def _migrate_phase8_review(self, conn):
+        """Add needs_evidence flag to extraction results for review workflow."""
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "extraction_results" not in tables:
+            return
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(extraction_results)").fetchall()}
+        if "needs_evidence" not in cols:
+            conn.execute(
+                "ALTER TABLE extraction_results ADD COLUMN needs_evidence INTEGER DEFAULT 0"
+            )
 
     # --- Projects ---
 

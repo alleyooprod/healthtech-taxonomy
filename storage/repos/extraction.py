@@ -333,6 +333,97 @@ class ExtractionMixin:
 
         return count
 
+    def get_review_queue_grouped(self, project_id, min_confidence=None,
+                                  max_confidence=None, entity_id=None,
+                                  limit=200, offset=0):
+        """Get pending extraction results grouped by entity for review UI.
+
+        Returns: list of entity groups, each with entity info and pending results.
+        """
+        clauses = ["ej.project_id = ?", "er.status = 'pending'"]
+        params = [project_id]
+
+        if min_confidence is not None:
+            clauses.append("er.confidence >= ?")
+            params.append(min_confidence)
+        if max_confidence is not None:
+            clauses.append("er.confidence <= ?")
+            params.append(max_confidence)
+        if entity_id is not None:
+            clauses.append("er.entity_id = ?")
+            params.append(entity_id)
+
+        where = " AND ".join(clauses)
+        params.extend([limit, offset])
+
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                f"""SELECT er.*, ej.project_id, ej.source_type, ej.source_ref,
+                          ej.evidence_id AS job_evidence_id,
+                          e.name AS entity_name, e.type_slug AS entity_type,
+                          ev.source_url AS evidence_url,
+                          ev.evidence_type AS evidence_type_name,
+                          ev.file_path AS evidence_file_path
+                   FROM extraction_results er
+                   JOIN extraction_jobs ej ON ej.id = er.job_id
+                   JOIN entities e ON e.id = er.entity_id
+                   LEFT JOIN evidence ev ON ev.id = er.source_evidence_id
+                   WHERE {where}
+                   ORDER BY e.name ASC, er.confidence DESC, er.created_at ASC
+                   LIMIT ? OFFSET ?""",
+                params,
+            ).fetchall()
+
+            # Group by entity
+            entities = {}
+            for r in rows:
+                eid = r["entity_id"]
+                if eid not in entities:
+                    entities[eid] = {
+                        "entity_id": eid,
+                        "entity_name": r["entity_name"],
+                        "entity_type": r["entity_type"],
+                        "results": [],
+                    }
+                entities[eid]["results"].append(dict(r))
+
+            return list(entities.values())
+
+    def flag_needs_evidence(self, result_id, needs=True):
+        """Flag an extraction result as needing more evidence.
+
+        Returns: True if updated, False if not found.
+        """
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT id FROM extraction_results WHERE id = ?", (result_id,)
+            ).fetchone()
+            if not row:
+                return False
+            conn.execute(
+                "UPDATE extraction_results SET needs_evidence = ? WHERE id = ?",
+                (1 if needs else 0, result_id),
+            )
+            return True
+
+    def get_needs_evidence_results(self, project_id):
+        """Get extraction results flagged as needing more evidence.
+
+        Returns: list[dict]
+        """
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                """SELECT er.*, ej.project_id,
+                          e.name AS entity_name, e.type_slug AS entity_type
+                   FROM extraction_results er
+                   JOIN extraction_jobs ej ON ej.id = er.job_id
+                   JOIN entities e ON e.id = er.entity_id
+                   WHERE ej.project_id = ? AND er.needs_evidence = 1
+                   ORDER BY er.created_at DESC""",
+                (project_id,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def get_extraction_stats(self, project_id):
         """Get extraction statistics for a project.
 
@@ -366,6 +457,36 @@ class ExtractionMixin:
                 (project_id,),
             ).fetchone()
 
+            # Needs evidence count
+            needs_row = conn.execute(
+                """SELECT COUNT(*) as cnt
+                   FROM extraction_results er
+                   JOIN extraction_jobs ej ON ej.id = er.job_id
+                   WHERE ej.project_id = ? AND er.needs_evidence = 1""",
+                (project_id,),
+            ).fetchone()
+
+            # Confidence distribution for pending results
+            conf_rows = conn.execute(
+                """SELECT
+                       SUM(CASE WHEN er.confidence >= 0.8 THEN 1 ELSE 0 END) as high,
+                       SUM(CASE WHEN er.confidence >= 0.5 AND er.confidence < 0.8 THEN 1 ELSE 0 END) as medium,
+                       SUM(CASE WHEN er.confidence < 0.5 THEN 1 ELSE 0 END) as low
+                   FROM extraction_results er
+                   JOIN extraction_jobs ej ON ej.id = er.job_id
+                   WHERE ej.project_id = ? AND er.status = 'pending'""",
+                (project_id,),
+            ).fetchone()
+
+            # Entities with pending results
+            entity_count_row = conn.execute(
+                """SELECT COUNT(DISTINCT er.entity_id) as cnt
+                   FROM extraction_results er
+                   JOIN extraction_jobs ej ON ej.id = er.job_id
+                   WHERE ej.project_id = ? AND er.status = 'pending'""",
+                (project_id,),
+            ).fetchone()
+
             return {
                 "jobs": jobs_by_status,
                 "results": results_by_status,
@@ -373,4 +494,11 @@ class ExtractionMixin:
                 "total_results": sum(results_by_status.values()),
                 "pending_review": results_by_status.get("pending", 0),
                 "total_cost_usd": round(cost_row["total_cost"], 4),
+                "needs_evidence": needs_row["cnt"],
+                "confidence_distribution": {
+                    "high": conf_rows["high"] or 0,
+                    "medium": conf_rows["medium"] or 0,
+                    "low": conf_rows["low"] or 0,
+                },
+                "entities_pending": entity_count_row["cnt"],
             }

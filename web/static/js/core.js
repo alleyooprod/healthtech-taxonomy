@@ -197,7 +197,7 @@ function relationshipLabel(status) {
 
 // --- Tab Navigation with URL State ---
 function showTab(name) {
-    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'export', 'settings'];
+    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'review', 'export', 'settings'];
 
     // Support numeric index as well as string name
     if (typeof name === 'number') {
@@ -239,6 +239,7 @@ function showTab(name) {
     if (name === 'canvas') { if (typeof loadCanvasList === 'function') loadCanvasList(); }
     if (name === 'discovery') { if (typeof loadDiscoveryTab === 'function') loadDiscoveryTab(); }
     if (name === 'process') { loadBatches(); }
+    if (name === 'review') { if (typeof initReviewQueue === 'function') initReviewQueue(); }
     if (name === 'export') { loadShareTokens(); loadNotifPrefs(); }
     if (name === 'settings') { if (typeof loadAiSetupStatus === 'function') loadAiSetupStatus(); if (typeof loadDefaultModel === 'function') loadDefaultModel(); }
 

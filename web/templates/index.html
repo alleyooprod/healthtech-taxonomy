@@ -67,6 +67,9 @@
     <!-- Diff viewer: diff2html -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.56/bundles/css/diff2html.min.css" integrity="sha384-PdRCG/+r1waybtXfuDB9Kmv2h7AGoN6WaTZ5OF+ctPeR9BGne0FaKRQnUeGV4nDL" crossorigin="anonymous">
 
+    <!-- Review Queue -->
+    <link rel="stylesheet" href="/static/css/review.css">
+
     <!-- Print styles -->
     <link rel="stylesheet" href="/static/css/print.css" media="print">
 
@@ -405,6 +408,7 @@
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-canvas" onclick="showTab('canvas')">Canvas</button>
                 <button class="tab hidden" role="tab" aria-selected="false" aria-controls="tab-discovery" onclick="showTab('discovery')" id="discoveryTabBtn">Discovery</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-process" onclick="showTab('process')">Process</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-review" onclick="showTab('review')">Review</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-export" onclick="showTab('export')">Export</button>
                 <button class="tab" role="tab" aria-selected="false" aria-controls="tab-settings" onclick="showTab('settings')">Settings</button>
             </nav>
@@ -1024,6 +1028,32 @@
                 <p class="hint-text">Click a batch to see full details.</p>
                 <div id="batchList"></div>
                 <div id="batchDetailView" class="hidden"></div>
+            </section>
+
+            <!-- Review Tab -->
+            <section id="tab-review" class="tab-content" role="tabpanel" aria-label="Review">
+                <div class="review-header">
+                    <h2>Extraction Review Queue</h2>
+                    <p class="hint-text">Review AI-extracted data before it's applied to entities. Accept, edit, or reject each attribute.</p>
+                </div>
+
+                <!-- Stats + Confidence Filter -->
+                <div id="reviewStats"></div>
+
+                <!-- Bulk Actions -->
+                <div class="review-bulk-bar">
+                    <button class="primary-btn" onclick="reviewBulkAll('accept')">Accept All High Confidence</button>
+                    <button class="btn" onclick="reviewBulkAll('reject')">Reject All</button>
+                </div>
+
+                <!-- Queue List (entity cards) -->
+                <div id="reviewQueueList"></div>
+
+                <!-- Empty State -->
+                <div id="reviewEmptyState" class="review-empty-state hidden">
+                    <div class="review-empty-title">No pending extractions</div>
+                    <div class="review-empty-desc">Run extraction on entity evidence from the Process tab to populate this queue.</div>
+                </div>
             </section>
 
             <!-- Discovery Tab -->
@@ -1706,6 +1736,7 @@
     <script src="{{ url_for('static', filename='js/integrations.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dimensions.js') }}"></script>
     <script src="{{ url_for('static', filename='js/discovery.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/review.js') }}"></script>
     <script src="{{ url_for('static', filename='js/init.js') }}"></script>
 
     <script>

@@ -299,6 +299,7 @@ def create_app():
     from web.blueprints.entities import entities_bp
     from web.blueprints.capture import capture_bp
     from web.blueprints.extraction import extraction_bp
+    from web.blueprints.features import features_bp
 
     app.register_blueprint(companies_bp)
     app.register_blueprint(taxonomy_bp)
@@ -313,6 +314,7 @@ def create_app():
     app.register_blueprint(entities_bp)
     app.register_blueprint(capture_bp)
     app.register_blueprint(extraction_bp)
+    app.register_blueprint(features_bp)
 
     return app
 

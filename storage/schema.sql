@@ -527,6 +527,7 @@ CREATE TABLE IF NOT EXISTS extraction_results (
     status TEXT NOT NULL DEFAULT 'pending',         -- pending | accepted | rejected | edited
     reviewed_value TEXT,                           -- user-edited value (if status=edited)
     reviewed_at TEXT,
+    needs_evidence INTEGER DEFAULT 0,              -- 1 if flagged as needing more evidence
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -538,3 +539,31 @@ CREATE INDEX IF NOT EXISTS idx_extraction_results_job ON extraction_results(job_
 CREATE INDEX IF NOT EXISTS idx_extraction_results_entity ON extraction_results(entity_id);
 CREATE INDEX IF NOT EXISTS idx_extraction_results_status ON extraction_results(entity_id, status);
 CREATE INDEX IF NOT EXISTS idx_extraction_results_attr ON extraction_results(entity_id, attr_slug);
+
+-- ═══════════════════════════════════════════════════════════
+-- Feature Standardisation: Canonical vocabulary per project
+-- ═══════════════════════════════════════════════════════════
+
+-- Canonical features: the standard vocabulary for cross-entity comparison
+CREATE TABLE IF NOT EXISTS canonical_features (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    attr_slug TEXT NOT NULL,                    -- which attribute this vocabulary covers (e.g. "features")
+    canonical_name TEXT NOT NULL,               -- the standard name (e.g. "Mental Health Support")
+    description TEXT,                           -- optional definition
+    category TEXT,                              -- optional grouping (e.g. "Wellbeing", "Core Cover")
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(project_id, attr_slug, canonical_name)
+);
+
+-- Feature mappings: map extracted raw values to canonical names
+CREATE TABLE IF NOT EXISTS feature_mappings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    canonical_feature_id INTEGER NOT NULL REFERENCES canonical_features(id) ON DELETE CASCADE,
+    raw_value TEXT NOT NULL,                    -- the extracted text (e.g. "mental health cover")
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(canonical_feature_id, raw_value)
+);
+
+CREATE INDEX IF NOT EXISTS idx_canonical_features_project ON canonical_features(project_id, attr_slug);
+CREATE INDEX IF NOT EXISTS idx_feature_mappings_canonical ON feature_mappings(canonical_feature_id);
