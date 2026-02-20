@@ -779,43 +779,71 @@
                                 <button class="btn btn-sm" onclick="closeDiagramPanel()" title="Close" style="padding:2px 6px">&times;</button>
                             </div>
                         </div>
-                        <div class="diagram-panel-body">
+                        <div class="diagram-panel-body" style="overflow-y:auto;max-height:calc(100vh - 200px);padding-bottom:16px;">
+                            <!-- Quick-start templates -->
+                            <label class="diagram-label">Quick start:</label>
+                            <div class="diagram-templates" style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+                                <button class="btn btn-xs diagram-template-btn" onclick="useDiagramTemplate('market_landscape')" title="Grid of all categories with their companies">
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">grid_view</span> Market Landscape
+                                </button>
+                                <button class="btn btn-xs diagram-template-btn" onclick="useDiagramTemplate('tech_stack')" title="Enterprise architecture stack view">
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">stacks</span> Enterprise Tech Stack
+                                </button>
+                                <button class="btn btn-xs diagram-template-btn" onclick="useDiagramTemplate('value_chain')" title="How categories relate in a value chain">
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">conversion_path</span> Value Chain
+                                </button>
+                                <button class="btn btn-xs diagram-template-btn" onclick="useDiagramTemplate('competitive')" title="Companies sized by funding, grouped by category">
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">bubble_chart</span> Competitive Landscape
+                                </button>
+                                <button class="btn btn-xs diagram-template-btn" onclick="useDiagramTemplate('customer_journey')" title="Map categories to customer journey stages">
+                                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">route</span> Customer Journey Map
+                                </button>
+                            </div>
+
                             <label class="diagram-label">Describe your diagram:</label>
-                            <textarea id="diagramPrompt" rows="3" placeholder="e.g., Show all companies in a stacked enterprise architecture diagram grouped by subcategory..."></textarea>
+                            <textarea id="diagramPrompt" rows="3" placeholder="Describe the diagram you want, or pick a template above..."></textarea>
 
-                            <label class="diagram-label">Categories to include:</label>
-                            <div class="diagram-cat-actions">
-                                <button class="btn btn-xs" onclick="toggleAllDiagramCategories(true)">All</button>
-                                <button class="btn btn-xs" onclick="toggleAllDiagramCategories(false)">None</button>
-                            </div>
-                            <div id="diagramCategoryList" class="diagram-checkbox-list"></div>
-
-                            <label class="diagram-label">Data fields per company:</label>
-                            <div id="diagramFieldList" class="diagram-checkbox-list">
-                                <label><input type="checkbox" value="name" checked disabled> Name</label>
-                                <label><input type="checkbox" value="url"> URL</label>
-                                <label><input type="checkbox" value="what"> What they do</label>
-                                <label><input type="checkbox" value="target"> Target market</label>
-                                <label><input type="checkbox" value="funding_stage"> Funding stage</label>
-                                <label><input type="checkbox" value="total_funding_usd"> Total funding</label>
-                                <label><input type="checkbox" value="employee_range"> Employees</label>
-                                <label><input type="checkbox" value="hq_country"> HQ Country</label>
-                                <label><input type="checkbox" value="business_model"> Business model</label>
-                                <label><input type="checkbox" value="founded_year"> Founded</label>
-                            </div>
-
-                            <label class="diagram-label">Layout style:</label>
-                            <select id="diagramLayoutStyle" class="draw-tool-select" style="width:100%;min-width:0">
-                                <option value="stacked_vertical">Stacked Vertical</option>
-                                <option value="stacked_horizontal">Stacked Horizontal</option>
-                                <option value="grid" selected>Grid</option>
-                            </select>
-
-                            <label class="diagram-label" style="display:flex;align-items:center;gap:6px">
-                                <input type="checkbox" id="diagramClearCanvas" checked> Clear canvas first
+                            <label class="diagram-label" style="display:flex;justify-content:space-between;align-items:center">
+                                Categories to include:
+                                <span>
+                                    <button class="btn btn-xs" onclick="toggleAllDiagramCategories(true)">All</button>
+                                    <button class="btn btn-xs" onclick="toggleAllDiagramCategories(false)">None</button>
+                                </span>
                             </label>
+                            <div id="diagramCategoryList" class="diagram-checkbox-list" style="max-height:140px;overflow-y:auto"></div>
 
-                            <div class="diagram-action-row">
+                            <details style="margin-top:6px;">
+                                <summary class="diagram-label" style="cursor:pointer;user-select:none;">Data fields per company</summary>
+                                <div id="diagramFieldList" class="diagram-checkbox-list" style="margin-top:4px">
+                                    <label><input type="checkbox" value="name" checked disabled> Name</label>
+                                    <label><input type="checkbox" value="what"> What they do</label>
+                                    <label><input type="checkbox" value="target"> Target market</label>
+                                    <label><input type="checkbox" value="funding_stage"> Funding stage</label>
+                                    <label><input type="checkbox" value="total_funding_usd"> Total funding</label>
+                                    <label><input type="checkbox" value="employee_range"> Employees</label>
+                                    <label><input type="checkbox" value="hq_country"> HQ Country</label>
+                                    <label><input type="checkbox" value="business_model"> Business model</label>
+                                    <label><input type="checkbox" value="founded_year"> Founded</label>
+                                </div>
+                            </details>
+
+                            <details style="margin-top:6px;">
+                                <summary class="diagram-label" style="cursor:pointer;user-select:none;">Layout &amp; options</summary>
+                                <div style="margin-top:4px;">
+                                    <select id="diagramLayoutStyle" class="draw-tool-select" style="width:100%;min-width:0;margin-bottom:6px">
+                                        <option value="grid" selected>Grid</option>
+                                        <option value="stacked_vertical">Stacked Vertical</option>
+                                        <option value="stacked_horizontal">Stacked Horizontal</option>
+                                        <option value="radial">Radial / Hub</option>
+                                        <option value="flow">Flow / Pipeline</option>
+                                    </select>
+                                    <label class="diagram-label" style="display:flex;align-items:center;gap:6px;font-weight:normal">
+                                        <input type="checkbox" id="diagramClearCanvas" checked> Clear canvas first
+                                    </label>
+                                </div>
+                            </details>
+
+                            <div class="diagram-action-row" style="margin-top:10px;">
                                 {{ model_select('diagramModelSelect', default='sonnet') }}
                                 <button class="primary-btn" id="diagramGenBtn" onclick="startDiagramGeneration()">
                                     <span class="material-symbols-outlined" style="font-size:16px;vertical-align:-3px">auto_awesome</span> Generate

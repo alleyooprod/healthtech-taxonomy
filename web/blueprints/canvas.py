@@ -230,7 +230,7 @@ def _run_diagram_generation(job_id, project_id, category_ids, fields,
 
         prompt = _build_diagram_prompt(user_prompt, categories_data,
                                        layout_style)
-        response = run_cli(prompt, model, timeout=120,
+        response = run_cli(prompt, model, timeout=180,
                            json_schema=DIAGRAM_SCHEMA)
         duration_ms = int((time.time() - start) * 1000)
 

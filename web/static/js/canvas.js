@@ -383,7 +383,7 @@ function _hexToRgba(hex, alpha) {
 }
 
 function _createCompanyElements(x, y, data) {
-    const id = _randomId();
+    const rectId = _randomId();
     const textId = _randomId();
     const color = data.color || '#888888';
     const name = data.name || 'Company';
@@ -391,30 +391,42 @@ function _createCompanyElements(x, y, data) {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
     const displayText = category ? `${name}\n${category}` : name;
-    const width = Math.max(180, name.length * 9 + 30);
-    const height = category ? 64 : 44;
+    const lines = displayText.split('\n');
+    const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
+    const width = Math.max(180, longestLine.length * 8.5 + 40);
+    const lineHeight = 1.25;
+    const fontSize = 14;
+    const textH = lines.length * fontSize * lineHeight;
+    const height = Math.max(52, textH + 28);
 
     return [
         _makeElement('rectangle', {
-            id: id,
+            id: rectId,
             x: x - width / 2, y: y - height / 2,
             width, height,
             strokeColor: color,
-            backgroundColor: _hexToRgba(color, 0.1),
+            backgroundColor: _hexToRgba(color, 0.08),
             fillStyle: 'solid',
-            strokeWidth: 1,
+            strokeWidth: 1.5,
             roughness: 0,
             roundness: null,
+            boundElements: [{ type: 'text', id: textId }],
             customData: { companyId: data.companyId, companyName: name, type: 'company' },
         }),
         _makeElement('text', {
             id: textId,
-            x: x - width / 2 + 14, y: y - height / 2 + 12,
+            x: x - width / 2, y: y - height / 2,
+            width: width,
+            height: height,
             text: displayText,
-            fontSize: 13,
+            fontSize: fontSize,
             fontFamily: 2,
+            lineHeight: lineHeight,
             strokeColor: isDark ? '#e0e0e0' : '#1a1a1a',
-            containerId: null,
+            textAlign: 'center',
+            verticalAlign: 'middle',
+            containerId: rectId,
+            autoResize: true,
         }),
     ];
 }
@@ -510,8 +522,18 @@ function _randomSeed() {
     return Math.floor(Math.random() * 2147483647);
 }
 
+function _measureText(text, fontSize) {
+    // Approximate text dimensions using character metrics
+    const lines = (text || '').split('\n');
+    const charW = fontSize * 0.6;
+    const longest = lines.reduce((a, b) => a.length > b.length ? a : b, '');
+    const w = Math.ceil(longest.length * charW) + 4;
+    const h = Math.ceil(lines.length * fontSize * 1.25) + 4;
+    return { w, h };
+}
+
 function _makeElement(type, overrides) {
-    return {
+    const base = {
         id: _randomId(),
         type: type,
         x: 0,
@@ -537,35 +559,49 @@ function _makeElement(type, overrides) {
         groupIds: [],
         frameId: null,
         roundness: null,
-        // Text-specific defaults
-        ...(type === 'text' ? {
-            text: '',
-            fontSize: 16,
+    };
+
+    if (type === 'text') {
+        const text = overrides.text || '';
+        const fontSize = overrides.fontSize || 16;
+        const measured = _measureText(text, fontSize);
+        // If text is bound to a container, width/height come from container
+        const isBound = overrides.containerId != null;
+        Object.assign(base, {
+            text: text,
+            fontSize: fontSize,
             fontFamily: 2,
             textAlign: 'left',
             verticalAlign: 'top',
             containerId: null,
-            originalText: '',
+            originalText: text,
             autoResize: true,
             lineHeight: 1.25,
-            width: undefined,
-            height: undefined,
+            width: isBound ? (overrides.width || measured.w) : measured.w,
+            height: isBound ? (overrides.height || measured.h) : measured.h,
             strokeWidth: 1,
             backgroundColor: 'transparent',
-        } : {}),
-        // Arrow-specific defaults
-        ...(type === 'arrow' ? {
+        });
+    } else if (type === 'arrow') {
+        Object.assign(base, {
             points: [[0, 0], [100, 0]],
             startBinding: null,
             endBinding: null,
             startArrowhead: null,
             endArrowhead: 'arrow',
             roundness: { type: 2 },
-        } : {}),
-        ...overrides,
-        // Ensure text has originalText matching text
-        ...(type === 'text' && overrides.text ? { originalText: overrides.text } : {}),
-    };
+        });
+    }
+
+    // Apply overrides
+    Object.assign(base, overrides);
+
+    // Ensure originalText matches text
+    if (type === 'text' && base.text) {
+        base.originalText = base.text;
+    }
+
+    return base;
 }
 
 // Expose key functions globally for cross-module access

@@ -240,6 +240,35 @@
     color: var(--bg-page);
 }
 
+/* Diagram template buttons */
+.diagram-template-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    text-align: left;
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* Collapsible details in diagram panel */
+#diagramPanel details summary {
+    list-style: none;
+}
+#diagramPanel details summary::-webkit-details-marker {
+    display: none;
+}
+#diagramPanel details summary::after {
+    content: '+';
+    float: right;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+#diagramPanel details[open] summary::after {
+    content: '\2212';
+}
+
 .diagram-action-row {
     display: flex;
     gap: 8px;

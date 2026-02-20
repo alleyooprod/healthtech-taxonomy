@@ -5,8 +5,62 @@
 
 let _diagramPollTimer = null;
 let _diagramPollCount = 0;
-const _DIAGRAM_MAX_POLL = 60;   // 3 min at 3s intervals
+const _DIAGRAM_MAX_POLL = 120;  // 6 min at 3s intervals
 let _diagramStartTime = 0;
+
+// ─── Diagram Templates ─────────────────────────────────────────
+
+const _DIAGRAM_TEMPLATES = {
+    market_landscape: {
+        prompt: 'Create a market landscape overview. Arrange each category as a labeled block in a grid layout. Show all companies within their category blocks. Group related categories near each other.',
+        layout: 'grid',
+        fields: ['name'],
+    },
+    tech_stack: {
+        prompt: 'Create an enterprise technology stack diagram. Stack categories vertically as layers — infrastructure/data at the bottom, platforms in the middle, and consumer-facing/applications at the top. Show companies within each layer. Add connectors between layers to show data flow.',
+        layout: 'stacked_vertical',
+        fields: ['name', 'what'],
+    },
+    value_chain: {
+        prompt: 'Create a value chain diagram showing how these categories connect in a left-to-right flow. Start with upstream/input categories on the left and progress to downstream/consumer-facing categories on the right. Add labeled connectors showing the relationships between stages.',
+        layout: 'flow',
+        fields: ['name'],
+    },
+    competitive: {
+        prompt: 'Create a competitive landscape diagram. Arrange companies in a grid grouped by category. For each company, prominently display their funding and employee count to show relative scale. Place larger/more-funded companies more prominently.',
+        layout: 'grid',
+        fields: ['name', 'total_funding_usd', 'employee_range', 'funding_stage'],
+    },
+    customer_journey: {
+        prompt: 'Map these categories to stages of a customer/patient health journey — from awareness and prevention, through diagnosis and treatment, to ongoing management and outcomes. Arrange left-to-right as a flow. Show which companies serve each stage.',
+        layout: 'flow',
+        fields: ['name', 'what'],
+    },
+};
+
+function useDiagramTemplate(templateKey) {
+    const tmpl = _DIAGRAM_TEMPLATES[templateKey];
+    if (!tmpl) return;
+
+    document.getElementById('diagramPrompt').value = tmpl.prompt;
+
+    // Set layout style
+    const layoutSelect = document.getElementById('diagramLayoutStyle');
+    if (layoutSelect) layoutSelect.value = tmpl.layout;
+
+    // Select all categories by default
+    toggleAllDiagramCategories(true);
+
+    // Set the right fields
+    document.querySelectorAll('#diagramFieldList input[type="checkbox"]:not([disabled])').forEach(cb => {
+        cb.checked = tmpl.fields.includes(cb.value);
+    });
+
+    // Open the details sections if closed
+    document.querySelectorAll('#diagramPanel details').forEach(d => {
+        if (tmpl.fields.length > 1) d.open = true;
+    });
+}
 
 // ─── Panel Management ───────────────────────────────────────────
 
