@@ -196,30 +196,59 @@ function relationshipLabel(status) {
 }
 
 // --- Tab Navigation with URL State ---
-function showTab(name) {
-    const tabNames = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'review', 'analysis', 'intelligence', 'export', 'settings'];
+const LEGACY_TABS = ['companies', 'taxonomy', 'map', 'canvas'];
+const ALL_TAB_NAMES = ['companies', 'taxonomy', 'map', 'reports', 'canvas', 'discovery', 'process', 'review', 'analysis', 'intelligence', 'export', 'settings'];
 
-    // Support numeric index as well as string name
+function showTab(name) {
+    // Support numeric index for backward compat
     if (typeof name === 'number') {
-        name = tabNames[name] || 'companies';
+        name = ALL_TAB_NAMES[name] || 'reports';
     }
+
+    // Validate tab name
+    if (!ALL_TAB_NAMES.includes(name)) return;
 
     // Ensure driver.js tour isn't blocking pointer events
     if (typeof _cleanupDriverJs === 'function') _cleanupDriverJs();
 
+    // Deactivate all tab content panels
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(el => {
+
+    // Deactivate all tab buttons (primary bar + dropdown items)
+    document.querySelectorAll('.tab[data-tab]').forEach(el => {
         el.classList.remove('active');
         el.setAttribute('aria-selected', 'false');
     });
-    document.getElementById('tab-' + name).classList.add('active');
+    document.querySelectorAll('.tools-menu-item').forEach(el => el.classList.remove('active'));
 
-    const idx = tabNames.indexOf(name);
-    if (idx >= 0) {
-        const tabBtn = document.querySelectorAll('.tab')[idx];
+    // Activate the target content panel
+    const panel = document.getElementById('tab-' + name);
+    if (panel) panel.classList.add('active');
+
+    // Activate the correct button
+    const isLegacy = LEGACY_TABS.includes(name);
+    const trigger = document.getElementById('toolsTrigger');
+
+    if (isLegacy) {
+        // Highlight the dropdown menu item
+        const menuItem = document.querySelector('.tools-menu-item[data-tab="' + name + '"]');
+        if (menuItem) menuItem.classList.add('active');
+        // Highlight the Tools trigger button
+        if (trigger) {
+            trigger.classList.add('active');
+            trigger.setAttribute('aria-selected', 'true');
+        }
+    } else {
+        // Standard primary tab
+        const tabBtn = document.querySelector('.tab[data-tab="' + name + '"]');
         if (tabBtn) {
             tabBtn.classList.add('active');
             tabBtn.setAttribute('aria-selected', 'true');
+        }
+        // Clear Tools trigger active state
+        if (trigger) {
+            trigger.classList.remove('active');
+            trigger.setAttribute('aria-selected', 'false');
         }
     }
 
@@ -249,6 +278,66 @@ function showTab(name) {
     if (typeof saveAppState === 'function') saveAppState();
 }
 
+// --- Tools Dropdown ---
+function toggleToolsDropdown(e) {
+    if (e) e.stopPropagation();
+    const container = document.querySelector('.tools-dropdown');
+    const menu = document.getElementById('toolsMenu');
+    const triggerBtn = document.getElementById('toolsTrigger');
+    if (!container || !menu) return;
+
+    const isOpen = !menu.classList.contains('hidden');
+    if (isOpen) {
+        closeToolsDropdown();
+    } else {
+        menu.classList.remove('hidden');
+        container.classList.add('open');
+        if (triggerBtn) triggerBtn.setAttribute('aria-expanded', 'true');
+        menu.querySelector('.tools-menu-item')?.focus();
+        // Close on outside click (deferred so current click doesn't trigger it)
+        setTimeout(() => document.addEventListener('click', _closeToolsOnOutsideClick), 0);
+    }
+}
+
+function closeToolsDropdown() {
+    const container = document.querySelector('.tools-dropdown');
+    const menu = document.getElementById('toolsMenu');
+    const triggerBtn = document.getElementById('toolsTrigger');
+    if (menu) menu.classList.add('hidden');
+    if (container) container.classList.remove('open');
+    if (triggerBtn) triggerBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', _closeToolsOnOutsideClick);
+}
+
+function _closeToolsOnOutsideClick(e) {
+    const dropdown = document.querySelector('.tools-dropdown');
+    if (!dropdown || !dropdown.contains(e.target)) {
+        closeToolsDropdown();
+    }
+}
+
+// Keyboard nav within the tools dropdown
+document.addEventListener('keydown', (e) => {
+    const menu = document.getElementById('toolsMenu');
+    if (!menu || menu.classList.contains('hidden')) return;
+
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        closeToolsDropdown();
+        document.getElementById('toolsTrigger')?.focus();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const items = [...menu.querySelectorAll('.tools-menu-item')];
+        const current = items.indexOf(document.activeElement);
+        const next = e.key === 'ArrowDown'
+            ? (current + 1) % items.length
+            : (current - 1 + items.length) % items.length;
+        items[next]?.focus();
+    } else if (e.key === 'Enter' && document.activeElement?.classList.contains('tools-menu-item')) {
+        document.activeElement.click();
+    }
+});
+
 // Restore tab from URL on load
 function restoreTabFromUrl() {
     const params = new URLSearchParams(window.location.search);
@@ -258,7 +347,8 @@ function restoreTabFromUrl() {
 
 // --- Sliding Tab Indicator ---
 function updateTabIndicator() {
-    const activeTab = document.querySelector('.tab.active');
+    // Find active tab in the main bar or the Tools trigger when a legacy tab is active
+    const activeTab = document.querySelector('nav.tabs > .tab.active, nav.tabs > .tools-dropdown .tools-trigger.active');
     const tabsContainer = document.querySelector('.tabs');
     if (!activeTab || !tabsContainer) return;
 
@@ -716,10 +806,12 @@ window.performRedo = function() {
 
 // --- State Restoration ---
 window.saveAppState = function() {
+  // Determine active tab name from data-tab attribute or tools menu
+  const activeTabName = document.querySelector('.tab.active[data-tab]')?.dataset?.tab
+      || document.querySelector('.tools-menu-item.active')?.dataset?.tab
+      || 'reports';
   const state = {
-    activeTab: document.querySelector('.tab.active')?.dataset?.tab ||
-               document.querySelector('.tab.active')?.textContent?.trim()?.toLowerCase(),
-    tabIndex: Array.from(document.querySelectorAll('.tab')).findIndex(t => t.classList.contains('active')),
+    activeTabName: activeTabName,
     scrollPositions: {},
     currentView: window.currentCompanyView || 'table',
     sortField: window.currentSort?.field,
@@ -741,11 +833,11 @@ window.restoreAppState = function() {
     const state = JSON.parse(localStorage.getItem('appState'));
     if (!state || Date.now() - state.timestamp > 86400000) return; // Expire after 24h
 
-    // Restore tab
-    if (typeof state.tabIndex === 'number' && state.tabIndex >= 0) {
-      // Use setTimeout to let the app finish initializing
+    // Restore tab (name-based, with backward compat for old tabIndex format)
+    const restoreTab = state.activeTabName || (typeof state.tabIndex === 'number' ? ALL_TAB_NAMES[state.tabIndex] : null);
+    if (restoreTab) {
       setTimeout(() => {
-        if (typeof showTab === 'function') showTab(state.tabIndex);
+        if (typeof showTab === 'function') showTab(restoreTab);
       }, 100);
     }
 
@@ -974,22 +1066,25 @@ function initCommandPalette() {
     if (!ninja) return;
 
     const actions = [
-        // Navigation
-        { id: 'tab-companies', title: 'Go to Companies', section: 'Navigation', handler: () => showTab(0) },
-        { id: 'tab-taxonomy', title: 'Go to Taxonomy', section: 'Navigation', handler: () => showTab(1) },
-        { id: 'tab-map', title: 'Go to Map', section: 'Navigation', handler: () => showTab(2) },
-        { id: 'tab-research', title: 'Go to Research', section: 'Navigation', handler: () => showTab(3) },
-        { id: 'tab-canvas', title: 'Go to Canvas', section: 'Navigation', handler: () => showTab(4) },
-        { id: 'tab-discovery', title: 'Go to Discovery', section: 'Navigation', handler: () => showTab(5) },
-        { id: 'tab-process', title: 'Go to Process', section: 'Navigation', handler: () => showTab(6) },
-        { id: 'tab-export', title: 'Go to Export', section: 'Navigation', handler: () => showTab(7) },
-        { id: 'tab-settings', title: 'Go to Settings', section: 'Navigation', handler: () => showTab(8) },
+        // Navigation (primary workbench tabs)
+        { id: 'tab-research', title: 'Go to Research', section: 'Navigation', handler: () => showTab('reports') },
+        { id: 'tab-process', title: 'Go to Process', section: 'Navigation', handler: () => showTab('process') },
+        { id: 'tab-review', title: 'Go to Review', section: 'Navigation', handler: () => showTab('review') },
+        { id: 'tab-analysis', title: 'Go to Analysis', section: 'Navigation', handler: () => showTab('analysis') },
+        { id: 'tab-intelligence', title: 'Go to Intelligence', section: 'Navigation', handler: () => showTab('intelligence') },
+        { id: 'tab-export', title: 'Go to Export', section: 'Navigation', handler: () => showTab('export') },
+        // Tools (legacy tabs)
+        { id: 'tab-companies', title: 'Go to Companies', section: 'Tools', handler: () => showTab('companies') },
+        { id: 'tab-taxonomy', title: 'Go to Taxonomy', section: 'Tools', handler: () => showTab('taxonomy') },
+        { id: 'tab-map', title: 'Go to Map', section: 'Tools', handler: () => showTab('map') },
+        { id: 'tab-canvas', title: 'Go to Canvas', section: 'Tools', handler: () => showTab('canvas') },
         // Actions
         { id: 'new-project', title: 'New Project', section: 'Actions', handler: () => document.querySelector('[onclick*="newProject"]')?.click() },
-        { id: 'search', title: 'Search Companies', section: 'Actions', handler: () => { showTab(0); document.getElementById('searchInput')?.focus(); } },
-        { id: 'export-pdf', title: 'Export as PDF', section: 'Export', handler: () => { showTab(7); } },
-        { id: 'export-excel', title: 'Export as Excel', section: 'Export', handler: () => { showTab(7); } },
+        { id: 'search', title: 'Search Entities', section: 'Actions', handler: () => { showTab('companies'); document.getElementById('searchInput')?.focus(); } },
+        { id: 'export-pdf', title: 'Export as PDF', section: 'Export', handler: () => { showTab('export'); } },
+        { id: 'export-excel', title: 'Export as Excel', section: 'Export', handler: () => { showTab('export'); } },
         { id: 'toggle-theme', title: 'Toggle Dark Mode', section: 'Preferences', handler: () => toggleTheme() },
+        { id: 'tab-settings', title: 'Settings', section: 'Preferences', handler: () => showTab('settings') },
         { id: 'shortcuts', title: 'Show Keyboard Shortcuts', section: 'Help', handler: () => document.getElementById('shortcutsOverlay')?.style.display === 'flex' ? null : document.getElementById('shortcutsOverlay').style.display = 'flex' },
     ];
 
@@ -1043,8 +1138,9 @@ function startOnboardingTour() {
         onDestroyed: _cleanupDriverJs,
         onDestroyStarted: _cleanupDriverJs,
         steps: [
-            { element: '.tabs', popover: { title: 'Navigation', description: 'Switch between different views of your market research.' } },
-            { element: '#searchInput', popover: { title: 'Search', description: 'Find companies by name, category, or description. Supports fuzzy matching.' } },
+            { element: '.tabs', popover: { title: 'Workflow', description: 'Follow the guided research flow: Research, Process, Review, Analysis, Intelligence, Export.' } },
+            { element: '.tools-dropdown', popover: { title: 'Tools', description: 'Legacy views (Companies, Taxonomy, Map, Canvas) are available here.' } },
+            { element: '#searchInput', popover: { title: 'Search', description: 'Find entities by name, category, or description. Supports fuzzy matching.' } },
             { popover: { title: 'Keyboard Shortcuts', description: 'Press Cmd+K for the command palette. Press ? for all shortcuts.' } },
         ],
     });

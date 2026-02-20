@@ -188,14 +188,14 @@ function startProductTour() {
         onDestroyed: typeof _cleanupDriverJs === 'function' ? _cleanupDriverJs : undefined,
         onDestroyStarted: typeof _cleanupDriverJs === 'function' ? _cleanupDriverJs : undefined,
         steps: [
-            { element: '#tab-companies', popover: { title: 'Companies Tab', description: 'Browse, search, and manage all researched companies. Use fuzzy search to find companies by name, category, or geography.', position: 'bottom' } },
+            { element: '[data-tab="reports"]', popover: { title: 'Research', description: 'Start here. Browse saved research and generate AI-powered analysis reports.', position: 'bottom' } },
             { element: '#searchInput', popover: { title: 'Smart Search', description: 'Powered by Fuse.js — type anything and it fuzzy-matches across name, description, category, tags, and geography. Press / to focus.', position: 'bottom' } },
-            { element: '#tab-taxonomy', popover: { title: 'Taxonomy Tab', description: 'View your category structure in tree or interactive graph view. Analytics dashboard shows charts for category distribution, funding, and geography.', position: 'bottom' } },
-            { element: '#tab-map', popover: { title: 'Map Tab', description: 'Two views: Market Map (drag-drop between categories) and Geographic Map (Leaflet world map showing company locations).', position: 'bottom' } },
-            { element: '#tab-reports', popover: { title: 'Reports Tab', description: 'Generate AI-powered market analysis reports. Export as Markdown or PDF (powered by pdfmake).', position: 'bottom' } },
-            { element: '#tab-export', popover: { title: 'Export Tab', description: 'Export your data as JSON, Markdown, CSV, or formatted Excel workbooks (powered by SheetJS).', position: 'bottom' } },
-            { element: '#chatToggle', popover: { title: 'AI Chat', description: 'Ask questions about your taxonomy data — powered by Claude AI.', position: 'left' } },
-            { popover: { title: 'Keyboard Shortcuts', description: 'Press ? for full shortcut list. j/k navigate rows, 1-5 switch tabs, / focuses search, Ctrl+K opens search, Ctrl+E exports Excel.', position: 'center' } },
+            { element: '[data-tab="process"]', popover: { title: 'Process', description: 'Capture entity data from URLs, screenshots, and documents. Run batch processing jobs.', position: 'bottom' } },
+            { element: '[data-tab="review"]', popover: { title: 'Review', description: 'Review extracted data, manage feature vocabulary, and accept/reject AI suggestions.', position: 'bottom' } },
+            { element: '[data-tab="analysis"]', popover: { title: 'Analysis', description: 'Competitive matrix, product landscape, design gallery, temporal comparison, and signals lenses.', position: 'bottom' } },
+            { element: '.tools-dropdown', popover: { title: 'Tools', description: 'Legacy views: Companies browser, Taxonomy tree, Market Map, and Canvas.', position: 'bottom' } },
+            { element: '#chatToggle', popover: { title: 'AI Chat', description: 'Ask questions about your research data — powered by Claude AI.', position: 'left' } },
+            { popover: { title: 'Keyboard Shortcuts', description: 'Press ? for full shortcut list. 1-6 switch tabs, / focuses search, Cmd+K opens command palette.', position: 'center' } },
         ],
     });
     window.driverObj.drive();
@@ -474,14 +474,20 @@ function initNProgress() {
 // --- Command Palette (delegates to ninja-keys when available, falls back to lightweight) ---
 let _cmdPaletteEl = null;
 const _cmdActions = [
-    { title: 'Go to Companies', section: 'Navigation', handler: () => showTab('companies') },
-    { title: 'Go to Taxonomy', section: 'Navigation', handler: () => showTab('taxonomy') },
-    { title: 'Go to Map', section: 'Navigation', handler: () => showTab('map') },
-    { title: 'Go to Reports', section: 'Navigation', handler: () => showTab('reports') },
-    { title: 'Go to Canvas', section: 'Navigation', handler: () => showTab('canvas') },
-    { title: 'Go to Export', section: 'Navigation', handler: () => showTab('export') },
+    // Primary workbench tabs
+    { title: 'Go to Research', section: 'Navigation', handler: () => showTab('reports') },
     { title: 'Go to Process', section: 'Navigation', handler: () => showTab('process') },
-    { title: 'Go to Settings', section: 'Navigation', handler: () => showTab('settings') },
+    { title: 'Go to Review', section: 'Navigation', handler: () => showTab('review') },
+    { title: 'Go to Analysis', section: 'Navigation', handler: () => showTab('analysis') },
+    { title: 'Go to Intelligence', section: 'Navigation', handler: () => showTab('intelligence') },
+    { title: 'Go to Export', section: 'Navigation', handler: () => showTab('export') },
+    // Legacy tools
+    { title: 'Go to Companies', section: 'Tools', handler: () => showTab('companies') },
+    { title: 'Go to Taxonomy', section: 'Tools', handler: () => showTab('taxonomy') },
+    { title: 'Go to Map', section: 'Tools', handler: () => showTab('map') },
+    { title: 'Go to Canvas', section: 'Tools', handler: () => showTab('canvas') },
+    // Utility
+    { title: 'Go to Settings', section: 'Settings', handler: () => showTab('settings') },
     { title: 'Focus Search', section: 'Actions', handler: () => document.getElementById('searchInput')?.focus() },
     { title: 'Export as Excel', section: 'Export', handler: () => { if (typeof exportXlsx === 'function') exportXlsx(); } },
     { title: 'Export as CSV', section: 'Export', handler: () => { if (typeof exportCsv === 'function') exportCsv(); } },

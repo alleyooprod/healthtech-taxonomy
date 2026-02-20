@@ -17,10 +17,12 @@ function showShortcutHelp() {
             <div class="shortcut-row"><span>Navigate rows</span><span><span class="shortcut-key">j</span> <span class="shortcut-key">k</span></span></div>
             <div class="shortcut-row"><span>Open selected</span><span class="shortcut-key">Enter</span></div>
             <div class="shortcut-row"><span>Close panel / modal</span><span class="shortcut-key">Esc</span></div>
-            <div class="shortcut-row"><span>Companies tab</span><span class="shortcut-key">1</span></div>
-            <div class="shortcut-row"><span>Taxonomy tab</span><span class="shortcut-key">2</span></div>
-            <div class="shortcut-row"><span>Process tab</span><span class="shortcut-key">3</span></div>
-            <div class="shortcut-row"><span>Export tab</span><span class="shortcut-key">4</span></div>
+            <div class="shortcut-row"><span>Research tab</span><span class="shortcut-key">1</span></div>
+            <div class="shortcut-row"><span>Process tab</span><span class="shortcut-key">2</span></div>
+            <div class="shortcut-row"><span>Review tab</span><span class="shortcut-key">3</span></div>
+            <div class="shortcut-row"><span>Analysis tab</span><span class="shortcut-key">4</span></div>
+            <div class="shortcut-row"><span>Intelligence tab</span><span class="shortcut-key">5</span></div>
+            <div class="shortcut-row"><span>Export tab</span><span class="shortcut-key">6</span></div>
             <div class="shortcut-row"><span>Focus search</span><span class="shortcut-key">/</span></div>
             <div class="shortcut-row"><span>Toggle dark mode</span><span class="shortcut-key">D</span></div>
             <div class="shortcut-row"><span>Star selected</span><span class="shortcut-key">S</span></div>
@@ -74,7 +76,7 @@ document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
         const activeEl = document.activeElement;
         const isTextInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
-        const isCanvasTab = document.querySelector('.tab.active')?.textContent?.trim()?.toLowerCase() === 'canvas';
+        const isCanvasTab = document.querySelector('.tab-content.active')?.id === 'tab-canvas';
 
         if (!isTextInput && !isCanvasTab) {
             e.preventDefault();
@@ -87,7 +89,7 @@ document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
         const activeEl = document.activeElement;
         const isTextInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
-        const isCanvasTab = document.querySelector('.tab.active')?.textContent?.trim()?.toLowerCase() === 'canvas';
+        const isCanvasTab = document.querySelector('.tab-content.active')?.id === 'tab-canvas';
 
         if (!isTextInput && !isCanvasTab) {
             e.preventDefault();
@@ -117,9 +119,7 @@ document.addEventListener('keydown', (e) => {
     // Cmd+, - Open settings tab
     if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault();
-        const tabs = document.querySelectorAll('.tab');
-        const settingsIdx = Array.from(tabs).findIndex(t => t.textContent.trim().toLowerCase() === 'settings');
-        if (settingsIdx >= 0 && typeof showTab === 'function') showTab(settingsIdx);
+        if (typeof showTab === 'function') showTab('settings');
         return;
     }
 
@@ -174,7 +174,7 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    const tabNames = ['companies', 'taxonomy', 'map', 'process', 'export'];
+    const tabShortcuts = ['reports', 'process', 'review', 'analysis', 'intelligence', 'export'];
 
     switch (e.key) {
         case 'j':
@@ -194,18 +194,11 @@ document.addEventListener('keydown', (e) => {
                 }
             }
             break;
-        case '1': case '2': case '3': case '4': case '5':
+        case '1': case '2': case '3': case '4': case '5': case '6':
             e.preventDefault();
-            const tabIdx = parseInt(e.key) - 1;
-            const tabs = document.querySelectorAll('.tab');
-            if (tabs[tabIdx]) {
-                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-                tabs.forEach(el => el.classList.remove('active'));
-                document.getElementById('tab-' + tabNames[tabIdx]).classList.add('active');
-                tabs[tabIdx].classList.add('active');
-                if (tabNames[tabIdx] === 'companies') loadCompanies();
-                if (tabNames[tabIdx] === 'taxonomy') loadTaxonomy();
-                if (tabNames[tabIdx] === 'process') loadBatches();
+            if (typeof showTab === 'function') {
+                const tabName = tabShortcuts[parseInt(e.key) - 1];
+                if (tabName) showTab(tabName);
             }
             break;
         case '/':

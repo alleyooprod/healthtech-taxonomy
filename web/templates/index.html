@@ -414,25 +414,36 @@
             </div>
 
             <nav class="tabs" role="tablist" aria-label="Main navigation">
-                <button class="tab active" role="tab" aria-selected="true" aria-controls="tab-companies" onclick="showTab('companies')">Companies</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-taxonomy" onclick="showTab('taxonomy')">Taxonomy</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-map" onclick="showTab('map')">Map</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-reports" onclick="showTab('reports')">Research</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-canvas" onclick="showTab('canvas')">Canvas</button>
-                <button class="tab hidden" role="tab" aria-selected="false" aria-controls="tab-discovery" onclick="showTab('discovery')" id="discoveryTabBtn">Discovery</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-process" onclick="showTab('process')">Process</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-review" onclick="showTab('review')">Review</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-analysis" onclick="showTab('analysis')">Analysis</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-intelligence" onclick="showTab('intelligence')">Intelligence</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-export" onclick="showTab('export')">Export</button>
-                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-settings" onclick="showTab('settings')">Settings</button>
+                <!-- Primary workbench tabs (guided workflow order) -->
+                <button class="tab active" role="tab" aria-selected="true" aria-controls="tab-reports" data-tab="reports" onclick="showTab('reports')">Research</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-process" data-tab="process" onclick="showTab('process')">Process</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-review" data-tab="review" onclick="showTab('review')">Review</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-analysis" data-tab="analysis" onclick="showTab('analysis')">Analysis</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-intelligence" data-tab="intelligence" onclick="showTab('intelligence')">Intelligence</button>
+                <button class="tab" role="tab" aria-selected="false" aria-controls="tab-export" data-tab="export" onclick="showTab('export')">Export</button>
+                <!-- Hidden tabs -->
+                <button class="tab hidden" role="tab" aria-selected="false" aria-controls="tab-discovery" data-tab="discovery" onclick="showTab('discovery')" id="discoveryTabBtn">Discovery</button>
+                <!-- Spacer pushes Tools + Settings to right -->
+                <div class="tab-spacer" aria-hidden="true"></div>
+                <!-- Tools dropdown for legacy tabs -->
+                <div class="tools-dropdown" role="none">
+                    <button class="tab tools-trigger" id="toolsTrigger" aria-haspopup="true" aria-expanded="false" onclick="toggleToolsDropdown(event)">Tools <span class="tools-caret" aria-hidden="true">&#9662;</span></button>
+                    <div class="tools-menu hidden" id="toolsMenu" role="menu" aria-label="Legacy tools">
+                        <button class="tools-menu-item" role="menuitem" data-tab="companies" onclick="showTab('companies'); closeToolsDropdown()">Companies</button>
+                        <button class="tools-menu-item" role="menuitem" data-tab="taxonomy" onclick="showTab('taxonomy'); closeToolsDropdown()">Taxonomy</button>
+                        <button class="tools-menu-item" role="menuitem" data-tab="map" onclick="showTab('map'); closeToolsDropdown()">Map</button>
+                        <button class="tools-menu-item" role="menuitem" data-tab="canvas" onclick="showTab('canvas'); closeToolsDropdown()">Canvas</button>
+                    </div>
+                </div>
+                <!-- Settings gear icon -->
+                <button class="tab tab-icon" role="tab" aria-selected="false" aria-controls="tab-settings" data-tab="settings" onclick="showTab('settings')" title="Settings" aria-label="Settings"><span class="material-symbols-outlined">settings</span></button>
             </nav>
 
             <!-- Breadcrumb Navigation -->
             <div id="breadcrumbBar" class="breadcrumb-bar hidden"></div>
 
             <!-- Companies Tab -->
-            <section id="tab-companies" class="tab-content active" role="tabpanel" aria-label="Companies">
+            <section id="tab-companies" class="tab-content" role="tabpanel" aria-label="Companies">
                 <!-- ===== Entity Browser (shown for multi-type schemas) ===== -->
                 <div id="entityBrowser" class="hidden">
                     <div class="entity-type-bar" id="entityTypeBar">
@@ -747,7 +758,7 @@
             </section>
 
             <!-- Research Tab -->
-            <section id="tab-reports" class="tab-content" role="tabpanel" aria-label="Research">
+            <section id="tab-reports" class="tab-content active" role="tabpanel" aria-label="Research">
                 <!-- Research mode toggle -->
                 <div class="research-mode-toggle">
                     <button class="view-toggle-btn active" id="quickReportModeBtn" onclick="switchResearchMode('report')">Quick Report</button>

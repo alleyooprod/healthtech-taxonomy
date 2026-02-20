@@ -131,6 +131,94 @@ h3 { font-size: 18px; margin-bottom: 8px; color: var(--text-primary); margin-top
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
+/* ========== Tab Spacer: pushes Tools + Settings to right ========== */
+.tab-spacer { flex: 1; }
+
+/* ========== Tools Dropdown ========== */
+.tools-dropdown {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.tools-trigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tools-caret {
+    font-size: 8px;
+    transition: transform 200ms var(--ease-standard, ease);
+}
+
+.tools-dropdown.open .tools-caret {
+    transform: rotate(180deg);
+}
+
+/* When a legacy tool tab is active, highlight the Tools trigger */
+.tools-trigger.active {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.tabs:has(.tab-indicator) .tools-trigger.active {
+    border-bottom-color: transparent;
+}
+
+.tools-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    min-width: 140px;
+    background: var(--bg-container);
+    border: 1px solid var(--border-default);
+    border-top: none;
+    border-radius: 0;
+    box-shadow: none;
+    z-index: var(--z-dropdown, 100);
+    padding: 4px 0;
+}
+
+.tools-menu-item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    text-align: left;
+}
+
+.tools-menu-item:hover,
+.tools-menu-item:focus {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.tools-menu-item.active {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+/* ========== Settings Gear Icon Tab ========== */
+.tab-icon {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+}
+
+.tab-icon .material-symbols-outlined {
+    font-size: 18px;
+}
+
 .hidden { display: none !important; }
 
 /* ========== Controls ========== */

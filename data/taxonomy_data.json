@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "last_updated": "2026-02-20T19:49:12.127656",
+    "last_updated": "2026-02-20T21:44:21.414806",
     "total_companies": 3,
     "total_categories": 3,
-    "exported_at": "2026-02-20T19:49:12.127661"
+    "exported_at": "2026-02-20T21:44:21.414810"
   },
   "categories": [
     {
@@ -12,8 +12,8 @@
       "name": "Alpha",
       "parent_id": null,
       "description": null,
-      "created_at": "2026-02-20 19:49:12",
-      "updated_at": "2026-02-20 19:49:12",
+      "created_at": "2026-02-20 21:44:21",
+      "updated_at": "2026-02-20 21:44:21",
       "is_active": 1,
       "merged_into_id": null,
       "synonyms": null,
@@ -28,8 +28,8 @@
       "name": "Beta",
       "parent_id": null,
       "description": null,
-      "created_at": "2026-02-20 19:49:12",
-      "updated_at": "2026-02-20 19:49:12",
+      "created_at": "2026-02-20 21:44:21",
+      "updated_at": "2026-02-20 21:44:21",
       "is_active": 1,
       "merged_into_id": null,
       "synonyms": null,
@@ -44,8 +44,8 @@
       "name": "Gamma",
       "parent_id": null,
       "description": null,
-      "created_at": "2026-02-20 19:49:12",
-      "updated_at": "2026-02-20 19:49:12",
+      "created_at": "2026-02-20 21:44:21",
+      "updated_at": "2026-02-20 21:44:21",
       "is_active": 1,
       "merged_into_id": null,
       "synonyms": null,
@@ -73,8 +73,8 @@
       "tags": [],
       "raw_research": null,
       "source_url": null,
-      "processed_at": "2026-02-20T19:49:12.106975",
-      "updated_at": "2026-02-20T19:49:12.108916",
+      "processed_at": "2026-02-20T21:44:21.392266",
+      "updated_at": "2026-02-20T21:44:21.394424",
       "confidence_score": null,
       "logo_url": "https://logo.clearbit.com/demo.com",
       "employee_range": null,
@@ -84,7 +84,7 @@
       "hq_city": null,
       "hq_country": null,
       "linkedin_url": null,
-      "last_verified_at": "2026-02-20T19:49:12.106975",
+      "last_verified_at": "2026-02-20T21:44:21.392266",
       "is_starred": 0,
       "is_deleted": 0,
       "deleted_at": null,
@@ -128,8 +128,8 @@
       "tags": [],
       "raw_research": null,
       "source_url": null,
-      "processed_at": "2026-02-20T19:49:12.118018",
-      "updated_at": "2026-02-20T19:49:12.119977",
+      "processed_at": "2026-02-20T21:44:21.403918",
+      "updated_at": "2026-02-20T21:44:21.407262",
       "confidence_score": null,
       "logo_url": "https://logo.clearbit.com/sample.co.uk",
       "employee_range": null,
@@ -139,7 +139,7 @@
       "hq_city": null,
       "hq_country": null,
       "linkedin_url": null,
-      "last_verified_at": "2026-02-20T19:49:12.118018",
+      "last_verified_at": "2026-02-20T21:44:21.403918",
       "is_starred": 0,
       "is_deleted": 0,
       "deleted_at": null,
@@ -183,8 +183,8 @@
       "tags": [],
       "raw_research": null,
       "source_url": null,
-      "processed_at": "2026-02-20T19:49:12.096493",
-      "updated_at": "2026-02-20T19:49:12.098713",
+      "processed_at": "2026-02-20T21:44:21.381497",
+      "updated_at": "2026-02-20T21:44:21.383537",
       "confidence_score": null,
       "logo_url": "https://logo.clearbit.com/testcorp.com",
       "employee_range": null,
@@ -194,7 +194,7 @@
       "hq_city": null,
       "hq_country": null,
       "linkedin_url": null,
-      "last_verified_at": "2026-02-20T19:49:12.096493",
+      "last_verified_at": "2026-02-20T21:44:21.381497",
       "is_starred": 0,
       "is_deleted": 0,
       "deleted_at": null,
@@ -232,7 +232,7 @@
       "description": "Updated Test Corp",
       "entity_type": "company",
       "entity_id": 1,
-      "created_at": "2026-02-20 19:49:12"
+      "created_at": "2026-02-20 21:44:21"
     },
     {
       "id": 2,
@@ -241,7 +241,7 @@
       "description": "Updated Demo Inc",
       "entity_type": "company",
       "entity_id": 2,
-      "created_at": "2026-02-20 19:49:12"
+      "created_at": "2026-02-20 21:44:21"
     }
   ],
   "saved_views": []
