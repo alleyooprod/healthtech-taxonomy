@@ -3,6 +3,8 @@
 Endpoints:
     POST /api/extract                    — Trigger extraction for an entity
     POST /api/extract/from-url           — Extract from a URL directly
+    POST /api/extract/classify           — Classify content and extract with specialized extractor
+    GET  /api/extract/extractors         — List available document extractors
     GET  /api/extract/jobs               — List extraction jobs
     GET  /api/extract/jobs/<id>          — Get job status + results
     DELETE /api/extract/jobs/<id>        — Delete a job and its results
@@ -424,3 +426,146 @@ def get_extraction_stats():
     db = current_app.db
     stats = db.get_extraction_stats(project_id)
     return jsonify(stats)
+
+
+@extraction_bp.route("/api/extract/classify", methods=["POST"])
+def classify_and_extract():
+    """Classify content and extract using the best document-specific extractor.
+
+    Body: {content, [entity_name], [model], [force_extractor]}
+    """
+    data = request.json or {}
+    content = data.get("content")
+    entity_name = data.get("entity_name")
+    model = data.get("model")
+    force_extractor = data.get("force_extractor")
+
+    if not content:
+        return jsonify({"error": "content is required"}), 400
+
+    from core.extractors.classifier import extract_with_classification
+    result = extract_with_classification(
+        content=content,
+        entity_name=entity_name,
+        model=model,
+        force_extractor=force_extractor,
+    )
+
+    if result:
+        return jsonify(result), 200
+    return jsonify({"error": "Extraction failed"}), 422
+
+
+@extraction_bp.route("/api/extract/extractors", methods=["GET"])
+def list_extractors():
+    """List available document-specific extractors."""
+    from core.extractors.classifier import get_available_extractors
+    return jsonify({"extractors": get_available_extractors()})
+
+
+@extraction_bp.route("/api/extract/classify-screenshot", methods=["POST"])
+def classify_screenshot():
+    """Classify a screenshot by journey stage and UI patterns.
+
+    Body: {entity_id, [evidence_id], [project_id]}
+    Classifies one screenshot by evidence_id, or all screenshots for entity.
+    """
+    data = request.json or {}
+    entity_id = data.get("entity_id")
+    evidence_id = data.get("evidence_id")
+
+    if not entity_id:
+        return jsonify({"error": "entity_id is required"}), 400
+
+    db = current_app.db
+    entity = db.get_entity(entity_id)
+    if not entity:
+        return jsonify({"error": f"Entity {entity_id} not found"}), 404
+
+    from core.extractors.screenshot import classify_by_context
+
+    if evidence_id:
+        ev = db.get_evidence_by_id(evidence_id)
+        if not ev:
+            return jsonify({"error": f"Evidence {evidence_id} not found"}), 404
+
+        metadata = {}
+        if ev.get("metadata_json"):
+            try:
+                metadata = json.loads(ev["metadata_json"]) if isinstance(ev["metadata_json"], str) else ev["metadata_json"]
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        classification = classify_by_context(
+            source_url=ev.get("source_url"),
+            filename=ev.get("file_path", "").split("/")[-1] if ev.get("file_path") else None,
+            source_name=ev.get("source_name"),
+            evidence_metadata=metadata,
+        )
+        return jsonify({"evidence_id": evidence_id, **classification.to_dict()})
+
+    # Classify all screenshots for entity
+    all_evidence = db.get_evidence(entity_id=entity_id, evidence_type="screenshot")
+    results = []
+    for ev in all_evidence:
+        metadata = {}
+        if ev.get("metadata_json"):
+            try:
+                metadata = json.loads(ev["metadata_json"]) if isinstance(ev["metadata_json"], str) else ev["metadata_json"]
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        classification = classify_by_context(
+            source_url=ev.get("source_url"),
+            filename=ev.get("file_path", "").split("/")[-1] if ev.get("file_path") else None,
+            source_name=ev.get("source_name"),
+            evidence_metadata=metadata,
+        )
+        results.append({"evidence_id": ev["id"], **classification.to_dict()})
+
+    return jsonify(results)
+
+
+@extraction_bp.route("/api/extract/screenshot-sequences", methods=["GET"])
+def get_screenshot_sequences():
+    """Group classified screenshots into journey sequences.
+
+    Query: ?entity_id=X
+    """
+    entity_id = request.args.get("entity_id", type=int)
+    if not entity_id:
+        return jsonify({"error": "entity_id is required"}), 400
+
+    db = current_app.db
+    all_evidence = db.get_evidence(entity_id=entity_id, evidence_type="screenshot")
+
+    from core.extractors.screenshot import classify_by_context, group_into_sequences
+
+    classifications = []
+    for ev in all_evidence:
+        metadata = {}
+        if ev.get("metadata_json"):
+            try:
+                metadata = json.loads(ev["metadata_json"]) if isinstance(ev["metadata_json"], str) else ev["metadata_json"]
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        classification = classify_by_context(
+            source_url=ev.get("source_url"),
+            filename=ev.get("file_path", "").split("/")[-1] if ev.get("file_path") else None,
+            evidence_metadata=metadata,
+        )
+        classifications.append((ev["id"], classification))
+
+    sequences = group_into_sequences(classifications)
+    # Serialize for JSON
+    result = []
+    for seq in sequences:
+        result.append({
+            "name": seq["name"],
+            "screenshots": [
+                {"evidence_id": ev_id, **cls.to_dict()}
+                for ev_id, cls in seq["screenshots"]
+            ],
+        })
+    return jsonify(result)
