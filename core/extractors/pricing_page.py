@@ -111,6 +111,7 @@ def extract(content, entity_name=None, model=None, timeout=120):
             model=model,
             timeout=timeout,
             json_schema=json.dumps(PRICING_PAGE_SCHEMA),
+            operation="extraction_pricing",
         )
     except Exception as e:
         logger.error("Pricing extraction failed: %s", e)

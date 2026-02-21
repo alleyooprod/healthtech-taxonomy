@@ -99,6 +99,7 @@ def extract(content, entity_name=None, model=None, timeout=120):
             model=model,
             timeout=timeout,
             json_schema=json.dumps(PRODUCT_PAGE_SCHEMA),
+            operation="extraction_product",
         )
     except Exception as e:
         logger.error("Product page extraction failed: %s", e)

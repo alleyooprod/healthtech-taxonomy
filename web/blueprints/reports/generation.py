@@ -1111,7 +1111,8 @@ Return ONLY the JSON object, no markdown fences or extra text."""
     try:
         from core.llm import run_cli
         model = data.get("model", "claude-haiku-4-5-20251001")
-        llm_result = run_cli(prompt, model=model, timeout=120, json_schema=_REPORT_SCHEMA)
+        llm_result = run_cli(prompt, model=model, timeout=120, json_schema=_REPORT_SCHEMA,
+                             project_id=project_id, operation="report_generation")
     except Exception as e:
         logger.error("LLM call failed for AI report generation: %s", e)
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500

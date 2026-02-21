@@ -781,7 +781,11 @@ window.showNativeConfirm = function({ title, message, confirmText = 'Delete', ca
     // Trigger animation
     requestAnimationFrame(() => { overlay.classList.add('visible'); });
 
+    // Trap focus inside modal
+    let releaseFocus = trapFocus(overlay);
+
     function cleanup() {
+      if (releaseFocus) { releaseFocus(); releaseFocus = null; }
       overlay.classList.remove('visible');
       setTimeout(() => { overlay.style.display = 'none'; }, 200);
       confirmBtn.removeEventListener('click', onConfirm);
@@ -864,7 +868,11 @@ window.showPromptDialog = function(title, placeholder, callbackOrDefault, confir
     overlay.style.display = 'flex';
     requestAnimationFrame(() => { overlay.classList.add('visible'); input.focus(); });
 
+    // Trap focus inside modal
+    let releaseFocus = trapFocus(overlay);
+
     function cleanup() {
+      if (releaseFocus) { releaseFocus(); releaseFocus = null; }
       overlay.classList.remove('visible');
       setTimeout(() => { overlay.style.display = 'none'; }, 200);
       confirmBtn.removeEventListener('click', onConfirm);
@@ -925,7 +933,11 @@ window.showSelectDialog = function(title, options, callback, confirmText) {
   overlay.style.display = 'flex';
   requestAnimationFrame(() => { overlay.classList.add('visible'); select.focus(); });
 
+  // Trap focus inside modal
+  let releaseFocus = trapFocus(overlay);
+
   function cleanup() {
+    if (releaseFocus) { releaseFocus(); releaseFocus = null; }
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.style.display = 'none'; }, 200);
     confirmBtn.removeEventListener('click', onConfirm);

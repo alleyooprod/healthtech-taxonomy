@@ -250,6 +250,7 @@ Determine:
         response = run_cli(
             prompt=prompt, model=model, timeout=timeout,
             json_schema=json.dumps(schema),
+            operation="screenshot_classify",
         )
     except Exception as e:
         logger.error("Screenshot LLM classification failed: %s", e)

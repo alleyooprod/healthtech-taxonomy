@@ -170,14 +170,28 @@ def generate_ai_insights():
         eids = [e["id"] for e in entities]
         attrs = _get_latest_attributes(conn, eids)
 
-        # Build summary for LLM
+        # Build summary for LLM — cap attribute data to control prompt size
+        _MAX_ATTRS_PER_ENTITY = 30
+        _MAX_ATTR_VALUE_LEN = 500
         entity_summaries = []
         for e in entities:
             entity_attrs = attrs.get(e["id"], {})
+            # Truncate: keep top N attributes, cap long values
+            trimmed = {}
+            for i, (k, v) in enumerate(entity_attrs.items()):
+                if i >= _MAX_ATTRS_PER_ENTITY:
+                    break
+                if isinstance(v, dict) and "value" in v:
+                    val = v["value"]
+                    if isinstance(val, str) and len(val) > _MAX_ATTR_VALUE_LEN:
+                        v = {**v, "value": val[:_MAX_ATTR_VALUE_LEN] + "..."}
+                elif isinstance(v, str) and len(v) > _MAX_ATTR_VALUE_LEN:
+                    v = v[:_MAX_ATTR_VALUE_LEN] + "..."
+                trimmed[k] = v
             summary = {
                 "name": e["name"],
                 "type": e["type_slug"],
-                "attributes": entity_attrs,
+                "attributes": trimmed,
             }
             entity_summaries.append(summary)
 
@@ -217,7 +231,8 @@ Aim for 3-8 high-quality insights. Do not repeat obvious observations."""
 
     try:
         from core.llm import run_cli
-        llm_result = run_cli(prompt, model=model, timeout=90, json_schema=_INSIGHT_SCHEMA)
+        llm_result = run_cli(prompt, model=model, timeout=90, json_schema=_INSIGHT_SCHEMA,
+                             project_id=project_id, operation="insights")
     except Exception as e:
         logger.error("LLM call failed for AI insights: %s", e)
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500

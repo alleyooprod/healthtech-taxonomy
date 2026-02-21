@@ -203,6 +203,7 @@ def extract(content, entity_name=None, model=None, timeout=120):
             model=model,
             timeout=timeout,
             json_schema=json.dumps(PRESS_RELEASE_SCHEMA),
+            operation="extraction_press_release",
         )
     except Exception as e:
         logger.error("Press release extraction failed: %s", e)

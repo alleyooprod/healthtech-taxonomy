@@ -116,7 +116,8 @@ def _run_explore_dimensions(job_id, project_id, model):
     )
 
     try:
-        response = run_cli(prompt, model, timeout=120)
+        response = run_cli(prompt, model, timeout=120,
+                          project_id=project_id, operation="dimensions")
         text = response.get("result", "")
         match = re.search(r'\[.*\]', text, re.DOTALL)
         if match:
@@ -214,7 +215,8 @@ def _populate_single_company(pop_db, c, dimension, dimension_id, model, prompt_t
 
     # --- Path 2: CLI fallback ---
     try:
-        response = run_cli(prompt, model, timeout=60)
+        response = run_cli(prompt, model, timeout=60,
+                          project_id=project_id, operation="dimensions")
         text = response.get("result", "")
         match = re.search(r'\{.*\}', text, re.DOTALL)
         if match:
@@ -288,7 +290,8 @@ def _run_populate_dimension(job_id, dimension_id, project_id, model):
 
         try:
             response = run_cli(batch_prompt, model, timeout=90,
-                               json_schema=_BATCH_DIMENSION_SCHEMA)
+                               json_schema=_BATCH_DIMENSION_SCHEMA,
+                               project_id=project_id, operation="dimensions")
             structured = response.get("structured_output")
             batch_results = None
 

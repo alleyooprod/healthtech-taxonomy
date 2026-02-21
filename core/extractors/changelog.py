@@ -198,6 +198,7 @@ def extract(content, entity_name=None, model=None, timeout=120):
             model=model,
             timeout=timeout,
             json_schema=json.dumps(CHANGELOG_SCHEMA),
+            operation="extraction_changelog",
         )
     except Exception as e:
         logger.error("Changelog extraction failed: %s", e)

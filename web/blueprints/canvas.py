@@ -231,7 +231,8 @@ def _run_diagram_generation(job_id, project_id, category_ids, fields,
         prompt = _build_diagram_prompt(user_prompt, categories_data,
                                        layout_style)
         response = run_cli(prompt, model, timeout=180,
-                           json_schema=DIAGRAM_SCHEMA)
+                           json_schema=DIAGRAM_SCHEMA,
+                           project_id=project_id, operation="canvas")
         duration_ms = int((time.time() - start) * 1000)
 
         layout = response.get("structured_output")

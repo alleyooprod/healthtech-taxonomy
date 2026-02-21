@@ -81,7 +81,8 @@ def research_company(url, model=RESEARCH_MODEL):
     schema = (PROMPTS_DIR / "schemas" / "company_research.json").read_text()
 
     response = run_cli(prompt, model, timeout=RESEARCH_TIMEOUT,
-                       tools="WebSearch,WebFetch", json_schema=schema)
+                       tools="WebSearch,WebFetch", json_schema=schema,
+                       operation="research")
 
     structured = response.get("structured_output")
     if not structured:
@@ -143,7 +144,8 @@ def research_company_with_sources(source_urls, existing_research, model=RESEARCH
             logger.warning("Instructor re-research failed, falling back to CLI: %s", e)
 
     response = run_cli(prompt, model, timeout=RESEARCH_TIMEOUT,
-                       tools="WebSearch,WebFetch", json_schema=schema)
+                       tools="WebSearch,WebFetch", json_schema=schema,
+                       operation="research")
 
     structured = response.get("structured_output")
     if not structured:

@@ -102,6 +102,64 @@ def seeded_project(tmp_db, project_id, category_ids):
 
 
 # ---------------------------------------------------------------------------
+# Central _TABLE_ENSURED reset — prevents stale flags across test suites
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def reset_all_table_flags():
+    """Reset all lazy-table-creation flags so each test gets fresh table init."""
+    _modules = []
+    # Blueprint _shared modules
+    try:
+        from web.blueprints.reports import _shared as reports_shared
+        _modules.append((reports_shared, "_TABLE_ENSURED"))
+    except ImportError:
+        pass
+    try:
+        from web.blueprints.monitoring import _shared as monitoring_shared
+        _modules.append((monitoring_shared, "_TABLE_ENSURED"))
+    except ImportError:
+        pass
+    try:
+        from web.blueprints.insights import _shared as insights_shared
+        _modules.append((insights_shared, "_TABLE_ENSURED"))
+    except ImportError:
+        pass
+    try:
+        from web.blueprints import costs as costs_mod
+        _modules.append((costs_mod, "_TABLE_ENSURED"))
+    except ImportError:
+        pass
+    try:
+        from web.blueprints import playbooks as playbooks_mod
+        _modules.append((playbooks_mod, "_TABLE_ENSURED"))
+    except ImportError:
+        pass
+    try:
+        from web.blueprints import crossproject as crossproject_mod
+        _modules.append((crossproject_mod, "_TABLE_ENSURED"))
+    except ImportError:
+        pass
+    # Core modules
+    try:
+        from core import llm as llm_mod
+        _modules.append((llm_mod, "_COST_TABLE_ENSURED"))
+    except ImportError:
+        pass
+    try:
+        from core import mcp_client as mcp_mod
+        _modules.append((mcp_mod, "_CACHE_TABLE_ENSURED"))
+    except ImportError:
+        pass
+
+    for mod, attr in _modules:
+        setattr(mod, attr, False)
+    yield
+    for mod, attr in _modules:
+        setattr(mod, attr, False)
+
+
+# ---------------------------------------------------------------------------
 # Flask app fixtures
 # ---------------------------------------------------------------------------
 

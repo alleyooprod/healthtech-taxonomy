@@ -399,6 +399,7 @@ def extract_from_content(content, entity_name, entity_type, attributes,
             model=model,
             timeout=timeout,
             json_schema=json.dumps(schema),
+            operation="extraction",
         )
     except Exception as e:
         elapsed = int((time.time() - start) * 1000)

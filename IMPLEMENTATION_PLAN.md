@@ -1,8 +1,8 @@
 # Research Workbench — Implementation Plan
 
-> **Status:** ALL PHASES COMPLETE — every item implemented, zero deferred. 1679 tests passing.
+> **Status:** ALL PHASES COMPLETE — every item implemented, zero deferred. 1700 tests passing.
 > **Created:** 2026-02-20 (Session 10)
-> **Last Updated:** 2026-02-21 (Session 27)
+> **Last Updated:** 2026-02-21 (Session 31)
 > **Vision Doc:** `docs/RESEARCH_WORKBENCH_VISION.md`
 > **Conversation Reference:** `docs/RESEARCH_WORKBENCH_CONVERSATION.md`
 
@@ -577,6 +577,7 @@ No product hierarchy. No temporal versioning. No evidence storage. No schema fle
 | 27 | 2026-02-21 | **Smart MCP Routing + Tier 1 Servers**: API key security fix (`.env` + stdlib dotenv loader, `${VAR}` interpolation in `.mcp.json`). 3 new custom FastMCP servers (Wayback Machine, FCA Register, GLEIF). Server capability catalogue (`core/mcp_catalogue.py`, 16 entries, `ServerCapability` dataclass). Smart routing with score-based ranking (`recommend_servers()`, intent matching, health tracking). 4 new enrichment adapters + parsers. 2 new third-party MCP servers (Brave Search, Yahoo Finance). 7 new/updated test files, 61 new tests, 1679 total. | ✅ Complete |
 | 28 | 2026-02-21 | **Red-Team Audit Phase 1**: 108 findings across 4 lenses (14 security, 48 UX/UI, 21 architecture, 25 token usage). Fixed all actionable Phase 1 items: path traversal, SSRF, SQL field guard, error masking, rate bucket cleanup, N+1 queries, PRAGMA WAL, HTML stripping, compact JSON, L2 extraction cache, json_schema structured output, cost-aware calcs, pagination on 5 lenses endpoints, viewport/contrast/touch WCAG fixes, safeFetch error handling. 1679 tests passing. | ✅ Complete |
 | 29 | 2026-02-21 | **Red-Team Audit Phase 2 — Structural improvements**: (A10) Shared utilities `web/blueprints/_utils.py` — 4 functions extracted, 8 blueprints updated. (A4) God file splitting — lenses.py→7 submodules, reports.py→5, monitoring.py→5, insights.py→4, all as Blueprint packages. (U3) esbuild JS/CSS bundling — 34 JS files→app.bundle.js, 10+ CSS→app.bundle.css. (T14/T15) LLM cost tracking — `llm_calls`+`project_budgets` tables, 4 API endpoints, Settings UI, `log_cost()` in llm.py. (U15) AbortController tab switching — `_tabAbortController` auto-attaches to safeFetch, silent abort handling. (U9) Loading skeletons — CSS shimmer animation, per-tab skeleton templates for 5 tabs. 21 new tests (cost tracking), 1700 total. | ✅ Complete |
+| 30-31 | 2026-02-21 | **Red-Team Audit Phase 3 — Tier C completion**: (U10) Lazy tab rendering — 12 partials extracted from index.html, `_loadTabContent()` fetch-on-first-visit, Flask `/partial/<tab>` route. (U4) Alt attributes for all dynamic images across JS files. (U8) Intelligence tab simplification — 6→4 sub-views, Patterns/Hypotheses merged into Insights inner toggle. (U5) Inline onclick→event delegation — `registerActions()` + document-level click/change/focusout/input listeners in core.js, ~569 inline handlers migrated across ~28 JS files and ~12 HTML templates, data-action/data-on-change/data-on-blur/data-on-input attributes, window exports minimized. Bundles rebuilt (782.5 KB JS, 168.1 KB CSS). 1700 tests passing. | ✅ Complete |
 
 ---
 

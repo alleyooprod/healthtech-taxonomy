@@ -185,9 +185,11 @@ def _run_feature_landscape(job_id, analysis_id, project_id, model, category_filt
                 )
             except Exception as e:
                 logger.warning("SDK cached landscape failed, falling back to CLI: %s", e)
-                response = run_cli(prompt, model, timeout=300)
+                response = run_cli(prompt, model, timeout=300,
+                                   project_id=project_id, operation="discovery")
         else:
-            response = run_cli(prompt, model, timeout=300)
+            response = run_cli(prompt, model, timeout=300,
+                              project_id=project_id, operation="discovery")
 
         text = response.get("result", "")
 
@@ -288,7 +290,8 @@ def _run_gap_analysis(job_id, analysis_id, project_id, model, context_id):
     try:
         ga_db.update_analysis(analysis_id, status="running")
         response = run_cli(prompt, model, timeout=300,
-                           tools="WebSearch,WebFetch")
+                           tools="WebSearch,WebFetch",
+                           project_id=project_id, operation="discovery")
         text = response.get("result", "")
 
         match = re.search(r'\{.*\}', text, re.DOTALL)

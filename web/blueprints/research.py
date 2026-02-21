@@ -143,7 +143,8 @@ def _run_research(job_id, research_id, project_id, user_prompt,
     prompt = _build_prompt(user_prompt, context, scope_type)
 
     try:
-        response = run_cli(prompt, model, timeout=RESEARCH_TIMEOUT, tools="WebSearch,WebFetch")
+        response = run_cli(prompt, model, timeout=RESEARCH_TIMEOUT, tools="WebSearch,WebFetch",
+                          project_id=project_id, operation="research")
         result = response.get("result", "")
         duration_ms = int((time.time() - start) * 1000)
         cost_usd = response.get("cost_usd")

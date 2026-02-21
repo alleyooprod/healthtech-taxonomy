@@ -237,7 +237,7 @@ def evolve_taxonomy(db, batch_id, model="claude-opus-4-6", project_id=None):
             # Final fallback: plain CLI
             try:
                 response = run_cli(prompt, model, timeout=EVOLVE_TIMEOUT,
-                                   json_schema=schema)
+                                   json_schema=schema, operation="taxonomy_evolve")
                 structured = _parse_structured(response)
             except Exception as e2:
                 print(f"  Warning: Taxonomy evolution failed: {e2}")
@@ -358,7 +358,7 @@ def review_taxonomy(db, model="claude-opus-4-6", project_id=None, observations="
         # Final fallback: plain CLI
         try:
             response = run_cli(prompt, model, timeout=REVIEW_TIMEOUT,
-                               json_schema=schema)
+                               json_schema=schema, operation="taxonomy_review")
         except Exception as e:
             return {"error": f"Review failed: {e}", "changes": []}
 

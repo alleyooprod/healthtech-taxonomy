@@ -124,14 +124,14 @@ For 'tags', return a JSON array of strings. For numeric fields, return numbers.
                 logger.debug("Instructor enrichment step 1 failed: %s", e)
                 # Fall through to CLI path below
                 try:
-                    resp = run_cli(prompt, model, timeout=60)
+                    resp = run_cli(prompt, model, timeout=60, operation="enrichment")
                     result = _parse_json_from_response(resp)
                     _extract_fields_from_dict(result, remaining, enriched)
                 except Exception:
                     pass
         else:
             try:
-                resp = run_cli(prompt, model, timeout=60)
+                resp = run_cli(prompt, model, timeout=60, operation="enrichment")
                 result = _parse_json_from_response(resp)
                 _extract_fields_from_dict(result, remaining, enriched)
             except Exception:
@@ -150,7 +150,8 @@ For 'tags', return a JSON array of relevant industry tags.
 For numeric fields like total_funding_usd and founded_year, return numbers.
 """
     try:
-        resp = run_cli(prompt, model, timeout=120, tools="WebSearch,WebFetch")
+        resp = run_cli(prompt, model, timeout=120, tools="WebSearch,WebFetch",
+                       operation="enrichment")
         result = _parse_json_from_response(resp)
         _extract_fields_from_dict(result, remaining, enriched)
     except Exception:
@@ -172,7 +173,8 @@ Try searching for:
 Return JSON only with field names as keys. Use null if truly unavailable.
 """
     try:
-        resp = run_cli(prompt, model, timeout=120, tools="WebSearch,WebFetch")
+        resp = run_cli(prompt, model, timeout=120, tools="WebSearch,WebFetch",
+                       operation="enrichment")
         result = _parse_json_from_response(resp)
         _extract_fields_from_dict(result, remaining, enriched)
     except Exception:

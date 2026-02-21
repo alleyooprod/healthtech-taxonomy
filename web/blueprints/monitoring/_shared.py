@@ -486,7 +486,7 @@ def _check_app_listing(monitor, conn, app_name, fingerprint, store_label, extra_
 def _check_rss(monitor, conn):
     """Parse RSS/Atom feed and detect new entries since last check."""
     import requests as req_lib
-    import xml.etree.ElementTree as ET
+    import defusedxml.ElementTree as ET
 
     target_url = monitor["target_url"]
     try:
@@ -530,7 +530,7 @@ def _check_rss(monitor, conn):
                     "pub_date": updated_el.text if updated_el is not None else "",
                     "guid": id_el.text if id_el is not None else "",
                 })
-    except ET.ParseError as e:
+    except Exception as e:  # defusedxml raises various exceptions for malicious XML
         return _check_error(f"RSS parse failed: {e}")
 
     # Build a hash from the entry GUIDs/links to detect new entries

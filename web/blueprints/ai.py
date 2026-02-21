@@ -249,7 +249,8 @@ Search the web and return a JSON array of 5-10 company objects, each with:
 Only return the JSON array, nothing else. Focus on real, existing companies."""
 
     try:
-        response = run_cli(prompt, model, timeout=120, tools="WebSearch,WebFetch")
+        response = run_cli(prompt, model, timeout=120, tools="WebSearch,WebFetch",
+                          operation="ai_chat")
         text = response.get("result", "")
         if not text or not text.strip():
             result = {"status": "error",
@@ -346,7 +347,8 @@ def _run_pricing_research(job_id, project_id, company_ids, model):
         try:
             response = run_cli(prompt, model, timeout=90,
                                tools="WebSearch,WebFetch",
-                               json_schema=str(Path(__file__).parent.parent.parent / "prompts" / "schemas" / "pricing_research.json"))
+                               json_schema=str(Path(__file__).parent.parent.parent / "prompts" / "schemas" / "pricing_research.json"),
+                               project_id=project_id, operation="pricing_research")
             text = response.get("result", "")
             match = re.search(r'\{.*\}', text, re.DOTALL)
             if match:
@@ -438,7 +440,8 @@ Search the web and find 5 similar or competing companies. Return a JSON array wi
 Only return the JSON array, nothing else."""
 
     try:
-        response = run_cli(prompt, model, timeout=120)
+        response = run_cli(prompt, model, timeout=120,
+                          operation="ai_chat")
         text = response.get("result", "")
         if not text or not text.strip():
             result = {"status": "error",
@@ -597,7 +600,8 @@ Rules:
         # Final fallback: plain run_cli with full prompt
         try:
             full_prompt = f"{context}\n\n{instructions}\n\nQuestion: {safe_question}"
-            response = run_cli(full_prompt, model, timeout=60)
+            response = run_cli(full_prompt, model, timeout=60,
+                              project_id=project_id, operation="ai_context")
             answer = response.get("result", "")
             return jsonify({"answer": answer})
         except Exception as e2:
@@ -703,6 +707,7 @@ CONSTRAINTS:
         response = run_cli(
             prompt, model, timeout=300,
             tools="WebSearch,WebFetch",
+            project_id=project_id, operation="ai_report",
         )
         report = response.get("result", "")
         result_data = {"status": "complete", "report": report,

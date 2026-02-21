@@ -89,7 +89,7 @@ def classify_company(company_data, taxonomy_tree, model="claude-opus-4-6"):
     except Exception:
         # Final fallback: plain run_cli
         response = run_cli(prompt, model, timeout=CLASSIFY_TIMEOUT,
-                           json_schema=schema)
+                           json_schema=schema, operation="classify")
 
     structured = response.get("structured_output")
     if not structured:

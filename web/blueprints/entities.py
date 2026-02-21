@@ -155,6 +155,7 @@ Rules:
             model=RESEARCH_MODEL,
             timeout=90,
             json_schema=schema_spec,
+            operation="entity_inference",
         )
 
         if result.get("is_error"):
@@ -272,7 +273,7 @@ def refine_schema():
 
     # Try AI-powered refinement first, fall back to rule-based
     try:
-        result = _ai_refine_schema(current_schema, research_goal, feedback)
+        result = _ai_refine_schema(current_schema, research_goal, feedback, project_id)
         return jsonify(result)
     except Exception as e:
         logger.warning("AI schema refinement failed, using rule-based: %s", e)
@@ -280,7 +281,7 @@ def refine_schema():
         return jsonify(result)
 
 
-def _ai_refine_schema(current_schema, research_goal, feedback):
+def _ai_refine_schema(current_schema, research_goal, feedback, project_id=None):
     """Use LLM to analyse and suggest schema improvements."""
     from core.llm import run_cli
 
@@ -364,6 +365,7 @@ Rules:
         model=RESEARCH_MODEL,
         timeout=90,
         json_schema=refine_schema_spec,
+        project_id=project_id, operation="schema_refinement",
     )
 
     if result.get("is_error"):

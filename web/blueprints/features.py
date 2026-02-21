@@ -331,6 +331,7 @@ RULES:
             model=model or "claude-sonnet-4-6",
             timeout=60,
             json_schema=json.dumps(schema),
+            project_id=project_id, operation="feature_suggestion",
         )
 
         if response.get("is_error"):
