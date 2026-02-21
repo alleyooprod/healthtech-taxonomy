@@ -493,7 +493,6 @@ def _run_claude_cli(prompt, model, timeout, tools=None, json_schema=None,
         CLAUDE_BIN, "-p", prompt,
         *CLAUDE_COMMON_FLAGS,
         "--model", model,
-        "--max-tokens", str(max_tokens),
         "--no-session-persistence",
     ]
     if tools:
