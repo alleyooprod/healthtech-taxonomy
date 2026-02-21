@@ -22,10 +22,11 @@ from storage.repos.features import FeaturesMixin
 class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixin,
                ResearchMixin, CanvasMixin, TemplateMixin, DimensionsMixin, DiscoveryMixin,
                EntityMixin, ExtractionMixin, FeaturesMixin):
+    _wal_set = False  # class-level: WAL only needs to be set once per DB file
+
     def __init__(self, db_path=None):
         self.db_path = db_path or DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._wal_set = False
         self._init_db()
 
     def _get_conn(self):
@@ -33,9 +34,9 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("PRAGMA busy_timeout=5000")
-        if not self._wal_set:
+        if not self.__class__._wal_set:
             conn.execute("PRAGMA journal_mode=WAL")
-            self._wal_set = True
+            self.__class__._wal_set = True
         return conn
 
     def _init_db(self):
