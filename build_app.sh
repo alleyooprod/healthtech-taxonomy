@@ -106,6 +106,24 @@ cat > "${PROJECT_DIR}/${APP_DIR}/Contents/Info.plist" << PLIST
             </array>
         </dict>
     </array>
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMessage</key>
+            <string>captureURL</string>
+            <key>NSPortName</key>
+            <string>ResearchTaxonomyLibrary</string>
+            <key>NSMenuItem</key>
+            <dict>
+                <key>default</key>
+                <string>Capture in Research Workbench</string>
+            </dict>
+            <key>NSSendTypes</key>
+            <array>
+                <string>NSStringPboardType</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST
@@ -121,6 +139,9 @@ fi
 
 # -- Ad-hoc sign so macOS trusts the bundle --
 codesign --force --sign - "${PROJECT_DIR}/${APP_DIR}" 2>/dev/null || true
+
+# Refresh Services menu registration
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f "${PROJECT_DIR}/${APP_DIR}" 2>/dev/null || true
 
 # -- Remove quarantine --
 xattr -cr "${PROJECT_DIR}/${APP_DIR}" 2>/dev/null || true

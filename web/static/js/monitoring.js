@@ -44,6 +44,29 @@ async function initMonitoring() {
     ]);
 }
 
+// ── Desktop Badge Bridge ─────────────────────────────────────────
+
+/**
+ * Push monitoring alert count and recent changes to the desktop menu bar
+ * status item (if running inside pywebview desktop app).
+ */
+function _updateDesktopBadge() {
+    if (!window.pywebview?.api?.update_monitoring_badge) return;
+    try {
+        const alertCount = (_monitoringStats && _monitoringStats.unread_changes) || 0;
+        const recentChanges = (_monitoringFeed || []).slice(0, 5).map(item => ({
+            entity: item.entity_name || '',
+            summary: item.title || item.summary || '',
+        }));
+        window.pywebview.api.update_monitoring_badge(
+            alertCount,
+            JSON.stringify(recentChanges)
+        );
+    } catch (e) {
+        // Silent fallback — desktop API may not be available
+    }
+}
+
 // ── Stats ────────────────────────────────────────────────────────
 
 async function _loadMonitoringStats() {
@@ -53,6 +76,7 @@ async function _loadMonitoringStats() {
         if (!resp.ok) return;
         _monitoringStats = await resp.json();
         _renderMonitoringStats();
+        _updateDesktopBadge();
     } catch (e) {
         console.warn('Failed to load monitoring stats:', e);
     }
@@ -128,6 +152,7 @@ async function _loadChangeFeed(append) {
 
         _monitoringFeedHasMore = items.length >= _monitoringFeedLimit;
         _renderChangeFeed();
+        _updateDesktopBadge();
     } catch (e) {
         console.warn('Failed to load change feed:', e);
     }

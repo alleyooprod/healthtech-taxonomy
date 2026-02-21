@@ -1429,6 +1429,9 @@ def _graceful_shutdown(window):
     if window:
         _save_window_state(window)
 
+    # 1b. Remove menu bar status item
+    _remove_status_item()
+
     # 2. Git sync (with configurable timeout)
     settings = load_app_settings()
     if settings.get("git_sync_enabled", True):
@@ -1575,6 +1578,12 @@ def main():
             _start_network_monitor()
             _setup_dock_menu()
             _log_timing("System event handlers registered")
+
+            # Menu bar status item + window tabbing + services
+            _setup_status_item()
+            _setup_window_tabbing()
+            _setup_services()
+            _log_timing("Status item, window tabbing, and services registered")
 
             # Setup native titlebar + vibrancy (macOS desktop look)
             def _apply_native_chrome():
