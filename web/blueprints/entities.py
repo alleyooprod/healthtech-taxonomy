@@ -891,6 +891,10 @@ def add_evidence():
     if not entity_id or not evidence_type or not file_path:
         return jsonify({"error": "entity_id, type, and file_path are required"}), 400
 
+    # Reject path traversal attempts
+    if file_path and (".." in file_path or file_path.startswith("/") or file_path.startswith("\\")):
+        return jsonify({"error": "Invalid file path"}), 400
+
     ev_id = current_app.db.add_evidence(
         entity_id, evidence_type, file_path,
         source_url=data.get("source_url"),

@@ -1308,7 +1308,7 @@ AUDIENCE: {audience}
 REPORT TYPE: {template_name} — {template_desc}
 
 DATA (structured research data from the project):
-{json.dumps(gathered, indent=2, default=str)}
+{json.dumps(gathered, separators=(',', ':'), default=str)}
 {questions_block}
 
 INSTRUCTIONS:

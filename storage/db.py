@@ -25,14 +25,17 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
     def __init__(self, db_path=None):
         self.db_path = db_path or DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._wal_set = False
         self._init_db()
 
     def _get_conn(self):
         conn = sqlite3.connect(str(self.db_path), timeout=10)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("PRAGMA busy_timeout=5000")
+        if not self._wal_set:
+            conn.execute("PRAGMA journal_mode=WAL")
+            self._wal_set = True
         return conn
 
     def _init_db(self):
@@ -456,19 +459,34 @@ class Database(CompanyMixin, TaxonomyMixin, JobsMixin, SocialMixin, SettingsMixi
                             f"DELETE FROM {table} WHERE project_id = ?",
                             (project_id,),
                         )
-                except Exception:
-                    pass  # table doesn't exist yet
+                except sqlite3.OperationalError:
+                    pass  # table may not exist yet
 
             # Cross-project: entity_links cleaned by entity cascade.
             # cross_project_insights stores project_ids as JSON text.
+            # Parse JSON properly to avoid LIKE '%N%' matching project IDs
+            # that contain N as a substring (e.g. deleting project 1 would
+            # incorrectly match 10, 11, 12, etc.).
             try:
-                conn.execute(
-                    "DELETE FROM cross_project_insights "
-                    "WHERE project_ids LIKE ?",
-                    (f"%{project_id}%",),
-                )
-            except Exception:
-                pass
+                rows = conn.execute(
+                    "SELECT id, project_ids FROM cross_project_insights"
+                ).fetchall()
+                ids_to_delete = []
+                for row in rows:
+                    try:
+                        pids = json.loads(row["project_ids"]) if isinstance(row["project_ids"], str) else row["project_ids"]
+                        if project_id in pids:
+                            ids_to_delete.append(row["id"])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                if ids_to_delete:
+                    placeholders = ",".join("?" * len(ids_to_delete))
+                    conn.execute(
+                        f"DELETE FROM cross_project_insights WHERE id IN ({placeholders})",
+                        ids_to_delete,
+                    )
+            except sqlite3.OperationalError:
+                pass  # table may not exist yet
 
             # Finally delete the project itself
             conn.execute(

@@ -230,12 +230,43 @@ class EntityMixin:
 
         with self._get_conn() as conn:
             rows = conn.execute(sql, params).fetchall()
-            entities = []
-            for r in rows:
-                entity = dict(r)
-                if include_attributes:
-                    entity["attributes"] = self._get_current_attributes(conn, entity["id"])
-                entities.append(entity)
+            entities = [dict(r) for r in rows]
+
+            if include_attributes and entities:
+                # Batch-load attributes for all entities at once (avoids N+1)
+                entity_ids = [e["id"] for e in entities]
+                placeholders = ",".join("?" * len(entity_ids))
+                attr_rows = conn.execute(f"""
+                    SELECT ea.entity_id, ea.attr_slug, ea.value,
+                           ea.source, ea.confidence, ea.captured_at
+                    FROM entity_attributes ea
+                    INNER JOIN (
+                        SELECT entity_id, attr_slug, MAX(id) as max_id
+                        FROM entity_attributes
+                        WHERE entity_id IN ({placeholders})
+                        GROUP BY entity_id, attr_slug
+                    ) latest ON ea.id = latest.max_id
+                """, entity_ids).fetchall()
+
+                # Group by entity_id
+                attrs_by_entity = {}
+                for row in attr_rows:
+                    eid = row["entity_id"]
+                    if eid not in attrs_by_entity:
+                        attrs_by_entity[eid] = {}
+                    attrs_by_entity[eid][row["attr_slug"]] = {
+                        "value": row["value"],
+                        "source": row["source"],
+                        "confidence": row["confidence"],
+                        "captured_at": row["captured_at"],
+                    }
+
+                for entity in entities:
+                    entity["attributes"] = attrs_by_entity.get(entity["id"], {})
+            elif include_attributes:
+                # No entities returned — nothing to load
+                pass
+
             return entities
 
     def update_entity(self, entity_id, fields):

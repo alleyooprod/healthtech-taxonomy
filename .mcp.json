@@ -41,10 +41,7 @@
     },
     "rijksmuseum": {
       "command": "npx",
-      "args": ["-y", "mcp-server-rijksmuseum"],
-      "env": {
-        "RIJKSMUSEUM_API_KEY": "NEEDS_FREE_KEY"
-      }
+      "args": ["-y", "mcp-server-rijksmuseum"]
     },
     "smithsonian": {
       "command": "npx",
@@ -62,14 +59,14 @@
       "command": "npx",
       "args": ["-y", "@jeff_kit/unsplash-mcp-server"],
       "env": {
-        "UNSPLASH_ACCESS_KEY": "NEEDS_FREE_KEY"
+        "UNSPLASH_ACCESS_KEY": "${UNSPLASH_ACCESS_KEY}"
       }
     },
     "pexels": {
       "command": "npx",
       "args": ["-y", "pexels-image-search-mcp@latest"],
       "env": {
-        "PEXELS_API_KEY": "NEEDS_FREE_KEY"
+        "PEXELS_API_KEY": "${PEXELS_API_KEY}"
       }
     },
     "icons8": {
@@ -114,6 +111,22 @@
       "env": {
         "COOPER_HEWITT_API_KEY": "NEEDS_FREE_KEY"
       }
+    },
+    "wayback-machine": {
+      "command": "python",
+      "args": ["mcp-servers/wayback_machine.py"]
+    },
+    "fca-register": {
+      "command": "python",
+      "args": ["mcp-servers/fca_register.py"]
+    },
+    "gleif": {
+      "command": "python",
+      "args": ["mcp-servers/gleif.py"]
+    },
+    "yahoo-finance": {
+      "command": "npx",
+      "args": ["-y", "@szemeng76/yfinance-mcp-server"]
     }
   }
 }

@@ -1,4 +1,5 @@
 """Flask web app for browsing and managing the taxonomy."""
+import os
 import sys
 import time
 from collections import defaultdict

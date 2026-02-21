@@ -14,6 +14,9 @@ These are lightweight MCP servers built in-house to wrap public REST APIs that d
 | `oecd.py` | [OECD SDMX API](https://data.oecd.org/api/) | None | CUSTOM — no official MCP exists |
 | `dbnomics.py` | [DBnomics](https://db.nomics.world/) | None | CUSTOM — no official MCP exists |
 | `cooper_hewitt.py` | [Cooper Hewitt Museum](https://collection.cooperhewitt.org/api/) | Free API key | CUSTOM — no official MCP exists |
+| `wayback_machine.py` | [Internet Archive CDX API](https://web.archive.org/cdx/search/cdx) | None | CUSTOM — no official MCP exists |
+| `fca_register.py` | [FCA Register API](https://register.fca.org.uk/services/V0.1) | None | CUSTOM — no official MCP exists |
+| `gleif.py` | [GLEIF LEI API](https://api.gleif.org/api/v1) | None (60 req/min) | CUSTOM — no official MCP exists |
 
 ## Dependencies
 

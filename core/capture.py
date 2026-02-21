@@ -90,8 +90,15 @@ def evidence_path_relative(project_id: int, entity_id: int,
 
 
 def evidence_path_absolute(relative_path: str) -> Path:
-    """Convert a relative evidence path to an absolute filesystem path."""
-    return EVIDENCE_DIR / relative_path
+    """Convert a relative evidence path to an absolute filesystem path.
+
+    Raises ValueError if the resolved path escapes EVIDENCE_DIR (path traversal).
+    """
+    base = EVIDENCE_DIR.resolve()
+    target = (EVIDENCE_DIR / relative_path).resolve()
+    if not target.is_relative_to(base):
+        raise ValueError("Path traversal detected")
+    return target
 
 
 def store_file(project_id: int, entity_id: int, evidence_type: str,

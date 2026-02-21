@@ -65,7 +65,8 @@ def is_gemini_model(model: str) -> bool:
     retry=retry_if_exception_type((subprocess.TimeoutExpired, ConnectionError, OSError)),
 )
 def run_cli(prompt: str, model: str, timeout: int,
-            tools: str = None, json_schema: str = None) -> dict:
+            tools: str = None, json_schema: str = None,
+            max_tokens: int = 8192, system: str = None) -> dict:
     """Run an LLM call and return a normalised response dict.
 
     Args:
@@ -75,6 +76,8 @@ def run_cli(prompt: str, model: str, timeout: int,
         tools: Comma-separated tool names (Claude: "WebSearch,WebFetch").
                Ignored for Gemini (has built-in Google Search grounding).
         json_schema: JSON schema string for structured output (Claude only).
+        max_tokens: Maximum output tokens (default 8192). Passed to SDK backends.
+        system: Optional system message string (SDK backends only).
 
     Returns:
         Dict matching Claude CLI JSON format:
@@ -91,14 +94,17 @@ def run_cli(prompt: str, model: str, timeout: int,
     # Use SDK for Claude when possible, fall back to CLI for web tools
     needs_cli_tools = tools and any(t.strip() for t in tools.split(","))
     if LLM_BACKEND == "sdk" and not needs_cli_tools:
-        return _run_claude_sdk(prompt, model, timeout, json_schema)
+        return _run_claude_sdk(prompt, model, timeout, json_schema,
+                               max_tokens=max_tokens, system=system)
 
     try:
-        return _run_claude_cli(prompt, model, timeout, tools, json_schema)
+        return _run_claude_cli(prompt, model, timeout, tools, json_schema,
+                               max_tokens=max_tokens)
     except FileNotFoundError:
         logger.warning("Claude CLI binary not found, attempting SDK fallback")
         if not needs_cli_tools:
-            return _run_claude_sdk(prompt, model, timeout, json_schema)
+            return _run_claude_sdk(prompt, model, timeout, json_schema,
+                                   max_tokens=max_tokens, system=system)
         raise RuntimeError(
             "Claude CLI not found. Install it (run 'claude' in terminal) "
             "or set an Anthropic API key in Settings to use SDK mode."
@@ -107,26 +113,32 @@ def run_cli(prompt: str, model: str, timeout: int,
 
 # ---- Claude SDK -------------------------------------------------------------
 
-def _run_claude_sdk(prompt, model, timeout, json_schema=None):
+def _run_claude_sdk(prompt, model, timeout, json_schema=None,
+                    max_tokens=8192, system=None):
     """Call Claude via the Anthropic Python SDK."""
     try:
         import anthropic
     except ImportError:
         logger.warning("anthropic package not installed, falling back to CLI")
-        return _run_claude_cli(prompt, model, timeout, json_schema=json_schema)
+        return _run_claude_cli(prompt, model, timeout, json_schema=json_schema,
+                               max_tokens=max_tokens)
 
     if not os.environ.get("ANTHROPIC_API_KEY"):
         logger.warning("ANTHROPIC_API_KEY not set, falling back to CLI")
-        return _run_claude_cli(prompt, model, timeout, json_schema=json_schema)
+        return _run_claude_cli(prompt, model, timeout, json_schema=json_schema,
+                               max_tokens=max_tokens)
 
     client = anthropic.Anthropic()  # uses ANTHROPIC_API_KEY env var
     start = time.time()
 
     kwargs = {
         "model": model,
-        "max_tokens": 8192,
+        "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": prompt}],
     }
+
+    if system:
+        kwargs["system"] = system
 
     if json_schema:
         # Parse the schema string and use it as a tool for structured output
@@ -192,7 +204,8 @@ def instructor_available() -> bool:
 
 
 def run_instructor(prompt, model, response_model, timeout=120,
-                   max_retries=3, system=None, context=None):
+                   max_retries=3, system=None, context=None,
+                   max_tokens=8192):
     """Run an LLM call via Instructor, returning a validated Pydantic model.
 
     This function is SDK-only.  Callers must check instructor_available()
@@ -380,11 +393,13 @@ def run_sdk_cached(prompt, model, timeout, json_schema=None,
 
 # ---- Claude CLI --------------------------------------------------------------
 
-def _run_claude_cli(prompt, model, timeout, tools=None, json_schema=None):
+def _run_claude_cli(prompt, model, timeout, tools=None, json_schema=None,
+                    max_tokens=8192):
     cmd = [
         CLAUDE_BIN, "-p", prompt,
         *CLAUDE_COMMON_FLAGS,
         "--model", model,
+        "--max-tokens", str(max_tokens),
         "--no-session-persistence",
     ]
     if tools:
