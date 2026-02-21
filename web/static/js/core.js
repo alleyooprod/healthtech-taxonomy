@@ -107,6 +107,10 @@ function _nprogressDone() {
     if (window.NProgress && --_activeFetches <= 0) { _activeFetches = 0; NProgress.done(); }
 }
 
+// --- Tab AbortController ---
+// Aborted on each tab switch so in-flight fetches from the previous tab are cancelled.
+let _tabAbortController = null;
+
 // --- Safe Fetch ---
 async function safeFetch(url, options = {}) {
     const method = (options.method || 'GET').toUpperCase();
@@ -117,6 +121,10 @@ async function safeFetch(url, options = {}) {
         } else {
             options.headers['X-CSRF-Token'] = CSRF_TOKEN;
         }
+    }
+    // Auto-attach the tab abort signal unless the caller provided their own
+    if (!options.signal && _tabAbortController) {
+        options.signal = _tabAbortController.signal;
     }
     _nprogressStart();
     try {
@@ -135,6 +143,14 @@ async function safeFetch(url, options = {}) {
         return response;
     } catch (e) {
         _nprogressDone();
+        // Silently swallow AbortError — this is expected when the user switches tabs
+        if (e.name === 'AbortError') {
+            return new Response(JSON.stringify({ _aborted: true }), {
+                status: 0,
+                statusText: 'Aborted',
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
         console.error(`Fetch failed: ${method} ${url}`, e);
         showToast(`Network error: ${e.message}`);
         // Return a mock Response so callers can safely call .json() / .text()
