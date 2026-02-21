@@ -1,22 +1,20 @@
 ---
 document_type: healthtech_taxonomy
-last_updated: 2026-02-21T16:27:54
-total_companies: 3
-total_categories: 3
+last_updated: 2026-02-21T17:21:26
+total_companies: 0
+total_categories: 1
 format_version: 2.0
 purpose: Market taxonomy for healthtech, wellness, fitness, and health insurance companies
 ---
 
 # Healthtech Market Taxonomy
 
-> **3 companies** across **3 categories** | Last updated: 2026-02-21 16:27
+> **0 companies** across **1 categories** | Last updated: 2026-02-21 17:21
 
 ## Taxonomy Tree
 
 ```
-+-- Alpha (3)
-+-- Beta (0)
-+-- Gamma (0)
++-- EAP (0)
 ```
 
 ## Summary Statistics
@@ -25,55 +23,9 @@ purpose: Market taxonomy for healthtech, wellness, fitness, and health insurance
 
 | Category | Companies | % of Total |
 |----------|----------:|-----------:|
-| Alpha | 3 | 100% |
-| Beta | 0 | 0% |
-| Gamma | 0 | 0% |
+| EAP | 0 | 0% |
 
 ## Companies by Category
-
-### Alpha (3 companies)
-
-#### Demo Inc
-
-- **URL**: https://demo.com
-- **Category**: Alpha > None
-- **Tags**: none
-- **Confidence**: N/A
-- **What**: None
-- **Target**: None
-- **Products**: None
-- **Funding**: None
-- **Geography**: None
-- **TAM**: None
-- **Processed**: 2026-02-21T16:27:54.543225
-
-#### Sample Ltd
-
-- **URL**: https://sample.co.uk
-- **Category**: Alpha > None
-- **Tags**: none
-- **Confidence**: N/A
-- **What**: None
-- **Target**: None
-- **Products**: None
-- **Funding**: None
-- **Geography**: None
-- **TAM**: None
-- **Processed**: 2026-02-21T16:27:54.553872
-
-#### Test Corp
-
-- **URL**: https://testcorp.com
-- **Category**: Alpha > None
-- **Tags**: none
-- **Confidence**: N/A
-- **What**: None
-- **Target**: None
-- **Products**: None
-- **Funding**: None
-- **Geography**: None
-- **TAM**: None
-- **Processed**: 2026-02-21T16:27:54.533160
 
 ---
 

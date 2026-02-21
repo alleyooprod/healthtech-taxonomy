@@ -1,19 +1,19 @@
 {
   "metadata": {
-    "last_updated": "2026-02-21T16:29:16.717187",
+    "last_updated": "2026-02-21T17:21:26.871721",
     "total_companies": 0,
     "total_categories": 1,
-    "exported_at": "2026-02-21T16:29:16.717191"
+    "exported_at": "2026-02-21T17:21:26.871727"
   },
   "categories": [
     {
-      "id": 1,
-      "project_id": 1,
-      "name": "Cat1",
+      "id": 182,
+      "project_id": 26,
+      "name": "EAP",
       "parent_id": null,
       "description": null,
-      "created_at": "2026-02-21 16:29:16",
-      "updated_at": "2026-02-21 16:29:16",
+      "created_at": "2026-02-20 19:41:12",
+      "updated_at": "2026-02-20 19:41:12",
       "is_active": 1,
       "merged_into_id": null,
       "synonyms": null,
