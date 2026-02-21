@@ -89,6 +89,29 @@ def _row_to_report(row):
 
 # ── Template definitions ─────────────────────────────────────
 
+# ── JSON schemas for structured LLM output ───────────────────
+
+_REPORT_SCHEMA = json.dumps({
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "heading": {"type": "string"},
+                    "content": {"type": "string"}
+                },
+                "required": ["heading", "content"],
+                "additionalProperties": False
+            }
+        }
+    },
+    "required": ["title", "sections"],
+    "additionalProperties": False
+})
+
 _TEMPLATES = [
     {
         "slug": "market_overview",
@@ -1338,58 +1361,45 @@ Return ONLY the JSON object, no markdown fences or extra text."""
     try:
         from core.llm import run_cli
         model = data.get("model", "claude-haiku-4-5-20251001")
-        llm_result = run_cli(prompt, model=model, timeout=120)
+        llm_result = run_cli(prompt, model=model, timeout=120, json_schema=_REPORT_SCHEMA)
     except Exception as e:
         logger.error("LLM call failed for AI report generation: %s", e)
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
 
-    # Parse LLM response
+    # Parse LLM response — json_schema should guarantee structured output
     raw_text = llm_result.get("result", "")
     structured = llm_result.get("structured_output")
 
     ai_sections = []
     ai_title = f"{template_name} Report"
 
+    parsed = None
     if structured and isinstance(structured, dict):
-        ai_title = structured.get("title", ai_title)
-        raw_sections = structured.get("sections", [])
-        for s in raw_sections:
+        parsed = structured
+    else:
+        # Fallback: parse from raw text (strip markdown fences if present)
+        try:
+            text = raw_text.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+            if text.endswith("```"):
+                text = text[:-3]
+            parsed = json.loads(text.strip())
+        except (json.JSONDecodeError, TypeError):
+            parsed = None
+
+    if parsed and isinstance(parsed, dict):
+        ai_title = parsed.get("title", ai_title)
+        for s in parsed.get("sections", []):
             ai_sections.append({
                 "heading": s.get("heading", ""),
                 "content": s.get("content", ""),
                 "data": {},
                 "evidence_refs": [],
             })
-    else:
-        # Try to parse from text
-        try:
-            # Strip markdown fences if present
-            text = raw_text.strip()
-            if text.startswith("```"):
-                text = text.split("\n", 1)[1] if "\n" in text else text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-            text = text.strip()
-
-            parsed = json.loads(text)
-            ai_title = parsed.get("title", ai_title)
-            for s in parsed.get("sections", []):
-                ai_sections.append({
-                    "heading": s.get("heading", ""),
-                    "content": s.get("content", ""),
-                    "data": {},
-                    "evidence_refs": [],
-                })
-        except (json.JSONDecodeError, TypeError):
-            # Fall back: use raw text as a single section
-            ai_sections.append({
-                "heading": template_name,
-                "content": raw_text,
-                "data": {},
-                "evidence_refs": [],
-            })
 
     if not ai_sections:
+        # Final fallback: use raw text as a single section
         ai_sections.append({
             "heading": template_name,
             "content": raw_text or "Report generation produced no content.",

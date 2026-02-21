@@ -57,11 +57,21 @@ def sanitize_html(html):
 # --- Rate limiting (in-memory, per-process) ---
 RATE_LIMIT_MAX_REQUESTS.setdefault("read", 300)
 _rate_buckets = defaultdict(list)  # key -> [timestamps]
+_last_cleanup = 0
 
 
 def _check_rate_limit(key, category="default"):
     """Return True if request is allowed, False if rate-limited."""
+    global _last_cleanup
     now = time.time()
+
+    # Periodic cleanup of stale keys (every 5 minutes)
+    if now - _last_cleanup > 300:
+        _last_cleanup = now
+        stale_keys = [k for k, v in _rate_buckets.items() if not v or v[-1] < now - RATE_LIMIT_WINDOW]
+        for k in stale_keys:
+            del _rate_buckets[k]
+
     bucket = _rate_buckets[key]
     # Prune old entries
     cutoff = now - RATE_LIMIT_WINDOW
@@ -87,6 +97,18 @@ def _cleanup_stale_results():
         pass
 
 
+_last_result_cleanup = 0
+
+
+def _maybe_cleanup_results():
+    """Run result cleanup at most once per hour."""
+    global _last_result_cleanup
+    now = time.time()
+    if now - _last_result_cleanup > 3600:
+        _last_result_cleanup = now
+        _cleanup_stale_results()
+
+
 def create_app():
     _setup_logging()
     logger.info("Starting Research Taxonomy Library v{}", APP_VERSION)
@@ -98,7 +120,10 @@ def create_app():
     )
 
     app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB (evidence uploads)
-    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # No static file caching (dev mode)
+    if app.config.get("TESTING") or os.environ.get("FLASK_DEBUG", "1") == "1":
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # No static file caching (dev mode)
+    else:
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600  # 1 hour in production
 
     # --- Content Security Policy via Flask-Talisman ---
     csp = {
@@ -128,10 +153,11 @@ def create_app():
 
     _cleanup_stale_results()
 
-    # --- Request logging ---
+    # --- Request logging & periodic maintenance ---
     @app.before_request
     def _log_request():
         g.request_start = time.time()
+        _maybe_cleanup_results()
 
     @app.after_request
     def _after_request(response):
@@ -190,7 +216,8 @@ def create_app():
             app.db.get_projects()
             return jsonify({"status": "ok", "db": "connected"})
         except Exception as e:
-            return jsonify({"status": "error", "error": str(e)}), 500
+            logger.exception("Healthcheck failed")
+            return jsonify({"status": "error", "error": "Internal server error"}), 500
 
     # --- Pages ---
     @app.route("/")
@@ -252,7 +279,8 @@ def create_app():
             return jsonify({"id": project_id, "name": name, "status": "ok",
                             "template": template_key or "blank"})
         except Exception as e:
-            return jsonify({"error": str(e)}), 400
+            logger.exception("Failed to create project")
+            return jsonify({"error": "Failed to create project"}), 400
 
     @app.route("/api/projects/<int:project_id>")
     def get_project(project_id):
@@ -406,6 +434,7 @@ def _register_shutdown():
 if __name__ == "__main__":
     _register_shutdown()
     app = create_app()
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     print(f"\n  Research Taxonomy Library")
     print(f"  http://{WEB_HOST}:{WEB_PORT}\n")
-    app.run(host=WEB_HOST, port=WEB_PORT, debug=True)
+    app.run(host=WEB_HOST, port=WEB_PORT, debug=debug)

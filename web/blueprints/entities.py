@@ -13,6 +13,7 @@ import logging
 
 from flask import Blueprint, current_app, jsonify, request
 
+from config import RESEARCH_MODEL
 from core.schema import (
     validate_schema, normalize_schema, get_type_hierarchy,
     SCHEMA_TEMPLATES,
@@ -151,7 +152,7 @@ Rules:
         from core.llm import run_cli
         result = run_cli(
             prompt=prompt,
-            model="sonnet",
+            model=RESEARCH_MODEL,
             timeout=90,
             json_schema=schema_spec,
         )
@@ -360,7 +361,7 @@ Rules:
 
     result = run_cli(
         prompt=prompt,
-        model="sonnet",
+        model=RESEARCH_MODEL,
         timeout=90,
         json_schema=refine_schema_spec,
     )

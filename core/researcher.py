@@ -9,7 +9,7 @@ post-hoc validation of CLI results.
 import json
 import logging
 
-from config import PROMPTS_DIR, RESEARCH_TIMEOUT
+from config import PROMPTS_DIR, RESEARCH_TIMEOUT, RESEARCH_MODEL
 from core.llm import run_cli, instructor_available, run_instructor
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def _validate_research(data, url):
     return data
 
 
-def research_company(url, model="claude-opus-4-6"):
+def research_company(url, model=RESEARCH_MODEL):
     """Run deep research on a single company URL.
 
     Returns a dict with all extracted company fields.
@@ -103,7 +103,7 @@ def research_company(url, model="claude-opus-4-6"):
     return structured
 
 
-def research_company_with_sources(source_urls, existing_research, model="claude-opus-4-6"):
+def research_company_with_sources(source_urls, existing_research, model=RESEARCH_MODEL):
     """Re-research a company using additional source URLs.
 
     Sends existing research + new URLs to Claude for enrichment.

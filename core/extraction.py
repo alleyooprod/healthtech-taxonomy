@@ -10,9 +10,12 @@ Supports:
     - Confidence scoring per extracted value
     - Contradiction detection across multiple sources
 """
+import hashlib
 import json
 import logging
+import re
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +27,69 @@ logger = logging.getLogger(__name__)
 
 # Maximum content length sent to LLM (characters)
 MAX_CONTENT_LENGTH = 80_000
+
+
+# ── HTML Stripping ────────────────────────────────────────────
+
+def _strip_html(raw_content: str) -> str:
+    """Strip HTML tags, scripts, styles and extract visible text to reduce token usage."""
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(raw_content, "html.parser")
+        # Remove script and style elements
+        for element in soup(["script", "style", "noscript", "svg", "path", "meta", "link"]):
+            element.decompose()
+        # Remove nav, footer, header if they contain mostly links
+        for tag in soup.find_all(["nav", "footer"]):
+            tag.decompose()
+        # Get text with some structure preserved
+        text = soup.get_text(separator="\n", strip=True)
+        # Collapse multiple blank lines
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return text
+    except Exception:
+        # Fallback: basic tag stripping
+        text = re.sub(r'<script[^>]*>.*?</script>', '', raw_content, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<style[^>]*>.*?</style>', '', raw_content, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+
+def _maybe_strip_html(content: str) -> str:
+    """Strip HTML from content if it appears to be HTML, otherwise return as-is."""
+    if content and "<" in content[:1000]:
+        return _strip_html(content)
+    return content
+
+
+# ── LLM Result Cache ─────────────────────────────────────────
+
+_EXTRACTION_CACHE_MAX = 256
+_extraction_cache: OrderedDict = OrderedDict()
+
+
+def _content_cache_key(content: str, extractor_type: str) -> str:
+    """Generate a cache key from content + extractor type."""
+    h = hashlib.sha256(f"{extractor_type}:{content}".encode()).hexdigest()[:32]
+    return f"extraction:{h}"
+
+
+def _cache_get(key: str):
+    """Retrieve a cached extraction result, or None on miss."""
+    if key in _extraction_cache:
+        _extraction_cache.move_to_end(key)
+        logger.debug("Extraction cache hit: %s", key)
+        return _extraction_cache[key]
+    return None
+
+
+def _cache_set(key: str, value):
+    """Store an extraction result in the cache (LRU eviction)."""
+    _extraction_cache[key] = value
+    _extraction_cache.move_to_end(key)
+    while len(_extraction_cache) > _EXTRACTION_CACHE_MAX:
+        _extraction_cache.popitem(last=False)
 
 # Default model for extraction
 DEFAULT_EXTRACTION_MODEL = "claude-sonnet-4-6"
@@ -219,6 +285,19 @@ def extract_from_content(content, entity_name, entity_type, attributes,
         )
 
     model = model or DEFAULT_EXTRACTION_MODEL
+
+    # Strip HTML before sending to LLM to reduce token usage
+    content = _maybe_strip_html(content)
+    content = content[:MAX_CONTENT_LENGTH]
+
+    # Check extraction cache
+    attr_key = ",".join(sorted(a["slug"] for a in attributes))
+    cache_key = _content_cache_key(content + attr_key, model or "default")
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        logger.info("Returning cached extraction result (%d attributes)", len(cached.extracted_attributes))
+        return cached
+
     start = time.time()
 
     prompt = _build_extraction_prompt(
@@ -290,7 +369,7 @@ def extract_from_content(content, entity_name, entity_type, attributes,
             "reasoning": item.get("reasoning", ""),
         })
 
-    return ExtractionResult(
+    result = ExtractionResult(
         success=True,
         entity_id=0,
         extracted_attributes=validated,
@@ -303,6 +382,12 @@ def extract_from_content(content, entity_name, entity_type, attributes,
             "valid_count": len(validated),
         },
     )
+
+    # Cache successful extraction results
+    if result.success:
+        _cache_set(cache_key, result)
+
+    return result
 
 
 def extract_from_evidence(evidence, entity, schema_type_def, db=None,

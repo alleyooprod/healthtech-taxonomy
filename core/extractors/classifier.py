@@ -5,6 +5,7 @@ dispatches to the appropriate specialized extractor.
 """
 import logging
 
+from core.extraction import _maybe_strip_html, MAX_CONTENT_LENGTH
 from core.extractors import product_page, pricing_page, changelog, press_release, funding_round, ipid, generic
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,10 @@ def extract_with_classification(content, entity_name=None, model=None,
     Returns:
         dict: Extraction result with _classification metadata, or None on failure
     """
+    # Strip HTML before sending to LLM to reduce token usage
+    content = _maybe_strip_html(content)
+    content = content[:MAX_CONTENT_LENGTH]
+
     if force_extractor:
         extractor_map = {
             "product_page": product_page,

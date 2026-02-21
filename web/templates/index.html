@@ -5,7 +5,7 @@
     <option value="claude-sonnet-4-5-20250929" {{ 'selected' if default == 'sonnet' }}>Sonnet</option>
     <option value="claude-opus-4-6" {{ 'selected' if default == 'opus' }}>Opus</option>
     {% if include_gemini -%}
-    <option disabled>──────────</option>
+    <optgroup label="───"></optgroup>
     <option value="gemini-2.0-flash">Gemini Flash</option>
     <option value="gemini-2.5-pro">Gemini Pro</option>
     {%- endif %}
@@ -14,7 +14,7 @@
 <html lang="en" data-theme="">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="color-scheme" content="light dark">
     <title>Research Taxonomy Library</title>

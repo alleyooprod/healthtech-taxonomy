@@ -10,9 +10,11 @@ Provides endpoints for:
 - Auto-setup: scan entity attributes for URLs and create monitors automatically
 """
 import hashlib
+import ipaddress
 import json
 import re
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from flask import Blueprint, request, jsonify, current_app
 from loguru import logger
@@ -184,6 +186,26 @@ def _row_to_feed_item(row):
     if "entity_name" in row.keys():
         result["entity_name"] = row["entity_name"]
     return result
+
+
+def _is_safe_url(url: str) -> bool:
+    """Reject URLs targeting private/internal networks (SSRF protection)."""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        if hostname in ("localhost", "0.0.0.0"):
+            return False
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+        except ValueError:
+            pass  # Not an IP, it's a hostname — allow
+        return True
+    except Exception:
+        return False
 
 
 def _validate_url(url):
@@ -1242,6 +1264,10 @@ def create_monitor():
     target_url, url_err = _validate_url(target_url)
     if url_err:
         return jsonify({"error": url_err}), 400
+
+    # SSRF protection: reject private/internal network URLs
+    if target_url.startswith(("http://", "https://")) and not _is_safe_url(target_url):
+        return jsonify({"error": "URL targets a private or internal network"}), 400
 
     if not isinstance(check_interval, int) or check_interval < 1:
         return jsonify({"error": "check_interval_hours must be a positive integer"}), 400

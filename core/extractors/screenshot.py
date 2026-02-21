@@ -204,9 +204,10 @@ def classify_with_llm(content_description, source_url=None, model=None, timeout=
         ScreenshotClassification
     """
     from core.llm import run_cli
-    from core.extraction import DEFAULT_EXTRACTION_MODEL
+    from config import DEFAULT_MODEL
 
-    model = model or DEFAULT_EXTRACTION_MODEL
+    # Use Haiku for classification — fast and cheap for this simple task
+    model = model or DEFAULT_MODEL
 
     schema = {
         "type": "object",

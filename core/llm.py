@@ -248,7 +248,7 @@ def run_instructor(prompt, model, response_model, timeout=120,
         "model": model,
         "response_model": response_model,
         "max_retries": max_retries,
-        "max_tokens": 8192,
+        "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": content}],
     }
     if system:
@@ -286,7 +286,7 @@ def run_instructor(prompt, model, response_model, timeout=120,
 # ---- SDK with prompt caching -------------------------------------------------
 
 def run_sdk_cached(prompt, model, timeout, json_schema=None,
-                   context=None, system=None):
+                   context=None, system=None, max_tokens=8192):
     """Call Claude SDK with prompt caching on the context block.
 
     Identical to _run_claude_sdk but splits the user message into a
@@ -307,7 +307,8 @@ def run_sdk_cached(prompt, model, timeout, json_schema=None,
     if not sdk_available():
         # Fall back to regular run_cli (no caching)
         full_prompt = f"{context}\n\n{prompt}" if context else prompt
-        return run_cli(full_prompt, model, timeout, json_schema=json_schema)
+        return run_cli(full_prompt, model, timeout, json_schema=json_schema,
+                       max_tokens=max_tokens)
 
     import anthropic
     client = anthropic.Anthropic()
@@ -328,7 +329,7 @@ def run_sdk_cached(prompt, model, timeout, json_schema=None,
 
     kwargs = {
         "model": model,
-        "max_tokens": 8192,
+        "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": user_content}],
     }
 
@@ -364,22 +365,41 @@ def run_sdk_cached(prompt, model, timeout, json_schema=None,
 
     cost_usd = 0.0
     if response.usage:
-        input_tokens = response.usage.input_tokens
-        output_tokens = response.usage.output_tokens
         # Check for cache-related usage fields
         cache_read = getattr(response.usage, "cache_read_input_tokens", 0) or 0
-        cache_creation = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+        cache_write = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+        # Regular input = total input minus cached portions
+        regular_input = response.usage.input_tokens - cache_read - cache_write
+        output_tokens = response.usage.output_tokens
+
+        # Determine per-token rates based on model
+        # Cache read = 10% of input price, cache write = 125% of input price
         if "haiku" in model:
-            cost_usd = (input_tokens * 0.80 + output_tokens * 4.0) / 1_000_000
+            input_rate = 0.80 / 1_000_000
+            output_rate = 4.0 / 1_000_000
         elif "sonnet" in model:
-            cost_usd = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
+            input_rate = 3.0 / 1_000_000
+            output_rate = 15.0 / 1_000_000
         elif "opus" in model:
-            cost_usd = (input_tokens * 15.0 + output_tokens * 75.0) / 1_000_000
+            input_rate = 15.0 / 1_000_000
+            output_rate = 75.0 / 1_000_000
+        else:
+            input_rate = 3.0 / 1_000_000   # default to Sonnet rates
+            output_rate = 15.0 / 1_000_000
+
+        cache_read_rate = input_rate * 0.1
+        cache_write_rate = input_rate * 1.25
+
+        cost_usd = (regular_input * input_rate +
+                    cache_read * cache_read_rate +
+                    cache_write * cache_write_rate +
+                    output_tokens * output_rate)
+
         # Log cache stats for observability
-        if cache_read or cache_creation:
+        if cache_read or cache_write:
             logger.info(
                 "Prompt cache: %d tokens read, %d tokens created (model=%s)",
-                cache_read, cache_creation, model,
+                cache_read, cache_write, model,
             )
 
     return {

@@ -45,6 +45,32 @@ insights_bp = Blueprint("insights", __name__)
 
 # ── Constants ────────────────────────────────────────────────
 
+# ── JSON schema for structured LLM output ─────────────────────
+
+_INSIGHT_SCHEMA = json.dumps({
+    "type": "object",
+    "properties": {
+        "insights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["pattern", "trend", "gap", "outlier", "correlation", "recommendation"]},
+                    "title": {"type": "string"},
+                    "description": {"type": "string"},
+                    "severity": {"type": "string", "enum": ["info", "notable", "important", "critical"]},
+                    "category": {"type": "string", "enum": ["pricing", "features", "design", "market", "competitive"]},
+                    "confidence": {"type": "number"}
+                },
+                "required": ["type", "title", "description", "severity", "category", "confidence"],
+                "additionalProperties": False
+            }
+        }
+    },
+    "required": ["insights"],
+    "additionalProperties": False
+})
+
 _VALID_INSIGHT_TYPES = {"pattern", "trend", "gap", "outlier", "correlation", "recommendation"}
 _VALID_SEVERITIES = {"info", "notable", "important", "critical"}
 _VALID_INSIGHT_SOURCES = {"rule", "ai"}
@@ -1018,7 +1044,7 @@ PROJECT: {project["name"]}
 {focus_instruction}
 
 ENTITY DATA ({len(entity_summaries)} entities):
-{json.dumps(entity_summaries, indent=2, default=str)}
+{json.dumps(entity_summaries, separators=(',', ':'), default=str)}
 
 TASK: Analyse this data and identify actionable insights. Look for:
 1. Cross-entity patterns and correlations
@@ -1035,12 +1061,12 @@ For each insight, provide:
 - category: one of "pricing", "features", "design", "market", "competitive"
 - confidence: a float 0.0 to 1.0
 
-Return a JSON array of insight objects. Return ONLY the JSON array.
+Return a JSON object with an "insights" key containing an array of insight objects.
 Aim for 3-8 high-quality insights. Do not repeat obvious observations."""
 
     try:
         from core.llm import run_cli
-        llm_result = run_cli(prompt, model=model, timeout=90)
+        llm_result = run_cli(prompt, model=model, timeout=90, json_schema=_INSIGHT_SCHEMA)
     except Exception as e:
         logger.error("LLM call failed for AI insights: %s", e)
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
@@ -1053,25 +1079,26 @@ Aim for 3-8 high-quality insights. Do not repeat obvious observations."""
 
     raw_insights = []
 
-    if structured and isinstance(structured, list):
+    # json_schema should guarantee structured output as {insights: [...]}
+    if structured and isinstance(structured, dict) and "insights" in structured:
+        raw_insights = structured["insights"]
+    elif structured and isinstance(structured, list):
         raw_insights = structured
     else:
-        # Parse from text
+        # Fallback: parse from raw text
         try:
             text = raw_text.strip()
             if text.startswith("```"):
                 text = text.split("\n", 1)[1] if "\n" in text else text[3:]
             if text.endswith("```"):
                 text = text[:-3]
-            text = text.strip()
-            parsed = json.loads(text)
+            parsed = json.loads(text.strip())
             if isinstance(parsed, list):
                 raw_insights = parsed
             elif isinstance(parsed, dict) and "insights" in parsed:
                 raw_insights = parsed["insights"]
         except (json.JSONDecodeError, TypeError):
             logger.warning("Could not parse AI insight response as JSON")
-            # Create a single insight from raw text
             if raw_text.strip():
                 raw_insights = [{
                     "type": "recommendation",

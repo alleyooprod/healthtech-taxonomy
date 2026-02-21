@@ -10,9 +10,11 @@ Endpoints:
     DELETE /api/evidence/<id>/file  — Delete evidence file + record
     GET  /api/evidence/stats        — Evidence storage stats for a project
 """
+import ipaddress
 import json
 import threading
 from datetime import datetime
+from urllib.parse import urlparse
 
 from flask import Blueprint, request, jsonify, current_app, send_file
 from loguru import logger
@@ -30,6 +32,30 @@ from core.capture import (
 )
 
 capture_bp = Blueprint("capture", __name__)
+
+
+# ── SSRF Protection ──────────────────────────────────────────
+
+def _is_safe_url(url: str) -> bool:
+    """Reject URLs targeting private/internal networks."""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        # Reject common internal hostnames
+        if hostname in ("localhost", "0.0.0.0"):
+            return False
+        # Try to parse as IP and check if private
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+        except ValueError:
+            pass  # Not an IP, it's a hostname — allow
+        return True
+    except Exception:
+        return False
 
 
 # ── Website Capture ───────────────────────────────────────────
@@ -66,6 +92,10 @@ def api_capture_website():
     # Validate URL scheme
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
+
+    # SSRF protection: reject private/internal network URLs
+    if not _is_safe_url(url):
+        return jsonify({"error": "URL targets a private or internal network"}), 400
 
     # Validate entity exists
     entity = current_app.db.get_entity(entity_id)
@@ -137,6 +167,10 @@ def api_capture_document():
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
+
+    # SSRF protection: reject private/internal network URLs
+    if not _is_safe_url(url):
+        return jsonify({"error": "URL targets a private or internal network"}), 400
 
     entity = current_app.db.get_entity(entity_id)
     if not entity:
