@@ -105,7 +105,7 @@ function _getTabulatorColumns() {
                 const compPct = Math.round((c.completeness || 0) * 100);
                 const relDot = c.relationship_status ? `<span class="relationship-dot rel-${c.relationship_status}" title="${relationshipLabel(c.relationship_status)}"></span>` : '';
                 return `<div class="company-name-cell">
-                    <img class="company-logo" src="${esc(logoUrl)}" alt="" onerror="this.style.display='none'">
+                    <img class="company-logo" src="${esc(logoUrl)}" alt="${escAttr(c.name)} logo" onerror="this.style.display='none'">
                     <strong>${esc(c.name)}</strong>
                     <span class="completeness-dot ${compClass}" title="${compPct}% complete"></span>
                     ${relDot}
@@ -582,7 +582,7 @@ async function loadCompanies() {
                 <td><span class="star-btn ${c.is_starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleStar(${c.id},this)" title="Star"><span class="material-symbols-outlined">${c.is_starred ? 'star' : 'star_outline'}</span></span></td>
                 <td>
                     <div class="company-name-cell">
-                        <img class="company-logo" src="${esc(c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`)}" alt="" onerror="this.style.display='none'">
+                        <img class="company-logo" src="${esc(c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`)}" alt="${escAttr(c.name)} logo" onerror="this.style.display='none'">
                         <strong>${esc(c.name)}</strong>
                         <span class="completeness-dot ${compClass}" title="${compPct}% complete"></span>
                         ${c.relationship_status ? `<span class="relationship-dot rel-${c.relationship_status}" title="${relationshipLabel(c.relationship_status)}"></span>` : ''}
@@ -644,7 +644,7 @@ async function showDetail(id) {
     document.getElementById('detailName').textContent = c.name;
     document.getElementById('detailContent').innerHTML = `
         <div class="detail-logo-row">
-            <img class="detail-logo" src="${esc(logoUrl)}" alt="" onerror="this.style.display='none'">
+            <img class="detail-logo" src="${esc(logoUrl)}" alt="${escAttr(c.name)} logo" onerror="this.style.display='none'">
             <a href="${safeHref(c.url)}" target="_blank">${esc(c.url)}</a>
             ${c.linkedin_url ? `<a href="${safeHref(c.linkedin_url)}" target="_blank" class="linkedin-link" title="LinkedIn">in</a>` : ''}
             ${c.url && typeof generateQrCode === 'function' ? `<button class="btn" style="padding:2px 6px;font-size:11px" onclick="event.stopPropagation();showCompanyQr('${escAttr(c.url)}','${escAttr(c.name)}')" title="Show QR code">QR</button>` : ''}
@@ -1300,7 +1300,7 @@ function renderGalleryView(companies, container) {
         const logoUrl = c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`;
         return `<div class="gallery-card" onclick="showDetail(${c.id})">
             <div class="gallery-card-header">
-                <img class="gallery-logo" src="${esc(logoUrl)}" alt="" onerror="this.style.display='none'">
+                <img class="gallery-logo" src="${esc(logoUrl)}" alt="${escAttr(c.name)} logo" onerror="this.style.display='none'">
                 <div>
                     <strong>${esc(c.name)}</strong>
                     ${c.category_name ? `<div class="gallery-cat">${esc(c.category_name)}</div>` : ''}

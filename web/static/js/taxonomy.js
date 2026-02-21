@@ -206,7 +206,7 @@ async function showCategoryDetail(categoryId) {
         <div class="category-company-list">
             ${companies.length ? companies.map(c => `
                 <div class="cat-company-item" onclick="navigateTo('company', ${c.id}, '${escAttr(c.name)}')">
-                    <img class="company-logo" src="${esc(c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`)}" alt="" onerror="this.style.display='none'">
+                    <img class="company-logo" src="${esc(c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`)}" alt="${escAttr(c.name)} logo" onerror="this.style.display='none'">
                     <span>${esc(c.name)}</span>
                     <span class="text-muted" style="font-size:11px;margin-left:auto">${esc(c.what || '').substring(0, 60)}</span>
                 </div>

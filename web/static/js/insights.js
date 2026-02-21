@@ -1,16 +1,18 @@
 /**
- * Insights & Hypotheses -- Intelligence tab sub-view.
+ * Insights — Intelligence tab sub-view.
  *
- * Sub-views: insights (pattern detection) and hypotheses (claim tracking).
- * Lives inside #tab-intelligence alongside the Monitoring dashboard.
- * Users toggle between "Monitoring", "Insights", and "Hypotheses" via sub-nav.
+ * Contains two inner sections toggled via Patterns / Hypotheses buttons:
+ *   - Patterns: automated pattern detection and AI-enhanced insights
+ *   - Hypotheses: manual claim tracking with evidence
+ *
+ * Lives inside #tab-intelligence alongside Monitoring, Playbooks, Cross-Project.
  *
  * API prefix: /api/insights/...
  */
 
 // ── State ──────────────────────────────────────────────────────
 let _insightsLoaded = false;
-let _currentInsightView = 'insights'; // 'insights' | 'hypotheses'
+let _currentInsightView = 'insights'; // 'insights' | 'monitoring' | 'playbooks' | 'crossproject'
 let _insightsList = [];
 let _insightsSummary = null;
 let _insightsFilters = {};             // {type, severity, category, source, is_dismissed}
@@ -37,8 +39,6 @@ function initInsights() {
     // Load the currently selected sub-view
     if (_currentInsightView === 'insights') {
         _loadInsightsDashboard();
-    } else if (_currentInsightView === 'hypotheses') {
-        _loadHypothesesDashboard();
     }
     // 'monitoring' is handled by initMonitoring() directly
 }
@@ -47,7 +47,8 @@ function initInsights() {
 
 /**
  * Build the sub-nav bar inside the intelligence tab if it does not
- * already exist. Three views: Monitoring, Insights, Hypotheses.
+ * already exist. Four views: Monitoring, Insights, Playbooks, Cross-Project.
+ * (Hypotheses are merged into Insights as an inner section.)
  */
 function _ensureIntelligenceSubNav() {
     const tab = document.getElementById('tab-intelligence');
@@ -65,18 +66,14 @@ function _ensureIntelligenceSubNav() {
                 onclick="_switchIntelligenceView('monitoring')">Monitoring</button>
         <button class="intel-sub-btn" data-view="insights"
                 onclick="_switchIntelligenceView('insights')">Insights</button>
-        <button class="intel-sub-btn" data-view="hypotheses"
-                onclick="_switchIntelligenceView('hypotheses')">Hypotheses</button>
         <button class="intel-sub-btn" data-view="playbooks"
                 onclick="_switchIntelligenceView('playbooks')">Playbooks</button>
         <button class="intel-sub-btn" data-view="crossproject"
                 onclick="_switchIntelligenceView('crossproject')">Cross-Project</button>
-        <button class="intel-sub-btn" data-view="provenance"
-                onclick="_switchIntelligenceView('provenance')">Provenance</button>
     `;
     tab.insertBefore(nav, tab.firstChild);
 
-    // Create insights container (hidden by default)
+    // Create insights container (hidden by default) — includes both patterns and hypotheses
     const insightsContainer = document.createElement('div');
     insightsContainer.id = 'insightsDashboard';
     insightsContainer.className = 'insights-dashboard hidden';
@@ -88,44 +85,49 @@ function _ensureIntelligenceSubNav() {
                 <button class="ins-btn ins-btn-ghost" onclick="_generateAiInsights()" id="insightsAiBtn">AI Enhance</button>
             </div>
         </div>
-        <div class="insights-stats" id="insightsStatsBar"></div>
-        <div class="insights-filters" id="insightsFilters"></div>
-        <div class="insights-list" id="insightsList"></div>
-        <div class="insights-empty hidden" id="insightsEmpty">
-            <div class="insights-empty-title">No insights yet</div>
-            <div class="insights-empty-desc">Run pattern detection to discover insights from your research data.</div>
-            <button class="ins-btn" onclick="_generateInsights()">Detect Patterns</button>
+        <div class="insights-inner-toggle" id="insightsInnerToggle">
+            <button class="insights-inner-btn insights-inner-btn--active" data-inner="patterns"
+                    onclick="_switchInsightsInner('patterns')">Patterns</button>
+            <button class="insights-inner-btn" data-inner="hypotheses"
+                    onclick="_switchInsightsInner('hypotheses')">Hypotheses</button>
+        </div>
+        <div id="insightsPatternSection">
+            <div class="insights-stats" id="insightsStatsBar"></div>
+            <div class="insights-filters" id="insightsFilters"></div>
+            <div class="insights-list" id="insightsList"></div>
+            <div class="insights-empty hidden" id="insightsEmpty">
+                <div class="insights-empty-title">No insights yet</div>
+                <div class="insights-empty-desc">Run pattern detection to discover insights from your research data.</div>
+                <button class="ins-btn" onclick="_generateInsights()">Detect Patterns</button>
+            </div>
+        </div>
+        <div id="insightsHypothesisSection" class="hidden">
+            <div class="hypotheses-header">
+                <div class="hypotheses-header-actions">
+                    <button class="ins-btn" onclick="_createHypothesis()">+ New Hypothesis</button>
+                </div>
+            </div>
+            <div class="hypotheses-filters" id="hypothesesFilters"></div>
+            <div class="hypotheses-list" id="hypothesesList"></div>
+            <div class="hypotheses-empty hidden" id="hypothesesEmpty">
+                <div class="hypotheses-empty-title">No hypotheses yet</div>
+                <div class="hypotheses-empty-desc">Create a hypothesis to track and test claims about your market.</div>
+                <button class="ins-btn" onclick="_createHypothesis()">+ New Hypothesis</button>
+            </div>
+            <div class="hypothesis-detail hidden" id="hypothesisDetail"></div>
         </div>
     `;
     tab.appendChild(insightsContainer);
-
-    // Create hypotheses container (hidden by default)
-    const hypothesesContainer = document.createElement('div');
-    hypothesesContainer.id = 'hypothesesDashboard';
-    hypothesesContainer.className = 'hypotheses-dashboard hidden';
-    hypothesesContainer.innerHTML = `
-        <div class="hypotheses-header">
-            <h2>Hypotheses</h2>
-            <div class="hypotheses-header-actions">
-                <button class="ins-btn" onclick="_createHypothesis()">+ New Hypothesis</button>
-            </div>
-        </div>
-        <div class="hypotheses-filters" id="hypothesesFilters"></div>
-        <div class="hypotheses-list" id="hypothesesList"></div>
-        <div class="hypotheses-empty hidden" id="hypothesesEmpty">
-            <div class="hypotheses-empty-title">No hypotheses yet</div>
-            <div class="hypotheses-empty-desc">Create a hypothesis to track and test claims about your market.</div>
-            <button class="ins-btn" onclick="_createHypothesis()">+ New Hypothesis</button>
-        </div>
-        <div class="hypothesis-detail hidden" id="hypothesisDetail"></div>
-    `;
-    tab.appendChild(hypothesesContainer);
 }
 
 /**
- * Switch between monitoring, insights, and hypotheses sub-views.
+ * Switch between monitoring, insights, playbooks, and cross-project sub-views.
  */
 function _switchIntelligenceView(view) {
+    // Map legacy view names for backwards compatibility
+    if (view === 'hypotheses') view = 'insights';
+    if (view === 'provenance') view = 'insights';
+
     _currentInsightView = view;
 
     // Update sub-nav active state
@@ -140,38 +142,57 @@ function _switchIntelligenceView(view) {
     if (view === 'crossproject' && typeof _ensureCrossProjectDashboard === 'function') {
         _ensureCrossProjectDashboard();
     }
-    if (view === 'provenance' && typeof _ensureProvenanceDashboard === 'function') {
-        _ensureProvenanceDashboard();
-    }
 
     // Toggle containers
     const monitoringEl = document.getElementById('monitoringDashboard');
     const insightsEl = document.getElementById('insightsDashboard');
-    const hypothesesEl = document.getElementById('hypothesesDashboard');
     const playbooksEl = document.getElementById('playbooksDashboard');
     const crossprojectEl = document.getElementById('crossProjectDashboard');
-    const provenanceEl = document.getElementById('provenanceDashboard');
 
     if (monitoringEl) monitoringEl.classList.toggle('hidden', view !== 'monitoring');
     if (insightsEl) insightsEl.classList.toggle('hidden', view !== 'insights');
-    if (hypothesesEl) hypothesesEl.classList.toggle('hidden', view !== 'hypotheses');
     if (playbooksEl) playbooksEl.classList.toggle('hidden', view !== 'playbooks');
     if (crossprojectEl) crossprojectEl.classList.toggle('hidden', view !== 'crossproject');
-    if (provenanceEl) provenanceEl.classList.toggle('hidden', view !== 'provenance');
 
     // Load data for the selected view
     if (view === 'monitoring') {
         if (typeof initMonitoring === 'function') initMonitoring();
     } else if (view === 'insights') {
         _loadInsightsDashboard();
-    } else if (view === 'hypotheses') {
-        _loadHypothesesDashboard();
     } else if (view === 'playbooks') {
         if (typeof initPlaybooks === 'function') initPlaybooks();
     } else if (view === 'crossproject') {
         if (typeof initCrossProject === 'function') initCrossProject();
-    } else if (view === 'provenance') {
-        if (typeof initProvenance === 'function') initProvenance();
+    }
+}
+
+// ── Inner Toggle (Patterns / Hypotheses) ──────────────────────
+
+let _insightsInnerView = 'patterns'; // 'patterns' | 'hypotheses'
+
+function _switchInsightsInner(inner) {
+    _insightsInnerView = inner;
+
+    // Update inner toggle active state
+    document.querySelectorAll('.insights-inner-btn').forEach(btn => {
+        btn.classList.toggle('insights-inner-btn--active', btn.dataset.inner === inner);
+    });
+
+    // Toggle sections
+    const patternSection = document.getElementById('insightsPatternSection');
+    const hypothesisSection = document.getElementById('insightsHypothesisSection');
+    if (patternSection) patternSection.classList.toggle('hidden', inner !== 'patterns');
+    if (hypothesisSection) hypothesisSection.classList.toggle('hidden', inner !== 'hypotheses');
+
+    // Update header actions visibility
+    const generateBtn = document.getElementById('insightsGenerateBtn');
+    const aiBtn = document.getElementById('insightsAiBtn');
+    if (generateBtn) generateBtn.style.display = inner === 'patterns' ? '' : 'none';
+    if (aiBtn) aiBtn.style.display = inner === 'patterns' ? '' : 'none';
+
+    // Load data for the selected inner view
+    if (inner === 'hypotheses') {
+        _loadHypothesesDashboard();
     }
 }
 
@@ -179,10 +200,12 @@ function _switchIntelligenceView(view) {
 
 async function _loadInsightsDashboard() {
     if (!currentProjectId) return;
-    await Promise.all([
-        _loadInsightsSummary(),
-        _loadInsights(),
-    ]);
+    const loads = [_loadInsightsSummary(), _loadInsights()];
+    // Pre-load hypotheses if that inner view is active
+    if (_insightsInnerView === 'hypotheses') {
+        loads.push(_loadHypotheses());
+    }
+    await Promise.all(loads);
 }
 
 // ── Insights Summary ───────────────────────────────────────────
@@ -1308,6 +1331,7 @@ function _formatDirection(direction) {
 
 // ── Expose on window ──────────────────────────────────────────
 
+window._switchInsightsInner = _switchInsightsInner;
 window._loadInsights = _loadInsights;
 window._generateInsights = _generateInsights;
 window._generateAiInsights = _generateAiInsights;

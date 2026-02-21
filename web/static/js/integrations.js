@@ -300,7 +300,7 @@ function renderFuseResults(companies) {
             <td><span class="star-btn ${c.is_starred ? 'starred' : ''}" onclick="event.stopPropagation();toggleStar(${c.id},this)" title="Star"><span class="material-symbols-outlined">${c.is_starred ? 'star' : 'star_outline'}</span></span></td>
             <td>
                 <div class="company-name-cell">
-                    <img class="company-logo" src="${esc(c.logo_url || 'https://logo.clearbit.com/' + extractDomain(c.url))}" alt="" onerror="this.style.display='none'">
+                    <img class="company-logo" src="${esc(c.logo_url || 'https://logo.clearbit.com/' + extractDomain(c.url))}" alt="${escAttr(c.name)} logo" onerror="this.style.display='none'">
                     <strong>${esc(c.name)}</strong>
                     <span class="completeness-dot ${compClass}" title="${compPct}% complete"></span>
                     ${c.relationship_status ? '<span class="relationship-dot rel-' + c.relationship_status + '" title="' + relationshipLabel(c.relationship_status) + '"></span>' : ''}

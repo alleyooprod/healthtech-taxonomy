@@ -45,7 +45,7 @@ async function loadMarketMap() {
                          ondragstart="event.dataTransfer.setData('text/plain', '${c.id}')"
                          onclick="toggleCompareSelect(${c.id}, this)"
                          title="${esc(c.what || '')}">
-                        <img class="map-tile-logo" src="${c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`}" alt="" onerror="this.style.display='none'">
+                        <img class="map-tile-logo" src="${c.logo_url || `https://logo.clearbit.com/${extractDomain(c.url)}`}" alt="${escAttr(c.name)} logo" onerror="this.style.display='none'">
                         <span class="map-tile-name">${esc(c.name)}</span>
                     </div>
                 `).join('')}
