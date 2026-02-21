@@ -6,6 +6,7 @@ from flask import Blueprint, current_app, jsonify, request
 from config import DEFAULT_MODEL, DEFAULT_WORKERS
 from core.classifier import build_taxonomy_tree_string
 from core.git_sync import sync_to_git_async
+from core.llm import get_op_estimates
 from core.pipeline import Pipeline
 from core.url_resolver import extract_urls_from_text
 from storage.db import Database
@@ -13,6 +14,17 @@ from web.async_jobs import make_job_id, run_in_thread
 from web.notifications import notify_sse, send_slack
 
 processing_bp = Blueprint("processing", __name__)
+
+
+# --- Timing estimates ---
+
+@processing_bp.route("/api/timing/estimates")
+def timing_estimates():
+    """Return p25/p50/p75 duration estimates (ms) per operation type.
+
+    Used by the UI to show realistic ETAs before and during processing.
+    """
+    return jsonify(get_op_estimates())
 
 
 # --- Jobs / Batches ---

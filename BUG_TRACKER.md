@@ -373,6 +373,54 @@ Complete replacement of the Canvas tab engine. Fabric.js 6.5.1 (source of Bugs #
 
 ---
 
+## Bug #15: Processing — "Error binding parameter 34: type 'list' is not supported"
+- **Status**: **FIXED** (2026-02-21)
+- **First reported**: 2026-02-21
+- **Symptom**: URLs like springhealth.com/eap and carebridge.com fail in the processing pipeline with "Error binding parameter 34: type 'list' is not supported". Affects any company where the LLM returns `pricing_tiers: []` (empty array).
+- **Root cause**: In `storage/repos/companies.py`, `upsert_company()` guards the `json.dumps()` conversion with `if pricing_tiers` (truthy check). An empty list `[]` is falsy, so conversion is skipped and `[]` is passed directly to SQLite, which doesn't support Python list types. Parameter 34 (1-indexed) is `pricing_tiers` in the INSERT tuple.
+- **Fix**: Changed `if pricing_tiers and not isinstance(pricing_tiers, str):` → `if pricing_tiers is not None and not isinstance(pricing_tiers, str):` so empty lists are also serialised.
+- **Files**: `storage/repos/companies.py:41`
+
+## Bug #17: Capture — evidence screenshots always timeout on SaaS sites
+- **Status**: **FIXED** (2026-02-21)
+- **Root cause**: `capture.py` used `wait_until="networkidle"`. SaaS sites continuously poll APIs — networkidle never fires within 30s. This was the single biggest cause of evidence capture failures.
+- **Fix**: Changed to `wait_until="domcontentloaded"` which fires as soon as the HTML is parsed.
+- **Files**: `core/capture.py:264`
+
+## Bug #18: URL validation — HEAD requests blocked by enterprise SaaS (405)
+- **Status**: **FIXED** (2026-02-21)
+- **Root cause**: `validate_url()` used only HTTP HEAD. Many enterprise SaaS sites return 405 for HEAD, causing valid URLs to be skipped.
+- **Fix**: On 405, falls back to streaming GET (no body downloaded). Valid URLs now pass.
+- **Files**: `core/url_resolver.py`
+
+## Bug #19: Pipeline — Timeout strings not matching "Error:" prefix → AttributeError
+- **Status**: **FIXED** (2026-02-21)
+- **Root cause**: `_process_one_company` returns `"Timeout: ..."` strings but `_process_sub_batch` only matched `startswith("Error:")`. Timeout strings fell into the `else` branch and called `.get()` on a string → AttributeError.
+- **Fix**: Changed check from `startswith("Error:")` to `isinstance(result, str)`.
+- **Files**: `core/pipeline.py`
+
+## Bug #20: Pipeline — 30-minute maximum per stuck URL (RESEARCH_TIMEOUT × 3)
+- **Status**: **FIXED** (2026-02-21)
+- **Root cause**: `RESEARCH_TIMEOUT=600s × 3 attempts = 1800s = 30 min` per URL. A batch of 5 stuck URLs would block 2.5 hours.
+- **Fix**: `RESEARCH_TIMEOUT=300s`, `RESEARCH_TIMEOUT_RETRIES=1`. Max 10 min per URL, 2 attempts.
+- **Files**: `config.py`
+
+## Bug #16: Scraping — Playwright blocked by bot detection with no fallback
+- **Status**: **FIXED** (2026-02-21)
+- **First reported**: 2026-02-21
+- **Symptom**: Triage/scraping step shows "Scrape deadline exceeded (30s)" for enterprise SaaS sites (Modern Health, Spring Health, Headspace B2B). URLs were then marked as ERROR and could not proceed.
+- **Root cause (compound)**:
+  1. Playwright headless Chromium is trivially detected as a bot by Cloudflare and enterprise SaaS sites.
+  2. `scrape_page()` had no fallback — Playwright timeout → error, full stop.
+  3. Triage marked scraping failures as `status="error"`, blocking URLs from research.
+- **Fix**:
+  1. Added `_scrape_page_http(url)` in `core/scraper.py` — plain requests + BeautifulSoup with Googlebot UA, called automatically when Playwright fails.
+  2. Modified `scrape_page()` to call `_scrape_page_http()` as fallback when Playwright fails.
+  3. Modified `triage.py` to return `status="suspect"` (not `"error"`) when all scraping fails, allowing the URL to proceed to AI research (Claude WebFetch handles it).
+- **Files**: `core/scraper.py`, `core/triage.py`
+
+---
+
 ## Bug #14: Desktop App — Empty Project Grid + 52s Load Delay
 - **Status**: **FIXED** (log evidence)
 - **First reported**: 2026-02-20 (Session 24)

@@ -261,7 +261,7 @@ async def _capture_website_async(
     }
 
     try:
-        response = await page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+        response = await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
         status_code = response.status if response else 0
         final_url = page.url
         metadata["status_code"] = status_code
@@ -458,14 +458,30 @@ def capture_document(
     ext = _content_type_to_ext(content_type, url)
     evidence_type = guess_evidence_type(f"file{ext}")
 
-    # Read content (with size limit)
-    content = resp.content
-    if len(content) > MAX_UPLOAD_SIZE:
+    # Pre-check Content-Length header to avoid downloading oversized files
+    content_length = resp.headers.get("Content-Length")
+    if content_length and int(content_length) > MAX_UPLOAD_SIZE:
+        resp.close()
         return CaptureResult(
             success=False, url=url,
-            error=f"Document too large ({len(content) / 1024 / 1024:.1f} MB)",
+            error=f"Document too large ({int(content_length) / 1024 / 1024:.1f} MB)",
             duration_ms=int((time.time() - start) * 1000),
         )
+
+    # Read content in chunks to enforce size limit without loading full body first
+    chunks = []
+    total = 0
+    for chunk in resp.iter_content(chunk_size=65536):
+        total += len(chunk)
+        if total > MAX_UPLOAD_SIZE:
+            resp.close()
+            return CaptureResult(
+                success=False, url=url,
+                error=f"Document too large (>{MAX_UPLOAD_SIZE / 1024 / 1024:.0f} MB)",
+                duration_ms=int((time.time() - start) * 1000),
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
 
     metadata["file_size"] = len(content)
     url_slug = _url_to_filename(url)

@@ -114,6 +114,94 @@ def is_gemini_model(model: str) -> bool:
     return model.startswith("gemini")
 
 
+# ---- Operation timing -------------------------------------------------------
+
+_TIMING_TABLE_ENSURED = False
+
+_TIMING_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS op_timings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_type TEXT NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    success INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+)
+"""
+
+
+def record_op_timing(op_type: str, duration_ms: int, success: bool = True):
+    """Record how long an operation took.
+
+    op_type examples: 'research', 'classify', 'scrape_playwright',
+                      'scrape_http', 'evolve', 'triage'
+
+    Uses a direct SQLite connection (works in any thread/context).
+    Non-fatal — timing loss never blocks processing.
+    """
+    global _TIMING_TABLE_ENSURED
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=5)
+        conn.execute("PRAGMA journal_mode=WAL")
+        if not _TIMING_TABLE_ENSURED:
+            conn.execute(_TIMING_TABLE_SQL)
+            _TIMING_TABLE_ENSURED = True
+        conn.execute(
+            "INSERT INTO op_timings (op_type, duration_ms, success) VALUES (?, ?, ?)",
+            (op_type, int(duration_ms), 1 if success else 0),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        logger.debug("Failed to record op timing (non-fatal)")
+
+
+def get_op_estimates():
+    """Return p25/p50/p75 timing estimates per op_type from the last 100 samples.
+
+    Returns a dict like:
+      {
+        "research":  {"p25": 45000, "p50": 90000, "p75": 150000, "n": 42},
+        "classify":  {"p25": 8000,  "p50": 12000, "p75": 18000,  "n": 42},
+        ...
+      }
+    Percentiles are in milliseconds. Returns empty dict if no data.
+    """
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=5)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(_TIMING_TABLE_SQL)  # ensure table exists
+        rows = conn.execute("""
+            SELECT op_type, duration_ms
+            FROM op_timings
+            WHERE success = 1
+            ORDER BY created_at DESC
+        """).fetchall()
+        conn.close()
+
+        from collections import defaultdict
+        by_type = defaultdict(list)
+        # Use last 100 successful samples per op_type
+        counts = defaultdict(int)
+        for op_type, duration_ms in rows:
+            if counts[op_type] < 100:
+                by_type[op_type].append(duration_ms)
+                counts[op_type] += 1
+
+        result = {}
+        for op_type, durations in by_type.items():
+            durations.sort()
+            n = len(durations)
+            result[op_type] = {
+                "p25": durations[max(0, int(n * 0.25) - 1)],
+                "p50": durations[max(0, int(n * 0.50) - 1)],
+                "p75": durations[max(0, int(n * 0.75) - 1)],
+                "n": n,
+            }
+        return result
+    except Exception:
+        return {}
+
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=30),

@@ -99,8 +99,8 @@ def _parse_companies_house(result):
     if not result:
         return []
     top = result[0]
-    sic = top.get("sic_codes", [])
-    sic_str = json.dumps(sic) if isinstance(sic, list) else str(sic)
+    sic = top.get("sic_codes") or []
+    sic_str = json.dumps(sic) if isinstance(sic, list) else ""
     return [
         {"attr_slug": "company_number", "value": top.get("company_number", ""), "confidence": 0.95},
         {"attr_slug": "company_status", "value": top.get("status", ""), "confidence": 0.95},

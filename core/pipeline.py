@@ -8,6 +8,7 @@ from datetime import datetime
 
 from config import DEFAULT_WORKERS, DEFAULT_MODEL, MAX_RETRIES, SUB_BATCH_SIZE, RESEARCH_TIMEOUT_RETRIES
 from core.classifier import build_taxonomy_tree_string, classify_company
+from core.llm import record_op_timing
 from core.researcher import research_company
 from core.taxonomy import evolve_taxonomy
 from core.url_resolver import resolve_and_validate
@@ -27,10 +28,14 @@ def _process_one_company(url, source_url, model, taxonomy_tree):
     for attempt in range(1 + RESEARCH_TIMEOUT_RETRIES):
         try:
             # Stage 2: Deep research
+            t0 = time.time()
             research = research_company(url, model=model)
+            record_op_timing("research", (time.time() - t0) * 1000, success=True)
 
             # Stage 3: Classification
+            t1 = time.time()
             classification = classify_company(research, taxonomy_tree, model=model)
+            record_op_timing("classify", (time.time() - t1) * 1000, success=True)
 
             return (url, {
                 "research": research,
@@ -39,6 +44,7 @@ def _process_one_company(url, source_url, model, taxonomy_tree):
             })
 
         except subprocess.TimeoutExpired:
+            record_op_timing("research", RESEARCH_TIMEOUT_RETRIES * 300_000, success=False)
             last_error = f"Timeout: research exceeded time limit (attempt {attempt + 1}/{1 + RESEARCH_TIMEOUT_RETRIES})"
             if attempt < RESEARCH_TIMEOUT_RETRIES:
                 continue  # retry
@@ -179,7 +185,8 @@ class Pipeline:
                 try:
                     result_url, result = future.result()
 
-                    if isinstance(result, str) and result.startswith("Error:"):
+                    if isinstance(result, str):
+                        # Covers both "Error: ..." and "Timeout: ..." strings
                         error_count += 1
                         print(f"  FAIL: {url}")
                         print(f"        {result}")

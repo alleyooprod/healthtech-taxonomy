@@ -52,15 +52,18 @@ def triage_single_url(url: str, use_claude_for_ambiguous: bool = True,
             is_accessible=True,
         )
 
-    # Step 2: Scrape with Playwright
+    # Step 2: Scrape (Playwright with HTTP fallback built in)
     scraped = scrape_page(resolved_url)
 
     if not scraped.is_accessible:
+        # Scraping failed entirely — but don't block the URL. Pass it through
+        # as 'suspect' so the AI research step (Claude WebFetch) can still
+        # attempt it. Research is more resilient than Playwright scraping.
         return TriageResult(
             original_url=url,
             resolved_url=resolved_url,
-            status="error",
-            reason=scraped.error or f"HTTP {scraped.status_code}",
+            status="suspect",
+            reason=f"Could not scrape ({scraped.error or f'HTTP {scraped.status_code}'}). Will attempt AI research.",
             title="",
             meta_description="",
             scraped_text_preview="",

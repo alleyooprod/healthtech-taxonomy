@@ -194,6 +194,9 @@ async function confirmAndProcess() {
     document.getElementById('processingStatus').classList.remove('hidden');
     document.getElementById('processProgress').style.width = '0%';
 
+    _batchStartMs = Date.now();
+    await _loadOpEstimates();
+    _updateEta(data.url_count);
     pollBatch(data.batch_id);
 }
 
@@ -206,6 +209,45 @@ function resetTriage() {
 let _batchPollCount = 0;
 const _MAX_BATCH_RETRIES = 360; // 30 min at 5s intervals
 let _activeBatchPollId = null;
+let _batchStartMs = null;
+let _opEstimates = null; // cached from /api/timing/estimates
+
+async function _loadOpEstimates() {
+    try {
+        const res = await safeFetch('/api/timing/estimates');
+        if (res && res.ok) _opEstimates = await res.json();
+    } catch (_) {}
+}
+
+function _fmtMs(ms) {
+    if (ms < 90000) return `${Math.round(ms / 1000)}s`;
+    const m = Math.floor(ms / 60000);
+    const s = Math.round((ms % 60000) / 1000);
+    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
+function _updateEta(pending) {
+    const etaEl = document.getElementById('processEta');
+    if (!etaEl) return;
+    const elapsedMs = _batchStartMs ? Date.now() - _batchStartMs : 0;
+    const elapsedStr = elapsedMs > 3000 ? `Elapsed: ${_fmtMs(elapsedMs)}` : '';
+    if (pending <= 0) {
+        etaEl.textContent = elapsedStr ? `Total time: ${_fmtMs(elapsedMs)}` : '';
+        return;
+    }
+    if (_opEstimates && _opEstimates.research) {
+        const { p50, p75, n } = _opEstimates.research;
+        const lo = _fmtMs(p50 * pending);
+        const hi = _fmtMs(p75 * pending);
+        const note = n < 10 ? ` (${n} sample${n === 1 ? '' : 's'} — calibrating)` : '';
+        etaEl.textContent = `${elapsedStr}${elapsedStr ? ' · ' : ''}~${lo}–${hi} remaining${note}`;
+    } else {
+        // No data yet — show a conservative range (1–5 min per URL)
+        const lo = _fmtMs(60_000 * pending);
+        const hi = _fmtMs(300_000 * pending);
+        etaEl.textContent = `${elapsedStr}${elapsedStr ? ' · ' : ''}Typically ${lo}–${hi} for ${pending} URL${pending === 1 ? '' : 's'} · Calibrating…`;
+    }
+}
 
 async function pollBatch(batchId) {
     // Stop polling if the tab's AbortController has been aborted (user switched tab)
@@ -243,11 +285,13 @@ async function pollBatch(batchId) {
     document.getElementById('processProgress').style.width = pct + '%';
     document.getElementById('processStatus').textContent =
         `${done} done, ${errors} errors, ${pending} pending of ${total}`;
+    _updateEta(pending);
 
     if (pending > 0) {
         setTimeout(() => pollBatch(batchId), 5000);
     } else {
-        document.getElementById('processStatus').textContent += ' - Complete!';
+        document.getElementById('processStatus').textContent += ' — Complete!';
+        _updateEta(0);
         _batchPollCount = 0;
         _activeBatchPollId = null;
         loadStats();

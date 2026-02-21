@@ -103,8 +103,8 @@ def _db_cache_get(key: str):
                 return data
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("DB cache get failed for %s: %s", key, e)
     return None
 
 
@@ -121,8 +121,8 @@ def _db_cache_set(key: str, value):
             mcp_cache_set(conn, key, "extraction", value, ttl_hours=24)
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("DB cache set failed for %s: %s", key, e)
 
 
 def _cache_get(key: str):

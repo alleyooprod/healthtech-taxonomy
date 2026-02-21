@@ -38,7 +38,7 @@ class CompanyMixin:
         project_id = data.get("project_id", 1)
         logo_url = data.get("logo_url") or self._derive_logo_url(data.get("url", ""))
         pricing_tiers = data.get("pricing_tiers")
-        if pricing_tiers and not isinstance(pricing_tiers, str):
+        if pricing_tiers is not None and not isinstance(pricing_tiers, str):
             pricing_tiers = json.dumps(pricing_tiers)
 
         with self._get_conn() as conn:

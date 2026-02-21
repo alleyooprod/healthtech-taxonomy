@@ -4,6 +4,8 @@ import threading
 from dataclasses import dataclass, asdict
 from typing import Optional
 
+import requests as req
+
 
 @dataclass
 class ScrapedPage:
@@ -206,25 +208,106 @@ async def _scrape_page_async(url: str, timeout_ms: int = 15000) -> ScrapedPage:
         await context.close()
 
 
+def _scrape_page_http(url: str) -> ScrapedPage:
+    """Lightweight HTTP fallback when Playwright fails or is blocked.
+
+    Uses requests + BeautifulSoup. Looks like a search crawler rather than a
+    headless browser, so it succeeds on many sites that block Playwright.
+    """
+    try:
+        from bs4 import BeautifulSoup
+        headers = {
+            "User-Agent": _USER_AGENT,  # Same UA as Playwright for consistent fingerprint
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+        }
+        response = req.get(url, headers=headers, timeout=20, allow_redirects=True)
+        final_url = response.url
+        status_code = response.status_code
+        if status_code >= 400:
+            return ScrapedPage(
+                url=url, final_url=final_url, title="", meta_description="",
+                main_text="", status_code=status_code, is_accessible=False,
+                error=f"HTTP {status_code}",
+            )
+        soup = BeautifulSoup(response.text, "html.parser")
+        for tag in soup(["script", "style", "noscript", "svg", "nav", "footer"]):
+            tag.decompose()
+        title = soup.title.string.strip() if soup.title and soup.title.string else ""
+        meta_el = soup.find("meta", attrs={"name": "description"})
+        meta_description = (meta_el.get("content", "") if meta_el else "").strip()
+        main_text = soup.get_text(separator="\n", strip=True)[:2000]
+        return ScrapedPage(
+            url=url, final_url=final_url, title=title,
+            meta_description=meta_description, main_text=main_text,
+            status_code=status_code, is_accessible=True,
+        )
+    except req.Timeout:
+        return ScrapedPage(
+            url=url, final_url=url, title="", meta_description="",
+            main_text="", status_code=0, is_accessible=False,
+            error="HTTP fallback: request timed out",
+        )
+    except Exception as e:
+        return ScrapedPage(
+            url=url, final_url=url, title="", meta_description="",
+            main_text="", status_code=0, is_accessible=False,
+            error=f"HTTP fallback failed: {e}",
+        )
+
+
 def scrape_page(url: str, timeout_ms: int = 15000) -> ScrapedPage:
-    """Synchronous wrapper with overall deadline.
+    """Synchronous wrapper with overall deadline, and HTTP fallback.
+
+    Fallback chain:
+      1. Playwright (renders JS, best quality)
+      2. requests + BeautifulSoup (lightweight, less detectable as a bot)
 
     The deadline (2× timeout_ms) catches accumulated delays: even if goto
     takes 14s and evaluate takes 14s (both under 15s individually), the
-    overall 30s deadline fires and returns an error instead of blocking.
+    overall 30s deadline fires before falling back to HTTP.
     """
+    import time as _time
+    try:
+        from core.llm import record_op_timing as _record
+    except Exception:
+        _record = None
+
     loop = _get_or_create_loop()
     deadline_s = (timeout_ms * 2) / 1000
+
+    t0 = _time.time()
     try:
-        return loop.run_until_complete(
+        result = loop.run_until_complete(
             asyncio.wait_for(_scrape_page_async(url, timeout_ms), timeout=deadline_s)
         )
     except asyncio.TimeoutError:
-        return ScrapedPage(
+        result = ScrapedPage(
             url=url, final_url=url, title="", meta_description="",
             main_text="", status_code=0, is_accessible=False,
             error=f"Scrape deadline exceeded ({deadline_s:.0f}s)",
         )
+
+    if result.is_accessible:
+        if _record:
+            _record("scrape_playwright", (_time.time() - t0) * 1000, success=True)
+        return result
+
+    # Playwright failed — record failure, try plain HTTP before giving up
+    if _record:
+        _record("scrape_playwright", (_time.time() - t0) * 1000, success=False)
+
+    t1 = _time.time()
+    http_result = _scrape_page_http(url)
+    if _record:
+        _record("scrape_http", (_time.time() - t1) * 1000, success=http_result.is_accessible)
+    return http_result
 
 
 def check_relevance(scraped: ScrapedPage, keywords: list[str] = None) -> tuple[str, str]:

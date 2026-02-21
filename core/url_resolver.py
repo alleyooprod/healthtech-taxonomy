@@ -137,6 +137,12 @@ def resolve_shortened_url(url, _depth=0):
         else:
             # Plain shortener (bit.ly, tinyurl, t.co, etc.) — follow redirects
             response = requests.head(url, allow_redirects=True, timeout=10)
+            if response.status_code == 405:
+                # HEAD blocked — use streaming GET to follow redirects without downloading body
+                response = requests.get(
+                    url, allow_redirects=True, timeout=10, stream=True
+                )
+                response.close()
             resolved = response.url
             # If the shortener resolved to an aggregator, resolve that too
             if _is_aggregator_url(resolved):
@@ -149,9 +155,19 @@ def resolve_shortened_url(url, _depth=0):
 
 
 def validate_url(url):
-    """Check if a URL is accessible. Returns (is_valid, reason)."""
+    """Check if a URL is accessible. Returns (is_valid, reason).
+
+    Tries HEAD first (cheap), falls back to GET if HEAD returns 405 (Method Not
+    Allowed) — common on enterprise SaaS sites that block HEAD requests.
+    """
     try:
         response = requests.head(url, timeout=10, allow_redirects=True, headers=HEADERS)
+        if response.status_code == 405:
+            # HEAD blocked — try GET without downloading the body
+            response = requests.get(
+                url, timeout=10, allow_redirects=True, headers=HEADERS, stream=True
+            )
+            response.close()
         if response.status_code >= 400:
             return False, f"HTTP {response.status_code}"
         return True, "OK"
