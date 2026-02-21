@@ -1054,8 +1054,8 @@ def _setup_vibrancy():
         vibrancy.setState_(1)  # NSVisualEffectStateActive = 1 (always active)
         # Autoresize with window: NSViewWidthSizable | NSViewHeightSizable = 18
         vibrancy.setAutoresizingMask_(18)
-        # Insert BEHIND the webview (NSWindowBelow = 1)
-        content_view.addSubview_positioned_relativeTo_(vibrancy, 1, None)
+        # Insert BEHIND the webview (NSWindowBelow = -1, NSWindowAbove = 1)
+        content_view.addSubview_positioned_relativeTo_(vibrancy, -1, None)
 
         logger.debug("Vibrancy effect configured")
     except ImportError:
@@ -1586,13 +1586,25 @@ def main():
             _log_timing("Status item, window tabbing, and services registered")
 
             # Setup native titlebar + vibrancy (macOS desktop look)
+            # Runs in a thread because _setup_hidden_titlebar sleeps.
+            # We wait for the Flask page to fully load before applying the
+            # desktop-native class (evaluate_js during navigation is a no-op).
             def _apply_native_chrome():
                 _setup_hidden_titlebar()
                 _setup_vibrancy()
-                try:
-                    window.evaluate_js("document.body.classList.add('desktop-native')")
-                except Exception:
-                    pass
+                # Wait for Flask page to finish loading before injecting class
+                time.sleep(1.5)
+                for _attempt in range(5):
+                    try:
+                        result = window.evaluate_js(
+                            "(function(){ document.body.classList.add('desktop-native'); return 'ok'; })()"
+                        )
+                        if result == "ok":
+                            logger.debug("desktop-native class applied")
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(0.5)
             threading.Thread(target=_apply_native_chrome, daemon=True).start()
 
             # Spotlight indexing in background thread

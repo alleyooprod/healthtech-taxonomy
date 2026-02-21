@@ -285,9 +285,11 @@ body {
     user-select: none;
 }
 
-/* Desktop native mode: transparent body so vibrancy shows through toolbar */
+/* Desktop native mode: body keeps its normal background.
+   Vibrancy shows through only the titlebar-region via CSS backdrop-filter
+   (see layout.css .desktop-native .titlebar-region). */
 .desktop-native {
-    background: transparent;
+    background: var(--bg-page);
 }
 
 /* Re-enable text selection for content areas */
