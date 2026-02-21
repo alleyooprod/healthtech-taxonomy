@@ -163,9 +163,9 @@ async function safeFetch(url, options = {}) {
     }
 }
 
-/** Check whether parsed JSON data came from a network error mock response. */
+/** Check whether parsed JSON data came from a network error or aborted mock response. */
 window.isNetworkError = function(data) {
-    return data && data._networkError === true;
+    return data && (data._networkError === true || data._aborted === true);
 };
 
 // --- HTML Escaping ---
@@ -234,6 +234,10 @@ function showTab(name) {
     // Validate tab name
     if (!ALL_TAB_NAMES.includes(name)) return;
 
+    // Cancel any in-flight fetches from the previous tab
+    if (_tabAbortController) _tabAbortController.abort();
+    _tabAbortController = new AbortController();
+
     // Ensure driver.js tour isn't blocking pointer events
     if (typeof _cleanupDriverJs === 'function') _cleanupDriverJs();
 
@@ -293,8 +297,19 @@ function showTab(name) {
     if (name === 'reports') { if (typeof loadSavedResearch === 'function') loadSavedResearch(); }
     if (name === 'canvas') { if (typeof loadCanvasList === 'function') loadCanvasList(); }
     if (name === 'discovery') { if (typeof loadDiscoveryTab === 'function') loadDiscoveryTab(); }
-    if (name === 'process') { loadBatches(); if (typeof initCaptureUI === 'function') initCaptureUI(); }
-    if (name === 'review') { if (typeof initReviewQueue === 'function') initReviewQueue(); if (typeof initFeatures === 'function') initFeatures(); }
+    if (name === 'process') {
+        showTabLoading('process');
+        const tasks = [Promise.resolve(loadBatches())];
+        if (typeof initCaptureUI === 'function') tasks.push(Promise.resolve(initCaptureUI()));
+        Promise.all(tasks).finally(() => hideTabLoading('process'));
+    }
+    if (name === 'review') {
+        showTabLoading('review');
+        const tasks = [];
+        if (typeof initReviewQueue === 'function') tasks.push(Promise.resolve(initReviewQueue()));
+        if (typeof initFeatures === 'function') tasks.push(Promise.resolve(initFeatures()));
+        Promise.all(tasks).finally(() => hideTabLoading('review'));
+    }
     if (name === 'analysis') {
         if (typeof initLenses === 'function') {
             showTabLoading('analysis');
@@ -599,12 +614,41 @@ function trapFocus(container) {
 }
 
 // --- Tab Loading States ---
+// Skeleton templates for different tab layouts
+const _SKELETON_TEMPLATES = {
+    analysis: `
+        <div class="skeleton skeleton-heading" style="width:30%"></div>
+        <div class="skeleton-row"><div class="skeleton skeleton-block"></div><div class="skeleton skeleton-block"></div><div class="skeleton skeleton-block"></div></div>
+        <div class="skeleton skeleton-heading" style="width:25%;margin-top:8px"></div>
+        <div class="skeleton skeleton-block" style="height:200px"></div>`,
+    intelligence: `
+        <div class="skeleton skeleton-heading" style="width:35%"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>`,
+    export: `
+        <div class="skeleton skeleton-heading" style="width:25%"></div>
+        <div class="skeleton-row"><div class="skeleton skeleton-block" style="height:100px"></div><div class="skeleton skeleton-block" style="height:100px"></div></div>
+        <div class="skeleton skeleton-text" style="width:60%"></div>
+        <div class="skeleton skeleton-text" style="width:40%"></div>`,
+    review: `
+        <div class="skeleton skeleton-heading" style="width:30%"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-text" style="width:50%"></div>`,
+    _default: `
+        <div class="skeleton skeleton-heading" style="width:30%"></div>
+        <div class="skeleton skeleton-block"></div>
+        <div class="skeleton skeleton-block"></div>`
+};
+
 function showTabLoading(tabName) {
     const tab = document.getElementById('tab-' + tabName);
     if (!tab || tab.querySelector('.tab-loading')) return;
     const loader = document.createElement('div');
-    loader.className = 'tab-loading';
-    loader.innerHTML = '<div class="tab-loading-spinner"></div><p>Loading...</p>';
+    loader.className = 'tab-loading tab-skeleton';
+    const template = _SKELETON_TEMPLATES[tabName] || _SKELETON_TEMPLATES._default;
+    loader.innerHTML = template;
     tab.prepend(loader);
 }
 

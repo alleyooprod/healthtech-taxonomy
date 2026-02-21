@@ -592,6 +592,11 @@ button:focus-visible,
     color: var(--text-muted);
     gap: 16px;
 }
+.tab-loading.tab-skeleton {
+    align-items: stretch;
+    padding: 24px;
+    max-width: 960px;
+}
 .tab-loading-spinner {
     width: 24px; height: 24px;
     border: 1px solid var(--border-default);
@@ -600,6 +605,26 @@ button:focus-visible,
     animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Skeleton Loading Placeholders --- */
+@keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-elevated, #f0f0f0) 50%, var(--bg-secondary) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+}
+.skeleton-text { height: 14px; margin-bottom: 10px; }
+.skeleton-text-sm { height: 10px; margin-bottom: 8px; }
+.skeleton-heading { height: 20px; width: 40%; margin-bottom: 16px; }
+.skeleton-block { height: 80px; margin-bottom: 12px; }
+.skeleton-card { height: 120px; margin-bottom: 12px; border: 1px solid var(--border-default); padding: 16px; }
+.skeleton-row { display: flex; gap: 12px; margin-bottom: 12px; }
+.skeleton-row > * { flex: 1; }
+.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.tab-skeleton { padding: 24px; max-width: 960px; }
 
 /* ========== Responsive: Tablet ========== */
 @media (min-width: 769px) and (max-width: 1024px) {
