@@ -1,7 +1,7 @@
 ---
 document_type: healthtech_taxonomy
-last_updated: 2026-02-21T13:04:46
-total_companies: 0
+last_updated: 2026-02-21T13:05:42
+total_companies: 1
 total_categories: 3
 format_version: 2.0
 purpose: Market taxonomy for healthtech, wellness, fitness, and health insurance companies
@@ -9,12 +9,12 @@ purpose: Market taxonomy for healthtech, wellness, fitness, and health insurance
 
 # Healthtech Market Taxonomy
 
-> **0 companies** across **3 categories** | Last updated: 2026-02-21 13:04
+> **1 companies** across **3 categories** | Last updated: 2026-02-21 13:05
 
 ## Taxonomy Tree
 
 ```
-+-- Alpha (0)
++-- Alpha (1)
 +-- Beta (0)
 +-- Gamma (0)
 ```
@@ -25,11 +25,27 @@ purpose: Market taxonomy for healthtech, wellness, fitness, and health insurance
 
 | Category | Companies | % of Total |
 |----------|----------:|-----------:|
-| Alpha | 0 | 0% |
+| Alpha | 1 | 100% |
 | Beta | 0 | 0% |
 | Gamma | 0 | 0% |
 
 ## Companies by Category
+
+### Alpha (1 companies)
+
+#### Test Corp
+
+- **URL**: https://testcorp.com
+- **Category**: Alpha > None
+- **Tags**: none
+- **Confidence**: N/A
+- **What**: None
+- **Target**: None
+- **Products**: None
+- **Funding**: None
+- **Geography**: None
+- **TAM**: None
+- **Processed**: 2026-02-21T13:05:42.509284
 
 ---
 
