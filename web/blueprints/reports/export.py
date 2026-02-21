@@ -141,7 +141,7 @@ def _report_to_html(report):
         if evidence_refs:
             evidence_html = (
                 f'<p class="evidence-refs">Evidence references: '
-                f'{", ".join(str(r) for r in evidence_refs)}</p>'
+                f'{_escape_html(", ".join(str(r) for r in evidence_refs))}</p>'
             )
         sections_html.append(
             f'<section>\n'
@@ -223,14 +223,14 @@ def _report_to_html(report):
 <body>
     <h1>{_escape_html(report['title'])}</h1>
     <div class="meta">
-        Generated: {report['generated_at']}{ai_label}<br>
-        Template: {report['template']}
+        Generated: {_escape_html(str(report['generated_at']))}{ai_label}<br>
+        Template: {_escape_html(str(report['template']))}
     </div>
 
     {body}
 
     <div class="footer">
-        Report ID: {report['id']}
+        Report ID: {_escape_html(str(report['id']))}
     </div>
 </body>
 </html>"""
@@ -290,7 +290,7 @@ def _report_to_pdf_html(report):
         if evidence_refs:
             evidence_html = (
                 f'<p class="evidence-refs">Evidence references: '
-                f'{", ".join(str(r) for r in evidence_refs)}</p>'
+                f'{_escape_html(", ".join(str(r) for r in evidence_refs))}</p>'
             )
         sections_html.append(
             f'<section>\n'
@@ -392,14 +392,14 @@ def _report_to_pdf_html(report):
 <body>
     <h1>{_escape_html(report['title'])}</h1>
     <div class="meta">
-        Generated: {report['generated_at']}{ai_label}<br>
-        Template: {report['template']}
+        Generated: {_escape_html(str(report['generated_at']))}{ai_label}<br>
+        Template: {_escape_html(str(report['template']))}
     </div>
 
     {body}
 
     <div class="footer">
-        Report ID: {report['id']}
+        Report ID: {_escape_html(str(report['id']))}
     </div>
 </body>
 </html>"""
